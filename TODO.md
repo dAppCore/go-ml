@@ -1,46 +1,132 @@
 # TODO.md — go-ml Task Queue
 
-## Phase 1: go-inference Migration
-
-The big one. `backend_mlx.go` needs rewriting to use `go-inference.TextModel` instead of direct go-mlx imports. This collapses ~253 LOC to ~60 LOC.
-
-- [ ] **Rewrite backend_mlx.go** — Replace direct go-mlx calls with go-inference TextModel. The current implementation manually handles tokenisation, KV cache, sampling, and token decoding. go-inference wraps all of that behind `TextModel.Generate()` returning `iter.Seq[Token]`.
-- [ ] **HTTPBackend go-inference wrapper** — HTTPBackend should implement `go-inference.Backend` or wrap it. Currently returns `(string, error)` from Generate; needs an adapter that yields `iter.Seq[Token]` from SSE streams.
-- [ ] **LlamaBackend go-inference wrapper** — Same treatment as HTTPBackend. llama-server already supports SSE streaming; the adapter reads the stream and yields tokens.
-- [ ] **Bridge ml.Backend to go-inference** — The old `ml.Backend` interface (`Generate` returns `string`, not `iter.Seq[Token]`) needs a bridging adapter. Write `InferenceAdapter` that wraps `go-inference.TextModel` and collects tokens into a string for the legacy interface.
-
-## Phase 2: Backend Consolidation
-
-`StreamingBackend` vs `go-inference.TextModel` overlap. Reconcile: go-inference is the standard, `ml.Backend` is legacy.
-
-- [ ] **Audit StreamingBackend usage** — Find all callers of `GenerateStream`/`ChatStream`. Determine which can migrate directly to `iter.Seq[Token]`.
-- [ ] **Migration path** — Keep both interfaces temporarily. Add `BackendAdapter` that wraps go-inference.TextModel and satisfies both `ml.Backend` and `StreamingBackend`.
-- [ ] **Deprecate StreamingBackend** — Once all callers use go-inference iterators, mark StreamingBackend as deprecated. Remove in a later phase.
-- [ ] **Unify GenOpts** — `ml.GenOpts` and `go-inference.GenerateOptions` likely overlap. Consolidate into one options struct or add conversion helpers.
-
-## Phase 3: Agent Loop Modernisation
-
-`agent.go` (1,070 LOC) is the largest file. SSH checkpoint discovery, InfluxDB streaming. Needs splitting into smaller files.
-
-- [ ] **Split agent.go** — Decompose into: `agent_config.go` (SSH/infra config), `agent_execute.go` (scoring run orchestration), `agent_eval.go` (result evaluation and publishing), `agent_influx.go` (InfluxDB streaming).
-- [ ] **Abstract SSH transport** — M3 homelab SSH may change to Linux. Extract SSH checkpoint discovery into an interface so the transport layer is swappable.
-- [ ] **InfluxDB client modernisation** — Current line protocol writes are hand-rolled. Evaluate using the official InfluxDB Go client library.
-- [ ] **Configurable endpoints** — Hardcoded `10.69.69.165:8181` and M3 SSH details should come from config/environment, not constants.
-
-## Phase 4: Test Coverage
-
-`backend_http_test` exists but `backend_llama` and `backend_mlx` have no tests. `score.go` concurrency needs race condition tests.
-
-- [ ] **backend_llama_test.go** — Mock llama-server subprocess. Test: model loading, prompt formatting, streaming, error recovery, process lifecycle.
-- [ ] **backend_mlx_test.go** — Mock go-mlx (or go-inference after Phase 1). Test: darwin/arm64 gating, Metal availability check, generation flow, tokeniser errors.
-- [ ] **score.go race tests** — Run `go test -race ./...`. Add concurrent scoring tests: multiple suites running simultaneously, semaphore boundary conditions, context cancellation mid-score.
-- [ ] **Benchmark suite** — Add `BenchmarkHeuristic`, `BenchmarkJudge`, `BenchmarkExact` for various input sizes. No benchmarks exist currently.
+Dispatched from Virgil in core/go. Pick up tasks in phase order.
 
 ---
 
-## Standing: Workflow
+## Phase 1: go-inference Migration (CRITICAL PATH)
+
+Everything downstream is blocked on this. The old `backend_mlx.go` imports go-mlx subpackages that no longer exist after Phase 4 refactoring.
+
+### Step 1.1: Add go-inference dependency
+
+- [ ] **Add `forge.lthn.ai/core/go-inference` to go.mod** — Already has a `replace` directive pointing to `../go-inference`. Run `go get forge.lthn.ai/core/go-inference` then `go mod tidy`. Verify the module resolves.
+
+### Step 1.2: Write the InferenceAdapter
+
+- [ ] **Create `adapter.go`** — Bridge between `go-inference.TextModel` (returns `iter.Seq[Token]`) and `ml.Backend` + `ml.StreamingBackend` (returns `string`/callback). Must implement:
+  - `Generate()` — collect tokens from iterator into string
+  - `Chat()` — same, using `TextModel.Chat()`
+  - `GenerateStream()` — forward tokens to `TokenCallback`
+  - `ChatStream()` — same for chat
+  - `Name()` — delegate to `TextModel.ModelType()`
+  - `Available()` — always true (model already loaded)
+  - `convertOpts(GenOpts) []inference.GenerateOption` — map `GenOpts` fields to functional options
+
+  **Key mapping**:
+  ```
+  GenOpts.Temperature → inference.WithTemperature(float32(t))
+  GenOpts.MaxTokens   → inference.WithMaxTokens(n)
+  GenOpts.Model       → (ignored, model already loaded)
+  ```
+
+  **Error handling**: After the iterator completes, check `model.Err()` to distinguish EOS from errors (OOM, ctx cancelled).
+
+- [ ] **Test adapter.go** — Test with a mock `inference.TextModel` that yields predetermined tokens. Test cases:
+  - Normal generation (collect tokens → string)
+  - Streaming (each token hits callback)
+  - Callback error stops iteration
+  - Context cancellation propagates
+  - Empty output (EOS immediately)
+  - Model error after partial output
+
+### Step 1.3: Rewrite backend_mlx.go
+
+- [ ] **Replace backend_mlx.go** — Delete the 253 LOC that manually handle tokenisation, KV cache, sampling, and memory cleanup. Replace with ~60 LOC:
+  ```go
+  //go:build darwin && arm64
+
+  package ml
+
+  import (
+      "forge.lthn.ai/core/go-inference"
+      _ "forge.lthn.ai/core/go-mlx"  // registers "metal" backend
+  )
+
+  func NewMLXBackend(modelPath string) (*InferenceAdapter, error) {
+      m, err := inference.LoadModel(modelPath)
+      if err != nil {
+          return nil, fmt.Errorf("mlx: %w", err)
+      }
+      return &InferenceAdapter{model: m, name: "mlx"}, nil
+  }
+  ```
+  The `InferenceAdapter` from Step 1.2 handles all the Generate/Chat/Stream logic.
+
+- [ ] **Preserve memory controls** — The old `MLXBackend` set cache/memory limits (16GB/24GB). These should be configurable. Options:
+  - Accept memory limits in `NewMLXBackend` params
+  - Or set them in `InferenceAdapter` wrapper
+  - go-mlx exposes `SetCacheLimit()` / `SetMemoryLimit()` at package level
+
+- [ ] **Test backend_mlx.go** — Verify the new backend can:
+  - Load a model via go-inference registry
+  - Generate text (smoke test, requires model on disk)
+  - Stream tokens via callback
+  - Handle Metal availability check (build tag gating)
+
+### Step 1.4: HTTPBackend and LlamaBackend wrappers
+
+- [ ] **HTTPBackend go-inference wrapper** — HTTPBackend already works fine as `ml.Backend`. For go-inference compatibility, write a thin wrapper that implements `inference.TextModel`:
+  - `Generate()` calls HTTP API, yields entire response as single Token
+  - `Chat()` same
+  - This is lower priority than MLX — HTTP backends don't need the full iter.Seq pattern
+  - Consider SSE streaming: `/v1/chat/completions` with `"stream": true` returns SSE events that CAN be yielded as `iter.Seq[Token]`
+
+- [ ] **LlamaBackend go-inference wrapper** — LlamaBackend delegates to HTTPBackend already. Same treatment.
+
+### Step 1.5: Verify downstream consumers
+
+- [ ] **Service.Generate() still works** — `service.go` calls `Backend.Generate()`. After migration, backends wrapped in `InferenceAdapter` must still satisfy `ml.Backend`.
+- [ ] **Judge still works** — `judge.go` uses `Backend.Generate()` for LLM-as-judge. Verify scoring pipeline runs end-to-end.
+- [ ] **go-ai tools_ml.go** — Uses `ml.Service` directly. No code changes needed in go-ai if `ml.Backend` interface is preserved.
+
+---
+
+## Phase 2: Backend Consolidation
+
+After Phase 1, both `ml.Backend` (string) and `inference.TextModel` (iterator) coexist. Reconcile.
+
+- [ ] **Audit StreamingBackend usage** — Find all callers of `GenerateStream`/`ChatStream`. Determine which can migrate to `iter.Seq[Token]`.
+- [ ] **Deprecate StreamingBackend** — Once all callers use go-inference iterators, mark StreamingBackend as deprecated.
+- [ ] **Unify GenOpts** — `ml.GenOpts` and `inference.GenerateConfig` overlap. Add `convertOpts()` in Phase 1, consolidate into one struct later.
+- [ ] **Unify Message types** — `ml.Message` and `inference.Message` are identical structs. Consider type alias or shared import.
+
+---
+
+## Phase 3: Agent Loop Modernisation
+
+`agent.go` (1,070 LOC) is the largest file. Decompose.
+
+- [ ] **Split agent.go** — Into: `agent_config.go` (config, model maps), `agent_execute.go` (run loop, checkpoint processing), `agent_eval.go` (probe evaluation, result publishing), `agent_influx.go` (InfluxDB streaming, JSONL buffer).
+- [ ] **Abstract SSH transport** — Extract SSH checkpoint discovery into interface. Current M3 homelab SSH may change to Linux (go-rocm).
+- [ ] **Configurable endpoints** — `10.69.69.165:8181` and M3 SSH details hardcoded. Move to config/environment.
+- [ ] **InfluxDB client** — Hand-rolled line protocol. Evaluate official InfluxDB Go client.
+
+---
+
+## Phase 4: Test Coverage
+
+- [ ] **backend_llama_test.go** — Mock llama-server subprocess. Test: model loading, health checks, process lifecycle.
+- [ ] **backend_mlx_test.go** — After Phase 1 rewrite, test with mock go-inference TextModel.
+- [ ] **score.go race tests** — `go test -race ./...`. Concurrent scoring, semaphore boundaries, context cancellation.
+- [ ] **Benchmark suite** — `BenchmarkHeuristic`, `BenchmarkJudge`, `BenchmarkExact` for various input sizes.
+
+---
+
+## Workflow
 
 1. Virgil in core/go writes tasks here after research
 2. This repo's session picks up tasks in phase order
 3. Mark `[x]` when done, note commit hash
-4. Phase 1 is the critical path — everything else builds on go-inference migration
+4. New discoveries → add tasks, note in FINDINGS.md
+5. Push to forge after each completed step: `git push forge main`

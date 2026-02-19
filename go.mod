@@ -31,6 +31,8 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
 
-replace forge.lthn.ai/core/go => ../core
+replace forge.lthn.ai/core/go => ../host-uk/core
 
 replace forge.lthn.ai/core/go-mlx => ../go-mlx
+
+replace forge.lthn.ai/core/go-inference => ../go-inference
