@@ -10,11 +10,11 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
 
 ### Step 1.1: Add go-inference dependency
 
-- [ ] **Add `forge.lthn.ai/core/go-inference` to go.mod** — Already has a `replace` directive pointing to `../go-inference`. Run `go get forge.lthn.ai/core/go-inference` then `go mod tidy`. Verify the module resolves.
+- [x] **Add `forge.lthn.ai/core/go-inference` to go.mod** — Already has a `replace` directive pointing to `../go-inference`. Run `go get forge.lthn.ai/core/go-inference` then `go mod tidy`. Verify the module resolves.
 
 ### Step 1.2: Write the InferenceAdapter
 
-- [ ] **Create `adapter.go`** — Bridge between `go-inference.TextModel` (returns `iter.Seq[Token]`) and `ml.Backend` + `ml.StreamingBackend` (returns `string`/callback). Must implement:
+- [x] **Create `adapter.go`** — Bridge between `go-inference.TextModel` (returns `iter.Seq[Token]`) and `ml.Backend` + `ml.StreamingBackend` (returns `string`/callback). Must implement:
   - `Generate()` — collect tokens from iterator into string
   - `Chat()` — same, using `TextModel.Chat()`
   - `GenerateStream()` — forward tokens to `TokenCallback`
@@ -32,7 +32,7 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
 
   **Error handling**: After the iterator completes, check `model.Err()` to distinguish EOS from errors (OOM, ctx cancelled).
 
-- [ ] **Test adapter.go** — Test with a mock `inference.TextModel` that yields predetermined tokens. Test cases:
+- [x] **Test adapter.go** — 13 test cases with mock TextModel (all pass). Test cases:
   - Normal generation (collect tokens → string)
   - Streaming (each token hits callback)
   - Callback error stops iteration
@@ -42,7 +42,7 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
 
 ### Step 1.3: Rewrite backend_mlx.go
 
-- [ ] **Replace backend_mlx.go** — Delete the 253 LOC that manually handle tokenisation, KV cache, sampling, and memory cleanup. Replace with ~60 LOC:
+- [x] **Replace backend_mlx.go** — Deleted the 253 LOC that manually handle tokenisation, KV cache, sampling, and memory cleanup. Replaced with ~35 LOC:
   ```go
   //go:build darwin && arm64
 
@@ -63,7 +63,7 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
   ```
   The `InferenceAdapter` from Step 1.2 handles all the Generate/Chat/Stream logic.
 
-- [ ] **Preserve memory controls** — The old `MLXBackend` set cache/memory limits (16GB/24GB). These should be configurable. Options:
+- [ ] **Preserve memory controls** — The old `MLXBackend` set cache/memory limits (16GB/24GB). Now delegated to go-mlx internally. Callers can still use `mlx.SetCacheLimit()`/`mlx.SetMemoryLimit()` directly. Options for future:
   - Accept memory limits in `NewMLXBackend` params
   - Or set them in `InferenceAdapter` wrapper
   - go-mlx exposes `SetCacheLimit()` / `SetMemoryLimit()` at package level
