@@ -92,10 +92,61 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
 
 After Phase 1, both `ml.Backend` (string) and `inference.TextModel` (iterator) coexist. Reconcile.
 
-- [ ] **Audit StreamingBackend usage** — Find all callers of `GenerateStream`/`ChatStream`. Determine which can migrate to `iter.Seq[Token]`.
-- [ ] **Deprecate StreamingBackend** — Once all callers use go-inference iterators, mark StreamingBackend as deprecated.
-- [ ] **Unify GenOpts** — `ml.GenOpts` and `inference.GenerateConfig` overlap. Add `convertOpts()` in Phase 1, consolidate into one struct later.
-- [ ] **Unify Message types** — `ml.Message` and `inference.Message` are identical structs. Consider type alias or shared import.
+### Audit Results (Virgil, 20 Feb 2026)
+
+**StreamingBackend callers** — Only 2 files in `host-uk/cli`:
+- `cmd/ml/cmd_serve.go` lines 146,201,319: Type-asserts `backend.(ml.StreamingBackend)` for SSE streaming at `/v1/completions` and `/v1/chat/completions`
+- `cmd/ml/cmd_chat.go`: Direct `ChatStream()` call for interactive terminal token echo
+
+All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.go) use `Backend.Generate()` — NOT streaming.
+
+**Backend implementations**:
+- `InferenceAdapter` → implements Backend + StreamingBackend (via go-inference iter.Seq)
+- `HTTPBackend` → implements Backend only (no streaming)
+- `LlamaBackend` → implements Backend only (no streaming)
+
+### Step 2.1: Unify Message types
+
+- [ ] **Type alias ml.Message → inference.Message** — In `inference.go`, replace the `Message` struct with:
+  ```go
+  type Message = inference.Message
+  ```
+  This is backward-compatible — all existing callers keep working. Remove the `convertMessages()` helper from `adapter.go` since types are now identical. Verify with `go build ./...` and `go test ./...`.
+
+### Step 2.2: Unify GenOpts
+
+- [ ] **Add inference fields to GenOpts** — Extend `ml.GenOpts` to include the extra fields from `inference.GenerateConfig`:
+  ```go
+  type GenOpts struct {
+      Temperature   float64
+      MaxTokens     int
+      Model         string  // override model for this request
+      TopK          int     // NEW: from inference.GenerateConfig
+      TopP          float64 // NEW: from inference.GenerateConfig (float64 to match Temperature)
+      RepeatPenalty float64 // NEW: from inference.GenerateConfig
+  }
+  ```
+  Update `convertOpts()` in adapter.go to map the new fields. Existing callers that only set Temperature/MaxTokens/Model continue working unchanged.
+
+### Step 2.3: Deprecate StreamingBackend
+
+- [ ] **Mark StreamingBackend as deprecated** — Add deprecation comment:
+  ```go
+  // Deprecated: StreamingBackend is retained for backward compatibility.
+  // New code should use inference.TextModel with iter.Seq[Token] directly.
+  // See InferenceAdapter for the bridge pattern.
+  type StreamingBackend interface { ... }
+  ```
+  Do NOT remove yet — `host-uk/cli` cmd_serve.go and cmd_chat.go still depend on it. Those migrations are out of scope for go-ml (they live in a different repo).
+
+### Step 2.4: Document migration path
+
+- [ ] **Update CLAUDE.md** — Add "Backend Architecture" section documenting:
+  - `inference.TextModel` (iterator-based) is the preferred API for new code
+  - `ml.Backend` (string-based) is the compatibility layer, still supported
+  - `StreamingBackend` is deprecated, use `iter.Seq[Token]` directly
+  - `InferenceAdapter` bridges TextModel → Backend/StreamingBackend
+  - `HTTPTextModel`/`LlamaTextModel` bridges Backend → TextModel (reverse direction)
 
 ---
 
