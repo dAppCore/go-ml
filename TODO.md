@@ -163,17 +163,9 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
   - `agent_influx.go` (291 LOC): ScoreCapabilityAndPush, ScoreContentAndPush, PushCapability*, BufferInfluxResult, ReplayInfluxBuffer
   - `agent_ssh.go` (102 LOC): SSHCommand, SCPFrom, SCPTo, fileBase, EnvOr, IntEnvOr, ExpandHome
 
-### Step 3.2: Abstract SSH transport
+### Step 3.2: Abstract SSH transport — COMPLETE
 
-- [ ] **Define `RemoteTransport` interface** — Extract SSH into interface for testability and future migration to go-rocm Linux homelab:
-  ```go
-  type RemoteTransport interface {
-      Run(ctx context.Context, cmd string) (string, error)
-      CopyFrom(ctx context.Context, remote, local string) error
-      CopyTo(ctx context.Context, local, remote string) error
-  }
-  ```
-  Implement `SSHTransport` wrapping current `SSHCommand`/`SCPFrom`/`SCPTo`. Update `DiscoverCheckpoints()` and `processMLXNative()` to use interface.
+- [x] **RemoteTransport interface + SSHTransport** — Commit `1c2a6a6`. Interface with Run/CopyFrom/CopyTo, SSHTransport implementation with functional options (WithPort, WithTimeout). AgentConfig.Transport field with lazy init. All callers updated (DiscoverCheckpoints, processMLXNative, processWithConversion). Old SSHCommand/SCPFrom/SCPTo preserved as deprecated wrappers. Build/test/vet clean.
 
 ### Step 3.3: Configurable infrastructure
 
