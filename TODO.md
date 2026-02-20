@@ -167,13 +167,9 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 - [x] **RemoteTransport interface + SSHTransport** — Commit `1c2a6a6`. Interface with Run/CopyFrom/CopyTo, SSHTransport implementation with functional options (WithPort, WithTimeout). AgentConfig.Transport field with lazy init. All callers updated (DiscoverCheckpoints, processMLXNative, processWithConversion). Old SSHCommand/SCPFrom/SCPTo preserved as deprecated wrappers. Build/test/vet clean.
 
-### Step 3.3: Configurable infrastructure
+### Step 3.3: Configurable infrastructure — COMPLETE
 
-- [ ] **Extract hardcoded values** — Move to `AgentConfig` or constants:
-  - Timestamp base `1739577600` → `AgentConfig.EpochBase`
-  - InfluxDB measurement names → package constants
-  - DuckDB table names → package constants
-  - SSH options (`ConnectTimeout=10`, `StrictHostKeyChecking=no`) → `SSHTransport` config
+- [x] **Extract hardcoded values to constants** — Commit `12f3a1c`. 15 constants in agent_config.go: EpochBase, 5 InfluxDB measurements, 2 DuckDB tables, probe defaults (temp/maxTokens/truncation), InfluxBufferFile, LogSeparatorWidth, InterCheckpointDelay. Hardcoded probe counts replaced with len(). 7 files, build/test/vet clean.
 
 ### Step 3.4: Agent tests
 
