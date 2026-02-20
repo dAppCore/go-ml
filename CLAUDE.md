@@ -99,6 +99,7 @@ for tok := range m.Generate(ctx, "prompt", inference.WithMaxTokens(128)) {
 ## Commands
 
 ```bash
+go mod download                  # FIRST RUN: populate go.sum
 go test ./...                    # Run all tests (some will fail until Phase 1)
 go test -v -run TestHeuristic    # Single test
 go test -bench=. ./...           # Benchmarks (none exist yet)
@@ -106,10 +107,7 @@ go test -race ./...              # Race detector
 go vet ./...                     # Static analysis
 ```
 
-**Note**: `backend_mlx.go` won't compile until rewritten (Phase 1). Use build tags to skip:
-```bash
-go test -tags '!darwin' ./...    # Skip MLX tests on non-darwin
-```
+**Note**: `backend_mlx.go` won't compile until rewritten (Phase 1) — it imports dead go-mlx subpackages. On darwin, the compiler will hit these broken imports. The Phase 1 rewrite fixes this by replacing the 253 LOC with ~60 LOC using go-inference.
 
 ## Local Dependencies
 
