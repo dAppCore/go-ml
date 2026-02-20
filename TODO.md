@@ -180,12 +180,14 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ---
 
-## Phase 4: Test Coverage
+## Phase 4: Test Coverage — COMPLETE
 
-- [ ] **backend_llama_test.go** — Mock llama-server subprocess. Test: model loading, health checks, process lifecycle.
-- [ ] **backend_mlx_test.go** — After Phase 1 rewrite, test with mock go-inference TextModel.
-- [ ] **score.go race tests** — `go test -race ./...`. Concurrent scoring, semaphore boundaries, context cancellation.
-- [ ] **Benchmark suite** — `BenchmarkHeuristic`, `BenchmarkJudge`, `BenchmarkExact` for various input sizes.
+All 4 test files created and verified with `go test -race ./...`. Commit `09bf403`.
+
+- [x] **backend_llama_test.go** — 20 tests via httptest mock: Name, Available (4 variants), Generate (6 variants incl. context cancellation, empty choices, opts forwarding), Chat (3 variants), Stop, constructor (4 variants), interface compliance.
+- [x] **backend_mlx_test.go** — 8 tests via mock TextModel (no build tag needed): Generate, Chat, Stream, ModelError, Close, ModelAccess, InterfaceCompliance, ConvertOpts.
+- [x] **score_race_test.go** — 6 race-condition tests: ConcurrentSemantic (20 responses, concurrency=4), ConcurrentMixedSuites (semantic+standard+content fan-out), SemaphoreBoundary (concurrency=1, verifies max concurrent==1), ContextCancellation (400 error→nil semantic), HeuristicOnlyNoRace (50 responses), MultiModelConcurrent (4 models×5 concurrent map writes).
+- [x] **benchmark_test.go** — 25 benchmarks: HeuristicScore (5 sizes: 25µs–8.8ms), ExactMatch (4 patterns: 171ns–2.1µs), JudgeExtractJSON (6 variants: 2.5–3.4µs), Judge round-trip (2 suites: ~52µs), ScoreAll (2 modes: 25µs–4.5ms), sub-components (5 heuristic stages: 244ns–88µs). Baselines on M3 Ultra.
 
 ---
 
