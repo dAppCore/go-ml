@@ -154,33 +154,14 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 `agent.go` (1,070 LOC) is the largest file with SSH, InfluxDB, scoring, and publishing mixed together. Decompose into focused files.
 
-### Step 3.1: Split agent.go into 5 files
+### Step 3.1: Split agent.go into 5 files — COMPLETE
 
-- [ ] **Create `agent_config.go`** (lines 19–112, ~95 LOC) — Move:
-  - `AgentConfig` struct + `Checkpoint` struct
-  - `BaseModelMap`, `ModelFamilies` maps
-  - `AdapterMeta()` function
-  - Add config validation method
-
-- [ ] **Create `agent_execute.go`** (lines 141–343, ~200 LOC) — Move:
-  - `RunAgentLoop()` — main polling loop
-  - `DiscoverCheckpoints()`, `GetScoredLabels()`, `FindUnscored()`
-  - `ProcessOne()`, `isMLXNative()` dispatcher
-
-- [ ] **Create `agent_eval.go`** (lines 345–700, ~355 LOC) — Move:
-  - `processMLXNative()`, `processWithConversion()`
-  - `RunCapabilityProbes()`, `RunCapabilityProbesFull()`
-  - `RunContentProbesViaAPI()`, `RunContentProbesViaRunner()`
-  - Types: `ProbeResult`, `CategoryResult`, `SingleProbeResult`
-
-- [ ] **Create `agent_influx.go`** (lines 708–977, ~270 LOC) — Move:
-  - `ScoreCapabilityAndPush()`, `ScoreContentAndPush()`
-  - `PushCapabilitySummary()`, `PushCapabilityResults()`, `PushCapabilityResultsDB()`
-  - `BufferInfluxResult()`, `ReplayInfluxBuffer()`, `bufferEntry` type
-
-- [ ] **Create `agent_ssh.go`** (lines 979–1070, ~90 LOC) — Move:
-  - `SSHCommand()`, `SCPFrom()`, `SCPTo()` — consolidate SSH arg construction into helper
-  - `fileBase()`, `EnvOr()`, `IntEnvOr()`, `ExpandHome()`
+- [x] **Split `agent.go` (1,070 LOC) into 5 focused files** — Commit `eae9ec9`. All `go build/test/vet` pass:
+  - `agent_config.go` (97 LOC): AgentConfig, Checkpoint, BaseModelMap, ModelFamilies, AdapterMeta()
+  - `agent_execute.go` (215 LOC): RunAgentLoop, DiscoverCheckpoints, GetScoredLabels, FindUnscored, ProcessOne, isMLXNative
+  - `agent_eval.go` (397 LOC): processMLXNative, processWithConversion, RunCapabilityProbes/Full, RunContentProbes, ProbeResult types
+  - `agent_influx.go` (291 LOC): ScoreCapabilityAndPush, ScoreContentAndPush, PushCapability*, BufferInfluxResult, ReplayInfluxBuffer
+  - `agent_ssh.go` (102 LOC): SSHCommand, SCPFrom, SCPTo, fileBase, EnvOr, IntEnvOr, ExpandHome
 
 ### Step 3.2: Abstract SSH transport
 
