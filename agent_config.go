@@ -1,6 +1,64 @@
 package ml
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
+
+// ----- Scoring epoch & timing -----
+
+// EpochBase is the Unix timestamp origin for InfluxDB scoring timestamps.
+// All probe/capability/content timestamps are derived from this base
+// plus checkpoint iteration offsets.  2025-02-15T00:00:00Z.
+const EpochBase int64 = 1739577600
+
+// InterCheckpointDelay is the pause between processing consecutive checkpoints.
+const InterCheckpointDelay = 5 * time.Second
+
+// ----- InfluxDB measurement names -----
+
+const (
+	MeasurementCapabilityScore = "capability_score"
+	MeasurementCapabilityJudge = "capability_judge"
+	MeasurementContentScore    = "content_score"
+	MeasurementProbeScore      = "probe_score"
+	MeasurementTrainingLoss    = "training_loss"
+)
+
+// ----- DuckDB table names -----
+
+const (
+	TableCheckpointScores = "checkpoint_scores"
+	TableProbeResults     = "probe_results"
+)
+
+// ----- Probe evaluation defaults -----
+
+const (
+	// MaxStoredResponseLen is the maximum number of characters stored per
+	// probe response in the results map.
+	MaxStoredResponseLen = 300
+
+	// CapabilityTemperature is the default sampling temperature for capability probes.
+	CapabilityTemperature = 0.1
+	// CapabilityMaxTokens is the default max tokens for capability probes.
+	CapabilityMaxTokens = 500
+
+	// ContentTemperature is the default sampling temperature for content probes.
+	ContentTemperature = 0.7
+	// ContentMaxTokens is the default max tokens for content probes.
+	ContentMaxTokens = 1000
+)
+
+// ----- Buffer file -----
+
+// InfluxBufferFile is the filename used for buffering InfluxDB writes when the server is unreachable.
+const InfluxBufferFile = "influx_buffer.jsonl"
+
+// ----- Log formatting -----
+
+// LogSeparatorWidth is the character width of "======" banner lines in agent logs.
+const LogSeparatorWidth = 60
 
 // AgentConfig holds scoring agent configuration.
 type AgentConfig struct {

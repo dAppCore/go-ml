@@ -144,7 +144,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 				continue
 			}
 			line := fmt.Sprintf(
-				"content_score,model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
+				MeasurementContentScore+",model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 				EscapeLp(dim), hasKernel, score, iteration, ts,
 			)
@@ -160,7 +160,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 					continue
 				}
 				line := fmt.Sprintf(
-					"probe_score,model=%s,run_id=%s,label=%s,probe_id=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
+					MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
 					EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 					EscapeLp(probeID), EscapeLp(dim), hasKernel, score, iteration, ts,
 				)
@@ -227,7 +227,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 
 		// Overall capability score.
 		line := fmt.Sprintf(
-			"capability_score,model=%s,run_id=%s,label=%s,category=overall accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
+			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 			entry.Accuracy, entry.Correct, entry.Total, iteration, ts,
 		)
@@ -241,7 +241,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 				catAccuracy = float64(block.Correct) / float64(block.Total)
 			}
 			line := fmt.Sprintf(
-				"capability_score,model=%s,run_id=%s,label=%s,category=%s accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
+				MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 				EscapeLp(cat), catAccuracy, block.Correct, block.Total, iteration, ts,
 			)
@@ -300,7 +300,7 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 			ts := time.Now().UnixNano()
 
 			line := fmt.Sprintf(
-				"training_loss,model=%s,run_id=%s,loss_type=val loss=%.6f,iteration=%di %d",
+				MeasurementTrainingLoss+",model=%s,run_id=%s,loss_type=val loss=%.6f,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), loss, iter, ts,
 			)
 			lines = append(lines, line)
@@ -317,7 +317,7 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 			ts := time.Now().UnixNano()
 
 			line := fmt.Sprintf(
-				"training_loss,model=%s,run_id=%s,loss_type=train loss=%.6f,iteration=%di,learning_rate=%.10f,it_per_sec=%.4f,tokens_per_sec=%.2f %d",
+				MeasurementTrainingLoss+",model=%s,run_id=%s,loss_type=train loss=%.6f,iteration=%di,learning_rate=%.10f,it_per_sec=%.4f,tokens_per_sec=%.2f %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), loss, iter, lr, itPerSec, tokPerSec, ts,
 			)
 			lines = append(lines, line)

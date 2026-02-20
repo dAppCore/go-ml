@@ -109,15 +109,14 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	log.Printf("Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
 
-	const baseTS int64 = 1739577600
 	results, fullResponses := RunCapabilityProbesFull(ctx, probeBackend, func(probeID, category string, passed bool, response string, correct, total int) {
 		passedInt := 0
 		if passed {
 			passedInt = 1
 		}
-		ts := (baseTS + int64(cp.Iteration)*1000 + int64(total+100)) * 1_000_000_000
+		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(total+100)) * 1_000_000_000
 		line := fmt.Sprintf(
-			"probe_score,model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
+			MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
 		)
@@ -138,10 +137,10 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	judgeBackend := NewHTTPBackend(cfg.JudgeURL, cfg.JudgeModel)
 	judge := NewJudge(judgeBackend)
 
-	log.Println("Judging 23 capability responses (0-10 quality scoring)...")
+	log.Printf("Judging %d capability responses (0-10 quality scoring)...", len(fullResponses))
 	ScoreCapabilityAndPush(ctx, judge, influx, cp, fullResponses)
 
-	log.Println("Running 6 content probes (0-10 judge scoring)...")
+	log.Printf("Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
 	contentResponses := RunContentProbesViaAPI(ctx, probeBackend)
 	if len(contentResponses) > 0 {
 		contentRunID := strings.Replace(cp.RunID, "-capability-", "-content-", 1)
@@ -185,7 +184,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		return fmt.Errorf("convert adapter: %w", err)
 	}
 
-	log.Println("Running 23 capability probes...")
+	log.Printf("Running %d capability probes...", len(CapabilityProbes))
 	modelName := cfg.Model
 	if modelName == "" {
 		modelName = cp.ModelTag
@@ -206,7 +205,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	return nil
 }
 
-// RunCapabilityProbes runs all 23 probes against a backend.
+// RunCapabilityProbes runs all capability probes against a backend.
 func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	results := ProbeResult{
 		ByCategory: make(map[string]CategoryResult),
@@ -217,7 +216,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: 0.1, MaxTokens: 500})
+		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		if err != nil {
 			log.Printf("  [%s] ERROR: %v", probe.ID, err)
 			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: err.Error()}
@@ -243,8 +242,8 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 		results.ByCategory[probe.Category] = cat
 
 		stored := clean
-		if len(stored) > 300 {
-			stored = stored[:300]
+		if len(stored) > MaxStoredResponseLen {
+			stored = stored[:MaxStoredResponseLen]
 		}
 		results.Probes[probe.ID] = SingleProbeResult{Passed: passed, Response: stored}
 
@@ -277,7 +276,7 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: 0.1, MaxTokens: 500})
+		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		if err != nil {
 			log.Printf("  [%s] ERROR: %v", probe.ID, err)
 			response = fmt.Sprintf("ERROR: %v", err)
@@ -298,8 +297,8 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		results.ByCategory[probe.Category] = cat
 
 		stored := clean
-		if len(stored) > 300 {
-			stored = stored[:300]
+		if len(stored) > MaxStoredResponseLen {
+			stored = stored[:MaxStoredResponseLen]
 		}
 		results.Probes[probe.ID] = SingleProbeResult{Passed: passed, Response: stored}
 
@@ -337,7 +336,7 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	var responses []ContentResponse
 
 	for _, probe := range ContentProbes {
-		reply, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: 0.7, MaxTokens: 1000})
+		reply, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
 		if err != nil {
 			log.Printf("  [content:%s] ERROR: %v", probe.ID, err)
 			continue
@@ -362,8 +361,8 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 	for _, probe := range ContentProbes {
 		req := map[string]interface{}{
 			"prompt":     probe.Prompt,
-			"max_tokens": 1000,
-			"temp":       0.7,
+			"max_tokens": ContentMaxTokens,
+			"temp":       ContentTemperature,
 		}
 		reqJSON, _ := json.Marshal(req)
 		fmt.Fprintf(stdin, "%s\n", reqJSON)

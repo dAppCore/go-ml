@@ -21,7 +21,6 @@ type bufferEntry struct {
 
 // ScoreCapabilityAndPush judges each capability response via LLM and pushes scores to InfluxDB.
 func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxClient, cp Checkpoint, responses []CapResponseEntry) {
-	const baseTS int64 = 1739577600
 	var lines []string
 
 	for i, cr := range responses {
@@ -35,9 +34,9 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 		log.Printf("  [%s] judge: R=%.1f C=%.1f Cl=%.1f avg=%.2f",
 			cr.ProbeID, scores.Reasoning, scores.Correctness, scores.Clarity, avg)
 
-		ts := (baseTS + int64(cp.Iteration)*1000 + int64(i)) * 1_000_000_000
+		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i)) * 1_000_000_000
 		line := fmt.Sprintf(
-			"capability_judge,model=%s,run_id=%s,label=%s,probe_id=%s,category=%s reasoning=%.2f,correctness=%.2f,clarity=%.2f,avg=%.2f,iteration=%di %d",
+			MeasurementCapabilityJudge+",model=%s,run_id=%s,label=%s,probe_id=%s,category=%s reasoning=%.2f,correctness=%.2f,clarity=%.2f,avg=%.2f,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 			EscapeLp(cr.ProbeID), EscapeLp(cr.Category),
 			scores.Reasoning, scores.Correctness, scores.Clarity, avg, cp.Iteration, ts,
@@ -47,7 +46,7 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 
 	if len(lines) > 0 {
 		if err := influx.WriteLp(lines); err != nil {
-			log.Printf("InfluxDB capability_judge push failed: %v", err)
+			log.Printf("InfluxDB %s push failed: %v", MeasurementCapabilityJudge, err)
 		} else {
 			log.Printf("Pushed %d capability judge scores to InfluxDB for %s", len(lines), cp.Label)
 		}
@@ -56,7 +55,6 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 
 // ScoreContentAndPush scores content responses via judge and pushes scores to InfluxDB.
 func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient, cp Checkpoint, runID string, responses []ContentResponse) {
-	const baseTS int64 = 1739577600
 	dims := []string{"ccp_compliance", "truth_telling", "engagement", "axiom_integration", "sovereignty_reasoning", "emotional_register"}
 
 	for i, cr := range responses {
@@ -83,9 +81,9 @@ func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient
 		var lines []string
 		for j, dim := range dims {
 			val := scoreMap[dim]
-			ts := (baseTS + int64(cp.Iteration)*1000 + int64(i*10+j)) * 1_000_000_000
+			ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i*10+j)) * 1_000_000_000
 			line := fmt.Sprintf(
-				"content_score,model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=true score=%d,iteration=%di %d",
+				MeasurementContentScore+",model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=true score=%d,iteration=%di %d",
 				EscapeLp(cp.ModelTag), EscapeLp(runID), EscapeLp(cp.Label), EscapeLp(dim),
 				val, cp.Iteration, ts,
 			)
@@ -97,18 +95,16 @@ func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient
 		}
 	}
 
-	log.Printf("Content scoring done for %s: %d probes × %d dimensions", cp.Label, len(responses), len(dims))
+	log.Printf("Content scoring done for %s: %d probes x %d dimensions", cp.Label, len(responses), len(dims))
 }
 
 // PushCapabilitySummary pushes overall + per-category scores to InfluxDB.
 func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeResult) error {
-	const baseTS int64 = 1739577600
-
 	var lines []string
 
-	ts := (baseTS + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
+	ts := (EpochBase + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
 	lines = append(lines, fmt.Sprintf(
-		"capability_score,model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
+		MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 		EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
 	))
@@ -125,9 +121,9 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		if data.Total > 0 {
 			catAcc = float64(data.Correct) / float64(data.Total) * 100
 		}
-		ts := (baseTS + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
+		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
 		lines = append(lines, fmt.Sprintf(
-			"capability_score,model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
+			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(cat),
 			catAcc, data.Correct, data.Total, cp.Iteration, ts,
 		))
@@ -142,13 +138,11 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 
 // PushCapabilityResults pushes all results (overall + categories + probes) in one batch.
 func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeResult) error {
-	const baseTS int64 = 1739577600
-
 	var lines []string
 
-	ts := (baseTS + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
+	ts := (EpochBase + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
 	lines = append(lines, fmt.Sprintf(
-		"capability_score,model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
+		MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 		EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
 	))
@@ -165,9 +159,9 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		if data.Total > 0 {
 			catAcc = float64(data.Correct) / float64(data.Total) * 100
 		}
-		ts := (baseTS + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
+		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
 		lines = append(lines, fmt.Sprintf(
-			"capability_score,model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
+			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(cat),
 			catAcc, data.Correct, data.Total, cp.Iteration, ts,
 		))
@@ -185,9 +179,9 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		if probeRes.Passed {
 			passedInt = 1
 		}
-		ts := (baseTS + int64(cp.Iteration)*1000 + int64(j+100)) * 1_000_000_000
+		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(j+100)) * 1_000_000_000
 		lines = append(lines, fmt.Sprintf(
-			"probe_score,model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
+			MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
 		))
@@ -216,19 +210,19 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 	db.EnsureScoringTables()
 
 	_, err = db.conn.Exec(
-		`INSERT OR REPLACE INTO checkpoint_scores (model, run_id, label, iteration, correct, total, accuracy)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		fmt.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, iteration, correct, total, accuracy)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableCheckpointScores),
 		cp.ModelTag, cp.RunID, cp.Label, cp.Iteration,
 		results.Correct, results.Total, results.Accuracy,
 	)
 	if err != nil {
-		log.Printf("DuckDB dual-write: checkpoint_scores insert: %v", err)
+		log.Printf("DuckDB dual-write: %s insert: %v", TableCheckpointScores, err)
 	}
 
 	for probeID, probeRes := range results.Probes {
 		db.conn.Exec(
-			`INSERT OR REPLACE INTO probe_results (model, run_id, label, probe_id, passed, response, iteration)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			fmt.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, probe_id, passed, response, iteration)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableProbeResults),
 			cp.ModelTag, cp.RunID, cp.Label, probeID,
 			probeRes.Passed, probeRes.Response, cp.Iteration,
 		)
@@ -239,7 +233,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 // BufferInfluxResult saves results to a local JSONL file when InfluxDB is down.
 func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
-	bufPath := filepath.Join(workDir, "influx_buffer.jsonl")
+	bufPath := filepath.Join(workDir, InfluxBufferFile)
 	f, err := os.OpenFile(bufPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Cannot open buffer file: %v", err)
@@ -259,7 +253,7 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 
 // ReplayInfluxBuffer retries pushing buffered results to InfluxDB.
 func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
-	bufPath := filepath.Join(workDir, "influx_buffer.jsonl")
+	bufPath := filepath.Join(workDir, InfluxBufferFile)
 	data, err := os.ReadFile(bufPath)
 	if err != nil {
 		return

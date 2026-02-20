@@ -211,18 +211,18 @@ func (db *DB) QueryRows(query string, args ...interface{}) ([]map[string]interfa
 
 // EnsureScoringTables creates the scoring tables if they don't exist.
 func (db *DB) EnsureScoringTables() {
-	db.conn.Exec(`CREATE TABLE IF NOT EXISTS checkpoint_scores (
+	db.conn.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		model TEXT, run_id TEXT, label TEXT, iteration INTEGER,
 		correct INTEGER, total INTEGER, accuracy DOUBLE,
 		scored_at TIMESTAMP DEFAULT current_timestamp,
 		PRIMARY KEY (run_id, label)
-	)`)
-	db.conn.Exec(`CREATE TABLE IF NOT EXISTS probe_results (
+	)`, TableCheckpointScores))
+	db.conn.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		model TEXT, run_id TEXT, label TEXT, probe_id TEXT,
 		passed BOOLEAN, response TEXT, iteration INTEGER,
 		scored_at TIMESTAMP DEFAULT current_timestamp,
 		PRIMARY KEY (run_id, label, probe_id)
-	)`)
+	)`, TableProbeResults))
 	db.conn.Exec(`CREATE TABLE IF NOT EXISTS scoring_results (
 		model TEXT, prompt_id TEXT, suite TEXT,
 		dimension TEXT, score DOUBLE,
@@ -243,7 +243,7 @@ func (db *DB) WriteScoringResult(model, promptID, suite, dimension string, score
 func (db *DB) TableCounts() (map[string]int, error) {
 	tables := []string{"golden_set", "expansion_prompts", "seeds", "prompts",
 		"training_examples", "gemini_responses", "benchmark_questions", "benchmark_results", "validations",
-		"checkpoint_scores", "probe_results", "scoring_results"}
+		TableCheckpointScores, TableProbeResults, "scoring_results"}
 
 	counts := make(map[string]int)
 	for _, t := range tables {

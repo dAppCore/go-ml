@@ -13,8 +13,8 @@ const TargetTotal = 15000
 var tableOrder = []string{
 	"golden_set", "expansion_prompts", "seeds", "prompts",
 	"training_examples", "gemini_responses", "benchmark_questions",
-	"benchmark_results", "validations", "checkpoint_scores",
-	"probe_results", "scoring_results",
+	"benchmark_results", "validations", TableCheckpointScores,
+	TableProbeResults, "scoring_results",
 }
 
 // tableDetail holds extra context for a single table beyond its row count.

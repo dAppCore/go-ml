@@ -13,7 +13,7 @@ import (
 
 // RunAgentLoop is the main scoring agent loop.
 func RunAgentLoop(cfg *AgentConfig) {
-	log.Println(strings.Repeat("=", 60))
+	log.Println(strings.Repeat("=", LogSeparatorWidth))
 	log.Println("ROCm Scoring Agent — Go Edition")
 	log.Printf("M3: %s@%s", cfg.M3User, cfg.M3Host)
 	log.Printf("Inference API: %s", cfg.APIURL)
@@ -23,7 +23,7 @@ func RunAgentLoop(cfg *AgentConfig) {
 		log.Printf("DuckDB: %s", cfg.DBPath)
 	}
 	log.Printf("Poll interval: %ds", cfg.PollInterval)
-	log.Println(strings.Repeat("=", 60))
+	log.Println(strings.Repeat("=", LogSeparatorWidth))
 
 	influx := NewInfluxClient(cfg.InfluxURL, cfg.InfluxDB)
 	os.MkdirAll(cfg.WorkDir, 0755)
@@ -82,7 +82,7 @@ func RunAgentLoop(cfg *AgentConfig) {
 			if err := ProcessOne(cfg, influx, target); err != nil {
 				log.Printf("Error processing %s: %v", target.Label, err)
 			}
-			time.Sleep(5 * time.Second)
+			time.Sleep(InterCheckpointDelay)
 		}
 
 		if cfg.DryRun || cfg.OneShot {
@@ -166,7 +166,7 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 
 // GetScoredLabels returns all (run_id, label) pairs already scored in InfluxDB.
 func GetScoredLabels(influx *InfluxClient) (map[[2]string]bool, error) {
-	rows, err := influx.QuerySQL("SELECT DISTINCT run_id, label FROM capability_score")
+	rows, err := influx.QuerySQL("SELECT DISTINCT run_id, label FROM " + MeasurementCapabilityScore)
 	if err != nil {
 		return nil, err
 	}
@@ -207,9 +207,9 @@ func isMLXNative(modelTag string) bool {
 
 // ProcessOne fetches, converts, scores, and pushes one checkpoint.
 func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-	log.Println(strings.Repeat("=", 60))
+	log.Println(strings.Repeat("=", LogSeparatorWidth))
 	log.Printf("Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
-	log.Println(strings.Repeat("=", 60))
+	log.Println(strings.Repeat("=", LogSeparatorWidth))
 
 	if isMLXNative(cp.ModelTag) {
 		return processMLXNative(cfg, influx, cp)
