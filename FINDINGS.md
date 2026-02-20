@@ -120,11 +120,62 @@ Negative signals: RLHF compliance markers, formulaic preambles, text degeneratio
 
 `Engine.ScoreAll()` fans out goroutines bounded by semaphore (`concurrency` setting). Heuristic runs inline (instant). Semantic/content/standard run via worker pool with `sync.WaitGroup`. Results collected into `[]PromptScore` via mutex.
 
+## Phase 2 Audit: StreamingBackend Usage (Virgil, 20 Feb 2026)
+
+### Callers of GenerateStream/ChatStream
+
+Only 2 files across the entire ecosystem call StreamingBackend methods:
+
+1. **`host-uk/cli/cmd/ml/cmd_serve.go`** (lines 146, 201, 319)
+   - Type-asserts `backend.(ml.StreamingBackend)` for SSE streaming
+   - `/v1/completions` → `streamer.GenerateStream()` (line 201)
+   - `/v1/chat/completions` → `streamer.ChatStream()` (line 319)
+   - Has non-streaming fallback: `backend.Generate()` when assertion fails
+
+2. **`host-uk/cli/cmd/ml/cmd_chat.go`**
+   - Direct `ChatStream()` call for terminal token-by-token echo
+   - No fallback — assumes backend supports streaming
+
+### Non-streaming consumers (use Backend.Generate only)
+
+| File | Method | Notes |
+|------|--------|-------|
+| service.go | `Backend.Generate()` | Backend registry dispatch |
+| judge.go | `Backend.Generate()` | Via judgeChat() |
+| agent.go | `Backend.Generate()` | Probe evaluation |
+| expand.go | `Backend.Generate()` | Prompt expansion |
+| go-ai/mcp/tools_ml.go | `ml.Service` | Via service layer |
+
+### Backend Implementation Status
+
+| Backend | Backend? | StreamingBackend? | Notes |
+|---------|----------|-------------------|-------|
+| InferenceAdapter | YES | YES | Bridges iter.Seq[Token] → callbacks |
+| HTTPBackend | YES | NO | Returns complete string from API |
+| LlamaBackend | YES | NO | Returns complete string via HTTP |
+
+### Conclusion
+
+StreamingBackend is only needed by `host-uk/cli` (2 files, out of go-ml scope). Safe to deprecate in go-ml with a comment. The actual migration of those CLI files is a separate task for the cli repo.
+
+### GenOpts vs GenerateConfig Field Comparison
+
+| ml.GenOpts | inference.GenerateConfig | Type |
+|-----------|--------------------------|------|
+| Temperature | Temperature | float64 vs float32 |
+| MaxTokens | MaxTokens | int (same) |
+| Model | (none) | string |
+| (none) | TopK | int |
+| (none) | TopP | float32 |
+| (none) | StopTokens | []int32 |
+| (none) | RepeatPenalty | float32 |
+| (none) | ReturnLogits | bool |
+
 ## Known Issues
 
-- **backend_mlx.go imports dead subpackages** — Blocked on Phase 1 migration
+- ~~**backend_mlx.go imports dead subpackages**~~ — FIXED in Phase 1 (`c3c2c14`)
 - **agent.go too large** — 1,070 LOC, SSH + InfluxDB + scoring + publishing mixed together
 - **Hardcoded infrastructure** — InfluxDB endpoint `10.69.69.165:8181`, M3 SSH details in agent.go
 - **No tests for backend_llama and backend_mlx** — Only backend_http_test.go exists
 - **score.go concurrency untested** — No race condition tests
-- **Message type duplication** — `ml.Message` and `inference.Message` are identical but separate
+- ~~**Message type duplication**~~ — Phase 2 Step 2.1 will unify via type alias
