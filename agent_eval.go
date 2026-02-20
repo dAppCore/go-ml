@@ -88,10 +88,12 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	localSF := filepath.Join(localAdapterDir, cp.Filename)
 	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
 
-	if err := SCPFrom(cfg, remoteSF, localSF); err != nil {
+	ctx := context.Background()
+	t := cfg.transport()
+	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
 		return fmt.Errorf("scp safetensors: %w", err)
 	}
-	if err := SCPFrom(cfg, remoteCfg, localCfg); err != nil {
+	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
 		return fmt.Errorf("scp config: %w", err)
 	}
 
@@ -105,8 +107,6 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		return fmt.Errorf("ollama create: %w", err)
 	}
 	log.Printf("Ollama model %s ready", tempModel)
-
-	ctx := context.Background()
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
 
 	const baseTS int64 = 1739577600
@@ -170,10 +170,12 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	remoteSF := fmt.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
 	remoteCfg := fmt.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 
-	if err := SCPFrom(cfg, remoteSF, localSF); err != nil {
+	ctx := context.Background()
+	t := cfg.transport()
+	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
 		return fmt.Errorf("scp safetensors: %w", err)
 	}
-	if err := SCPFrom(cfg, remoteCfg, localCfg); err != nil {
+	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
 		return fmt.Errorf("scp config: %w", err)
 	}
 
@@ -184,7 +186,6 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	}
 
 	log.Println("Running 23 capability probes...")
-	ctx := context.Background()
 	modelName := cfg.Model
 	if modelName == "" {
 		modelName = cp.ModelTag

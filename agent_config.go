@@ -22,6 +22,20 @@ type AgentConfig struct {
 	Force         bool
 	OneShot       bool
 	DryRun        bool
+
+	// Transport is the remote transport used for SSH commands and file transfers.
+	// If nil, an SSHTransport is created from M3Host/M3User/M3SSHKey.
+	Transport RemoteTransport
+}
+
+// transport returns the configured RemoteTransport, lazily creating an
+// SSHTransport from the M3 fields if none was set.
+func (c *AgentConfig) transport() RemoteTransport {
+	if c.Transport != nil {
+		return c.Transport
+	}
+	c.Transport = NewSSHTransport(c.M3Host, c.M3User, c.M3SSHKey)
+	return c.Transport
 }
 
 // Checkpoint represents a discovered adapter checkpoint on M3.

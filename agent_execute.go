@@ -1,6 +1,7 @@
 package ml
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -96,7 +97,9 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 	if cfg.Filter != "" {
 		pattern = "adapters-" + cfg.Filter + "*"
 	}
-	out, err := SSHCommand(cfg, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
+	t := cfg.transport()
+	ctx := context.Background()
+	out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
 	if err != nil {
 		return nil, fmt.Errorf("list adapter dirs: %w", err)
 	}
@@ -109,7 +112,7 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 		if dirpath == "" {
 			continue
 		}
-		subOut, subErr := SSHCommand(cfg, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
+		subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
 		if subErr == nil && strings.TrimSpace(subOut) != "" {
 			for _, sub := range strings.Split(strings.TrimSpace(subOut), "\n") {
 				if sub != "" {
@@ -124,7 +127,7 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 	for _, dirpath := range adapterDirs {
 		dirname := strings.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
 
-		filesOut, err := SSHCommand(cfg, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
+		filesOut, err := t.Run(ctx, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
 		if err != nil {
 			continue
 		}
