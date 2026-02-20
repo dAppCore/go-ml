@@ -171,12 +171,12 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 - [x] **Extract hardcoded values to constants** — Commit `12f3a1c`. 15 constants in agent_config.go: EpochBase, 5 InfluxDB measurements, 2 DuckDB tables, probe defaults (temp/maxTokens/truncation), InfluxBufferFile, LogSeparatorWidth, InterCheckpointDelay. Hardcoded probe counts replaced with len(). 7 files, build/test/vet clean.
 
-### Step 3.4: Agent tests
+### Step 3.4: Agent tests — COMPLETE
 
-- [ ] **Test `AdapterMeta()`** — Extract model tag, label prefix, run ID from dirname patterns
-- [ ] **Test `FindUnscored()`** — Filtering logic with mock scored labels
-- [ ] **Test `BufferInfluxResult()`/`ReplayInfluxBuffer()`** — JSONL persistence round-trip
-- [ ] **Test `DiscoverCheckpoints()`** — Mock SSH output parsing
+- [x] **Test `AdapterMeta()`** — 8 tests: known families (12 entries), variant suffix, subdirectory patterns, unknown fallback, no-prefix edge case. Commit `3e22761`.
+- [x] **Test `FindUnscored()`** — 5 tests: all unscored (sorted), some scored, all scored, empty input, nil scored map. Commit `3e22761`.
+- [x] **Test `BufferInfluxResult()`/`ReplayInfluxBuffer()`** — 4 tests: JSONL round-trip, multiple entries, empty file, missing file. Commit `3e22761`.
+- [x] **Test `DiscoverCheckpoints()`** — 6 tests: happy path (3 checkpoints across 2 dirs), subdirectory pattern, no adapters, SSH error, filter pattern, no safetensors. Uses `fakeTransport` mock implementing `RemoteTransport`. Commit `3e22761`.
 
 ---
 
