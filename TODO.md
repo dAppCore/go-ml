@@ -152,12 +152,62 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ## Phase 3: Agent Loop Modernisation
 
-`agent.go` (1,070 LOC) is the largest file. Decompose.
+`agent.go` (1,070 LOC) is the largest file with SSH, InfluxDB, scoring, and publishing mixed together. Decompose into focused files.
 
-- [ ] **Split agent.go** — Into: `agent_config.go` (config, model maps), `agent_execute.go` (run loop, checkpoint processing), `agent_eval.go` (probe evaluation, result publishing), `agent_influx.go` (InfluxDB streaming, JSONL buffer).
-- [ ] **Abstract SSH transport** — Extract SSH checkpoint discovery into interface. Current M3 homelab SSH may change to Linux (go-rocm).
-- [ ] **Configurable endpoints** — `10.69.69.165:8181` and M3 SSH details hardcoded. Move to config/environment.
-- [ ] **InfluxDB client** — Hand-rolled line protocol. Evaluate official InfluxDB Go client.
+### Step 3.1: Split agent.go into 5 files
+
+- [ ] **Create `agent_config.go`** (lines 19–112, ~95 LOC) — Move:
+  - `AgentConfig` struct + `Checkpoint` struct
+  - `BaseModelMap`, `ModelFamilies` maps
+  - `AdapterMeta()` function
+  - Add config validation method
+
+- [ ] **Create `agent_execute.go`** (lines 141–343, ~200 LOC) — Move:
+  - `RunAgentLoop()` — main polling loop
+  - `DiscoverCheckpoints()`, `GetScoredLabels()`, `FindUnscored()`
+  - `ProcessOne()`, `isMLXNative()` dispatcher
+
+- [ ] **Create `agent_eval.go`** (lines 345–700, ~355 LOC) — Move:
+  - `processMLXNative()`, `processWithConversion()`
+  - `RunCapabilityProbes()`, `RunCapabilityProbesFull()`
+  - `RunContentProbesViaAPI()`, `RunContentProbesViaRunner()`
+  - Types: `ProbeResult`, `CategoryResult`, `SingleProbeResult`
+
+- [ ] **Create `agent_influx.go`** (lines 708–977, ~270 LOC) — Move:
+  - `ScoreCapabilityAndPush()`, `ScoreContentAndPush()`
+  - `PushCapabilitySummary()`, `PushCapabilityResults()`, `PushCapabilityResultsDB()`
+  - `BufferInfluxResult()`, `ReplayInfluxBuffer()`, `bufferEntry` type
+
+- [ ] **Create `agent_ssh.go`** (lines 979–1070, ~90 LOC) — Move:
+  - `SSHCommand()`, `SCPFrom()`, `SCPTo()` — consolidate SSH arg construction into helper
+  - `fileBase()`, `EnvOr()`, `IntEnvOr()`, `ExpandHome()`
+
+### Step 3.2: Abstract SSH transport
+
+- [ ] **Define `RemoteTransport` interface** — Extract SSH into interface for testability and future migration to go-rocm Linux homelab:
+  ```go
+  type RemoteTransport interface {
+      Run(ctx context.Context, cmd string) (string, error)
+      CopyFrom(ctx context.Context, remote, local string) error
+      CopyTo(ctx context.Context, local, remote string) error
+  }
+  ```
+  Implement `SSHTransport` wrapping current `SSHCommand`/`SCPFrom`/`SCPTo`. Update `DiscoverCheckpoints()` and `processMLXNative()` to use interface.
+
+### Step 3.3: Configurable infrastructure
+
+- [ ] **Extract hardcoded values** — Move to `AgentConfig` or constants:
+  - Timestamp base `1739577600` → `AgentConfig.EpochBase`
+  - InfluxDB measurement names → package constants
+  - DuckDB table names → package constants
+  - SSH options (`ConnectTimeout=10`, `StrictHostKeyChecking=no`) → `SSHTransport` config
+
+### Step 3.4: Agent tests
+
+- [ ] **Test `AdapterMeta()`** — Extract model tag, label prefix, run ID from dirname patterns
+- [ ] **Test `FindUnscored()`** — Filtering logic with mock scored labels
+- [ ] **Test `BufferInfluxResult()`/`ReplayInfluxBuffer()`** — JSONL persistence round-trip
+- [ ] **Test `DiscoverCheckpoints()`** — Mock SSH output parsing
 
 ---
 
