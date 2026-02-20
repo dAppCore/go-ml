@@ -1,0 +1,156 @@
+// SPDX-Licence-Identifier: EUPL-1.2
+
+package ml
+
+import (
+	"context"
+	"fmt"
+	"iter"
+
+	"forge.lthn.ai/core/go-inference"
+)
+
+// HTTPTextModel wraps an HTTPBackend to satisfy the inference.TextModel interface.
+// This enables cross-platform consistency — HTTP backends can be used anywhere
+// that expects a go-inference TextModel (e.g. go-ai, go-i18n).
+//
+// Generate and Chat yield the entire HTTP response as a single Token since
+// the OpenAI-compatible API returns complete responses (non-streaming).
+type HTTPTextModel struct {
+	http    *HTTPBackend
+	lastErr error
+}
+
+// Compile-time check: HTTPTextModel implements inference.TextModel.
+var _ inference.TextModel = (*HTTPTextModel)(nil)
+
+// NewHTTPTextModel wraps an HTTPBackend as an inference.TextModel.
+func NewHTTPTextModel(backend *HTTPBackend) *HTTPTextModel {
+	return &HTTPTextModel{http: backend}
+}
+
+// Generate sends a single prompt to the HTTP backend and yields the entire
+// response as a single Token.
+func (m *HTTPTextModel) Generate(ctx context.Context, prompt string, opts ...inference.GenerateOption) iter.Seq[inference.Token] {
+	return func(yield func(inference.Token) bool) {
+		cfg := inference.ApplyGenerateOpts(opts)
+		genOpts := GenOpts{
+			Temperature: float64(cfg.Temperature),
+			MaxTokens:   cfg.MaxTokens,
+			Model:       m.http.Model(),
+		}
+		result, err := m.http.Generate(ctx, prompt, genOpts)
+		if err != nil {
+			m.lastErr = err
+			return
+		}
+		m.lastErr = nil
+		yield(inference.Token{Text: result})
+	}
+}
+
+// Chat sends a multi-turn conversation to the HTTP backend and yields the
+// entire response as a single Token.
+func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, opts ...inference.GenerateOption) iter.Seq[inference.Token] {
+	return func(yield func(inference.Token) bool) {
+		cfg := inference.ApplyGenerateOpts(opts)
+		genOpts := GenOpts{
+			Temperature: float64(cfg.Temperature),
+			MaxTokens:   cfg.MaxTokens,
+			Model:       m.http.Model(),
+		}
+
+		// Convert inference.Message to ml.Message.
+		mlMsgs := make([]Message, len(messages))
+		for i, msg := range messages {
+			mlMsgs[i] = Message{Role: msg.Role, Content: msg.Content}
+		}
+
+		result, err := m.http.Chat(ctx, mlMsgs, genOpts)
+		if err != nil {
+			m.lastErr = err
+			return
+		}
+		m.lastErr = nil
+		yield(inference.Token{Text: result})
+	}
+}
+
+// Classify is not supported by HTTP backends. Returns an error.
+func (m *HTTPTextModel) Classify(_ context.Context, _ []string, _ ...inference.GenerateOption) ([]inference.ClassifyResult, error) {
+	return nil, fmt.Errorf("classify not supported by HTTP backend")
+}
+
+// BatchGenerate processes multiple prompts sequentially via Generate.
+func (m *HTTPTextModel) BatchGenerate(ctx context.Context, prompts []string, opts ...inference.GenerateOption) ([]inference.BatchResult, error) {
+	results := make([]inference.BatchResult, len(prompts))
+	for i, prompt := range prompts {
+		var tokens []inference.Token
+		for tok := range m.Generate(ctx, prompt, opts...) {
+			tokens = append(tokens, tok)
+		}
+		results[i] = inference.BatchResult{
+			Tokens: tokens,
+			Err:    m.lastErr,
+		}
+	}
+	return results, nil
+}
+
+// ModelType returns the configured model name from the underlying HTTPBackend.
+func (m *HTTPTextModel) ModelType() string {
+	model := m.http.Model()
+	if model == "" {
+		return "http"
+	}
+	return model
+}
+
+// Info returns minimal model metadata for an HTTP backend.
+func (m *HTTPTextModel) Info() inference.ModelInfo {
+	return inference.ModelInfo{Architecture: "http"}
+}
+
+// Metrics returns zero metrics — HTTP backends don't track token-level performance.
+func (m *HTTPTextModel) Metrics() inference.GenerateMetrics {
+	return inference.GenerateMetrics{}
+}
+
+// Err returns the error from the last Generate or Chat call, if any.
+func (m *HTTPTextModel) Err() error {
+	return m.lastErr
+}
+
+// Close is a no-op for HTTP backends — there are no resources to release.
+func (m *HTTPTextModel) Close() error {
+	return nil
+}
+
+// LlamaTextModel wraps a LlamaBackend as an inference.TextModel. It embeds
+// HTTPTextModel for Generate/Chat but overrides ModelType and Close to
+// reflect the managed llama-server process.
+type LlamaTextModel struct {
+	*HTTPTextModel
+	llama *LlamaBackend
+}
+
+// Compile-time check: LlamaTextModel implements inference.TextModel.
+var _ inference.TextModel = (*LlamaTextModel)(nil)
+
+// NewLlamaTextModel wraps a LlamaBackend as an inference.TextModel.
+func NewLlamaTextModel(backend *LlamaBackend) *LlamaTextModel {
+	return &LlamaTextModel{
+		HTTPTextModel: NewHTTPTextModel(backend.http),
+		llama:         backend,
+	}
+}
+
+// ModelType returns "llama" to identify this as a managed llama-server backend.
+func (m *LlamaTextModel) ModelType() string {
+	return "llama"
+}
+
+// Close stops the managed llama-server process.
+func (m *LlamaTextModel) Close() error {
+	return m.llama.Stop()
+}

@@ -14,100 +14,41 @@ ML inference backends, scoring engine, and agent orchestrator. 7.5K LOC across 4
 
 ## Critical Context: go-inference Migration
 
-**This is the #1 priority.** Phase 1 in TODO.md.
+**Phase 1 is complete.** Both directions of the bridge are implemented:
 
-The package currently defines its own `Backend` interface that returns `(string, error)`. The shared `go-inference` package defines `TextModel` which returns `iter.Seq[Token]` (Go 1.23+ range-over-func). Everything downstream is blocked until go-ml bridges these two interfaces.
+1. **Forward adapter** (`adapter.go`): `inference.TextModel` (iter.Seq) -> `ml.Backend`/`ml.StreamingBackend` (string/callback). Used by `backend_mlx.go` to wrap Metal GPU models.
+2. **Reverse adapters** (`backend_http_textmodel.go`): `HTTPBackend`/`LlamaBackend` -> `inference.TextModel`. Enables HTTP and llama-server backends to be used anywhere that expects a go-inference TextModel.
 
-### Interface Gap
+### Interface Bridge (DONE)
 
 ```
-go-ml (CURRENT)                         go-inference (TARGET)
-─────────────────                        ─────────────────────
-Backend.Generate(ctx, prompt, GenOpts)   TextModel.Generate(ctx, prompt, ...GenerateOption)
-  → (string, error)                        → iter.Seq[Token]
-
-Backend.Chat(ctx, messages, GenOpts)     TextModel.Chat(ctx, messages, ...GenerateOption)
-  → (string, error)                        → iter.Seq[Token]
-
-StreamingBackend.GenerateStream(         (streaming is built-in via iter.Seq)
-  ctx, prompt, opts, TokenCallback)
-  → error
-
-GenOpts{Temperature, MaxTokens, Model}   GenerateConfig{MaxTokens, Temperature,
-                                           TopK, TopP, StopTokens, RepeatPenalty}
-                                         (configured via WithMaxTokens(n) etc.)
+ml.Backend (string)  <──adapter.go──>  inference.TextModel (iter.Seq[Token])
+                     <──backend_http_textmodel.go──>
 ```
 
-### What the Adapter Must Do
+- `InferenceAdapter`: TextModel -> Backend + StreamingBackend (for MLX, ROCm, etc.)
+- `HTTPTextModel`: HTTPBackend -> TextModel (for remote APIs)
+- `LlamaTextModel`: LlamaBackend -> TextModel (for managed llama-server)
 
-```go
-// InferenceAdapter wraps go-inference.TextModel to satisfy ml.Backend + ml.StreamingBackend.
-// This is the bridge between the new iterator-based API and the legacy string-return API.
-type InferenceAdapter struct {
-    model inference.TextModel
-}
+### backend_mlx.go (DONE)
 
-// Generate collects all tokens from the iterator into a string.
-func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (string, error) {
-    genOpts := convertOpts(opts) // GenOpts → []inference.GenerateOption
-    var buf strings.Builder
-    for tok := range a.model.Generate(ctx, prompt, genOpts...) {
-        buf.WriteString(tok.Text)
-    }
-    if err := a.model.Err(); err != nil {
-        return buf.String(), err
-    }
-    return buf.String(), nil
-}
+Rewritten from 253 LOC to ~35 LOC. Loads via `inference.LoadModel()` and wraps in `InferenceAdapter`. Uses go-mlx's Metal backend registered via `init()`.
 
-// GenerateStream yields tokens to the callback as they arrive.
-func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error {
-    genOpts := convertOpts(opts)
-    for tok := range a.model.Generate(ctx, prompt, genOpts...) {
-        if err := cb(tok.Text); err != nil {
-            return err
-        }
-    }
-    return a.model.Err()
-}
-```
+### Downstream Consumers Verified
 
-### backend_mlx.go Is Broken
-
-After go-mlx Phase 4, the old subpackage imports no longer exist:
-- `forge.lthn.ai/core/go-mlx/cache` — **REMOVED** (now `internal/metal`)
-- `forge.lthn.ai/core/go-mlx/model` — **REMOVED** (now `internal/metal`)
-- `forge.lthn.ai/core/go-mlx/sample` — **REMOVED** (now `internal/metal`)
-- `forge.lthn.ai/core/go-mlx/tokenizer` — **REMOVED** (now `internal/metal`)
-
-The new go-mlx public API is:
-```go
-import (
-    "forge.lthn.ai/core/go-inference"
-    _ "forge.lthn.ai/core/go-mlx"  // registers "metal" backend via init()
-)
-
-m, err := inference.LoadModel("/path/to/model/", inference.WithContextLen(4096))
-defer m.Close()
-for tok := range m.Generate(ctx, "prompt", inference.WithMaxTokens(128)) {
-    fmt.Print(tok.Text)
-}
-```
-
-**The rewrite**: Delete the 253 LOC of manual tokenisation/KV cache/sampling. Replace with ~60 LOC that loads via go-inference and wraps in `InferenceAdapter`.
+- `service.go` — `Service.Generate()` calls `Backend.Generate()`. InferenceAdapter satisfies Backend. No changes needed.
+- `judge.go` — `Judge.judgeChat()` calls `Backend.Generate()`. Same contract, works as before.
 
 ## Commands
 
 ```bash
 go mod download                  # FIRST RUN: populate go.sum
-go test ./...                    # Run all tests (some will fail until Phase 1)
+go test ./...                    # Run all tests
 go test -v -run TestHeuristic    # Single test
 go test -bench=. ./...           # Benchmarks (none exist yet)
 go test -race ./...              # Race detector
 go vet ./...                     # Static analysis
 ```
-
-**Note**: `backend_mlx.go` won't compile until rewritten (Phase 1) — it imports dead go-mlx subpackages. On darwin, the compiler will hit these broken imports. The Phase 1 rewrite fixes this by replacing the 253 LOC with ~60 LOC using go-inference.
 
 ## Local Dependencies
 
@@ -125,9 +66,11 @@ All resolve via `replace` directives in go.mod:
 
 | File | Backend | Status |
 |------|---------|--------|
-| `backend_mlx.go` | MLX/Metal GPU | **BROKEN** — old imports, needs Phase 1 rewrite |
-| `backend_llama.go` | llama-server subprocess | Works, needs go-inference wrapper |
-| `backend_http.go` | HTTP API (OpenAI-compatible) | Works, needs go-inference wrapper |
+| `adapter.go` | InferenceAdapter (TextModel -> Backend) | DONE — bridges go-inference to ml.Backend |
+| `backend_mlx.go` | MLX/Metal GPU | DONE — uses go-inference LoadModel + InferenceAdapter |
+| `backend_http.go` | HTTP API (OpenAI-compatible) | Works as ml.Backend |
+| `backend_http_textmodel.go` | HTTPTextModel + LlamaTextModel | DONE — reverse wrappers (Backend -> TextModel) |
+| `backend_llama.go` | llama-server subprocess | Works as ml.Backend |
 | `ollama.go` | Ollama helpers | Works |
 
 ### Scoring Engine

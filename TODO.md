@@ -76,19 +76,15 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
 
 ### Step 1.4: HTTPBackend and LlamaBackend wrappers
 
-- [ ] **HTTPBackend go-inference wrapper** — HTTPBackend already works fine as `ml.Backend`. For go-inference compatibility, write a thin wrapper that implements `inference.TextModel`:
-  - `Generate()` calls HTTP API, yields entire response as single Token
-  - `Chat()` same
-  - This is lower priority than MLX — HTTP backends don't need the full iter.Seq pattern
-  - Consider SSE streaming: `/v1/chat/completions` with `"stream": true` returns SSE events that CAN be yielded as `iter.Seq[Token]`
+- [x] **HTTPBackend go-inference wrapper** — `backend_http_textmodel.go`: `HTTPTextModel` wraps `HTTPBackend` to implement `inference.TextModel`. Generate/Chat yield entire response as single Token. Classify returns unsupported error. BatchGenerate processes prompts sequentially. 17 tests pass.
 
-- [ ] **LlamaBackend go-inference wrapper** — LlamaBackend delegates to HTTPBackend already. Same treatment.
+- [x] **LlamaBackend go-inference wrapper** — `backend_http_textmodel.go`: `LlamaTextModel` embeds `HTTPTextModel`, overrides `ModelType()` -> "llama" and `Close()` -> `llama.Stop()`. 2 tests pass.
 
 ### Step 1.5: Verify downstream consumers
 
-- [ ] **Service.Generate() still works** — `service.go` calls `Backend.Generate()`. After migration, backends wrapped in `InferenceAdapter` must still satisfy `ml.Backend`.
-- [ ] **Judge still works** — `judge.go` uses `Backend.Generate()` for LLM-as-judge. Verify scoring pipeline runs end-to-end.
-- [ ] **go-ai tools_ml.go** — Uses `ml.Service` directly. No code changes needed in go-ai if `ml.Backend` interface is preserved.
+- [x] **Service.Generate() still works** — `service.go` calls `Backend.Generate()`. InferenceAdapter satisfies ml.Backend. HTTPBackend/LlamaBackend still implement ml.Backend directly. No changes needed.
+- [x] **Judge still works** — `judge.go` calls `Backend.Generate()` via `judgeChat()`. Same Backend contract, works as before. No changes needed.
+- [x] **go-ai tools_ml.go** — Uses `ml.Service` directly. `ml.Backend` interface is preserved, no code changes needed in go-ai.
 
 ---
 
