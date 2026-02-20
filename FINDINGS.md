@@ -178,4 +178,31 @@ StreamingBackend is only needed by `host-uk/cli` (2 files, out of go-ml scope). 
 - **Hardcoded infrastructure** — InfluxDB endpoint `10.69.69.165:8181`, M3 SSH details in agent.go
 - **No tests for backend_llama and backend_mlx** — Only backend_http_test.go exists
 - **score.go concurrency untested** — No race condition tests
-- ~~**Message type duplication**~~ — Phase 2 Step 2.1 will unify via type alias
+- ~~**Message type duplication**~~ — FIXED in Phase 2 (`747e703`): type alias `Message = inference.Message`
+
+## Phase 3 Audit: agent.go Structure (Virgil, 20 Feb 2026)
+
+### File Layout (1,070 LOC)
+
+| Section | Lines | LOC | Purpose |
+|---------|-------|-----|---------|
+| Types & Config | 19–112 | ~95 | `AgentConfig`, `Checkpoint`, config maps, `AdapterMeta()` |
+| Main Loop | 141–343 | ~200 | `RunAgentLoop()`, checkpoint discovery, unscored filtering |
+| Evaluation | 345–700 | ~355 | MLX-native + conversion paths, 4 probe functions |
+| Judge & Push | 708–887 | ~180 | Scoring, InfluxDB line protocol, DuckDB dual-write |
+| Buffering | 926–977 | ~50 | JSONL buffer for InfluxDB failures |
+| SSH/SCP | 979–1070 | ~90 | `SSHCommand()`, `SCPFrom()`, `SCPTo()`, utility helpers |
+
+### Hardcoded Infrastructure
+
+- SSH options duplicated across 3 functions: `ConnectTimeout=10, BatchMode=yes, StrictHostKeyChecking=no`
+- InfluxDB timestamp base: `1739577600` (13 Feb 2026 00:00 UTC)
+- InfluxDB measurements: `probe_score`, `capability_score`, `capability_judge`, `content_score`
+- DuckDB tables: `checkpoint_scores`, `probe_results`
+
+### Test Coverage
+
+Zero tests for agent.go. Testable without infrastructure:
+- `AdapterMeta()` — pure function, dirname → metadata
+- `FindUnscored()` — filtering logic
+- `BufferInfluxResult()`/`ReplayInfluxBuffer()` — JSONL round-trip
