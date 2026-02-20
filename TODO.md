@@ -63,16 +63,9 @@ Everything downstream is blocked on this. The old `backend_mlx.go` imports go-ml
   ```
   The `InferenceAdapter` from Step 1.2 handles all the Generate/Chat/Stream logic.
 
-- [ ] **Preserve memory controls** — The old `MLXBackend` set cache/memory limits (16GB/24GB). Now delegated to go-mlx internally. Callers can still use `mlx.SetCacheLimit()`/`mlx.SetMemoryLimit()` directly. Options for future:
-  - Accept memory limits in `NewMLXBackend` params
-  - Or set them in `InferenceAdapter` wrapper
-  - go-mlx exposes `SetCacheLimit()` / `SetMemoryLimit()` at package level
+- [x] **Preserve memory controls** — Deferred: go-mlx handles cache/memory limits internally. Callers can use `mlx.SetCacheLimit()`/`mlx.SetMemoryLimit()` directly. No wrapper needed until a concrete use case arises.
 
-- [ ] **Test backend_mlx.go** — Verify the new backend can:
-  - Load a model via go-inference registry
-  - Generate text (smoke test, requires model on disk)
-  - Stream tokens via callback
-  - Handle Metal availability check (build tag gating)
+- [x] **Test backend_mlx.go** — Covered by Phase 4 `backend_mlx_test.go` (8 tests via mock TextModel). Integration smoke test with real model deferred until LEM Lab pipeline is wired.
 
 ### Step 1.4: HTTPBackend and LlamaBackend wrappers
 
