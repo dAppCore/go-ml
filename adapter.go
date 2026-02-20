@@ -42,12 +42,13 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 	return b.String(), nil
 }
 
-// Chat converts ml.Message to inference.Message, then collects all tokens.
+// Chat sends a multi-turn conversation to the underlying TextModel and collects
+// all tokens. Since ml.Message is now a type alias for inference.Message, no
+// conversion is needed.
 func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error) {
-	inferMsgs := convertMessages(messages)
 	inferOpts := convertOpts(opts)
 	var b strings.Builder
-	for tok := range a.model.Chat(ctx, inferMsgs, inferOpts...) {
+	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
 	if err := a.model.Err(); err != nil {
@@ -70,10 +71,11 @@ func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, op
 }
 
 // ChatStream forwards each generated chat token's text to the callback.
+// Since ml.Message is now a type alias for inference.Message, no conversion
+// is needed.
 func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) error {
-	inferMsgs := convertMessages(messages)
 	inferOpts := convertOpts(opts)
-	for tok := range a.model.Chat(ctx, inferMsgs, inferOpts...) {
+	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		if err := cb(tok.Text); err != nil {
 			return err
 		}
@@ -104,15 +106,15 @@ func convertOpts(opts GenOpts) []inference.GenerateOption {
 	if opts.MaxTokens != 0 {
 		out = append(out, inference.WithMaxTokens(opts.MaxTokens))
 	}
-	// GenOpts.Model is ignored — the model is already loaded.
-	return out
-}
-
-// convertMessages maps ml.Message to inference.Message (trivial field copy).
-func convertMessages(msgs []Message) []inference.Message {
-	out := make([]inference.Message, len(msgs))
-	for i, m := range msgs {
-		out[i] = inference.Message{Role: m.Role, Content: m.Content}
+	if opts.TopK > 0 {
+		out = append(out, inference.WithTopK(opts.TopK))
 	}
+	if opts.TopP > 0 {
+		out = append(out, inference.WithTopP(float32(opts.TopP)))
+	}
+	if opts.RepeatPenalty > 0 {
+		out = append(out, inference.WithRepeatPenalty(float32(opts.RepeatPenalty)))
+	}
+	// GenOpts.Model is ignored — the model is already loaded.
 	return out
 }

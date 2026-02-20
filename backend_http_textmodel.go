@@ -60,13 +60,8 @@ func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, 
 			Model:       m.http.Model(),
 		}
 
-		// Convert inference.Message to ml.Message.
-		mlMsgs := make([]Message, len(messages))
-		for i, msg := range messages {
-			mlMsgs[i] = Message{Role: msg.Role, Content: msg.Content}
-		}
-
-		result, err := m.http.Chat(ctx, mlMsgs, genOpts)
+		// ml.Message is now a type alias for inference.Message — no conversion needed.
+		result, err := m.http.Chat(ctx, messages, genOpts)
 		if err != nil {
 			m.lastErr = err
 			return

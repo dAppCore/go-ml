@@ -11,7 +11,11 @@
 //	)
 package ml
 
-import "context"
+import (
+	"context"
+
+	"forge.lthn.ai/core/go-inference"
+)
 
 // Backend generates text from prompts. Implementations include HTTPBackend
 // (OpenAI-compatible API), LlamaBackend (managed llama-server process), and
@@ -32,25 +36,25 @@ type Backend interface {
 
 // GenOpts configures a generation request.
 type GenOpts struct {
-	Temperature float64
-	MaxTokens   int
-	Model       string // override model for this request
+	Temperature   float64
+	MaxTokens     int
+	Model         string  // override model for this request
+	TopK          int     // top-k sampling (0 = disabled)
+	TopP          float64 // nucleus sampling threshold (0 = disabled)
+	RepeatPenalty float64 // repetition penalty (0 = disabled, 1.0 = no penalty)
 }
 
-// Message is a single chat message.
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
+// Message is a type alias for inference.Message, providing backward compatibility.
+// All callers continue using ml.Message — it is the same underlying type.
+type Message = inference.Message
 
 // TokenCallback receives each generated token as text. Return a non-nil
 // error to stop generation early (e.g. client disconnect).
 type TokenCallback func(token string) error
 
-// StreamingBackend extends Backend with token-by-token streaming.
-// Backends that generate tokens incrementally (e.g. MLX) should implement
-// this interface. The serve handler uses SSE when the client sends
-// "stream": true and the active backend satisfies StreamingBackend.
+// Deprecated: StreamingBackend is retained for backward compatibility.
+// New code should use inference.TextModel with iter.Seq[Token] directly.
+// See InferenceAdapter for the bridge pattern.
 type StreamingBackend interface {
 	Backend
 

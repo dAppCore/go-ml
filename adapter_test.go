@@ -211,20 +211,49 @@ func TestInferenceAdapter_ConvertOpts_Good(t *testing.T) {
 	assert.Len(t, opts, 1)
 }
 
-func TestInferenceAdapter_ConvertMessages_Good(t *testing.T) {
-	mlMsgs := []Message{
-		{Role: "system", Content: "You are helpful."},
-		{Role: "user", Content: "Hello"},
-		{Role: "assistant", Content: "Hi!"},
-	}
-	inferMsgs := convertMessages(mlMsgs)
-	require.Len(t, inferMsgs, 3)
-	assert.Equal(t, "system", inferMsgs[0].Role)
-	assert.Equal(t, "You are helpful.", inferMsgs[0].Content)
-	assert.Equal(t, "user", inferMsgs[1].Role)
-	assert.Equal(t, "Hello", inferMsgs[1].Content)
-	assert.Equal(t, "assistant", inferMsgs[2].Role)
-	assert.Equal(t, "Hi!", inferMsgs[2].Content)
+func TestInferenceAdapter_ConvertOpts_NewFields_Good(t *testing.T) {
+	// TopK only.
+	opts := convertOpts(GenOpts{TopK: 40})
+	assert.Len(t, opts, 1)
+
+	// TopP only.
+	opts = convertOpts(GenOpts{TopP: 0.9})
+	assert.Len(t, opts, 1)
+
+	// RepeatPenalty only.
+	opts = convertOpts(GenOpts{RepeatPenalty: 1.1})
+	assert.Len(t, opts, 1)
+
+	// All new fields set together.
+	opts = convertOpts(GenOpts{TopK: 40, TopP: 0.9, RepeatPenalty: 1.1})
+	assert.Len(t, opts, 3)
+
+	// All fields set (Temperature + MaxTokens + TopK + TopP + RepeatPenalty).
+	opts = convertOpts(GenOpts{
+		Temperature:   0.7,
+		MaxTokens:     512,
+		TopK:          40,
+		TopP:          0.9,
+		RepeatPenalty: 1.1,
+	})
+	assert.Len(t, opts, 5)
+
+	// Zero TopK/TopP/RepeatPenalty should not produce options.
+	opts = convertOpts(GenOpts{Temperature: 0.5, TopK: 0, TopP: 0, RepeatPenalty: 0})
+	assert.Len(t, opts, 1) // only Temperature
+}
+
+func TestInferenceAdapter_MessageAlias_Good(t *testing.T) {
+	// ml.Message and inference.Message are the same type — verify interchangeability.
+	mlMsg := Message{Role: "user", Content: "Hello"}
+	inferMsg := inference.Message{Role: "user", Content: "Hello"}
+	assert.Equal(t, mlMsg, inferMsg)
+
+	// Can assign directly without conversion.
+	var msgs []inference.Message
+	msgs = append(msgs, mlMsg)
+	assert.Equal(t, "user", msgs[0].Role)
+	assert.Equal(t, "Hello", msgs[0].Content)
 }
 
 func TestInferenceAdapter_NameAndAvailable_Good(t *testing.T) {

@@ -94,10 +94,33 @@ All resolve via `replace` directives in go.mod:
 | `db.go` | 258 | DuckDB analytics storage |
 | `gguf.go` | 369 | GGUF model format parsing |
 
+### Backend Architecture
+
+Two interface families coexist, bridged by adapters:
+
+**`inference.TextModel`** (iterator-based) is the **preferred API** for new code. Returns `iter.Seq[inference.Token]` for streaming. Defined in `forge.lthn.ai/core/go-inference`. Use this for GPU backends (MLX Metal, ROCm) and any code that needs token-level control.
+
+**`ml.Backend`** (string-based) is the **compatibility layer**, still fully supported. Returns complete strings. Used by `service.go`, `judge.go`, and external consumers like `host-uk/cli`.
+
+**`ml.StreamingBackend`** is **deprecated**. New code should use `inference.TextModel` with `iter.Seq[Token]` directly. Retained for backward compatibility with existing callers.
+
+**Adapters:**
+
+| Adapter | Direction | File |
+|---------|-----------|------|
+| `InferenceAdapter` | `inference.TextModel` -> `ml.Backend` + `ml.StreamingBackend` | `adapter.go` |
+| `HTTPTextModel` | `ml.HTTPBackend` -> `inference.TextModel` | `backend_http_textmodel.go` |
+| `LlamaTextModel` | `ml.LlamaBackend` -> `inference.TextModel` | `backend_http_textmodel.go` |
+
+**Unified types (Phase 2):**
+
+- `ml.Message` is a type alias for `inference.Message` — the types are identical, no conversion needed between packages.
+- `ml.GenOpts` extends `inference.GenerateConfig` with a `Model` field for per-request model overrides. The `convertOpts()` helper maps GenOpts to `[]inference.GenerateOption`.
+
 ### Key Types
 
 ```go
-// Current backend interface (inference.go)
+// Backend interface (inference.go) — compatibility layer
 type Backend interface {
     Generate(ctx context.Context, prompt string, opts GenOpts) (string, error)
     Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error)
@@ -105,6 +128,7 @@ type Backend interface {
     Available() bool
 }
 
+// Deprecated: use inference.TextModel with iter.Seq[Token] directly
 type StreamingBackend interface {
     Backend
     GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error
@@ -112,15 +136,16 @@ type StreamingBackend interface {
 }
 
 type GenOpts struct {
-    Temperature float64
-    MaxTokens   int
-    Model       string
+    Temperature   float64
+    MaxTokens     int
+    Model         string  // override model for this request
+    TopK          int     // top-k sampling (0 = disabled)
+    TopP          float64 // nucleus sampling threshold (0 = disabled)
+    RepeatPenalty float64 // repetition penalty (0 = disabled, 1.0 = no penalty)
 }
 
-type Message struct {
-    Role    string `json:"role"`
-    Content string `json:"content"`
-}
+// Type alias — identical to inference.Message
+type Message = inference.Message
 ```
 
 ## Coding Standards
