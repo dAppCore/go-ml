@@ -107,7 +107,7 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ### Step 2.1: Unify Message types
 
-- [ ] **Type alias ml.Message → inference.Message** — In `inference.go`, replace the `Message` struct with:
+- [x] **Type alias ml.Message → inference.Message** — In `inference.go`, replace the `Message` struct with:
   ```go
   type Message = inference.Message
   ```
@@ -115,7 +115,7 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ### Step 2.2: Unify GenOpts
 
-- [ ] **Add inference fields to GenOpts** — Extend `ml.GenOpts` to include the extra fields from `inference.GenerateConfig`:
+- [x] **Add inference fields to GenOpts** — Extend `ml.GenOpts` to include the extra fields from `inference.GenerateConfig`:
   ```go
   type GenOpts struct {
       Temperature   float64
@@ -130,7 +130,7 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ### Step 2.3: Deprecate StreamingBackend
 
-- [ ] **Mark StreamingBackend as deprecated** — Add deprecation comment:
+- [x] **Mark StreamingBackend as deprecated** — Add deprecation comment:
   ```go
   // Deprecated: StreamingBackend is retained for backward compatibility.
   // New code should use inference.TextModel with iter.Seq[Token] directly.
@@ -141,7 +141,7 @@ All other consumers (service.go, judge.go, agent.go, expand.go, go-ai tools_ml.g
 
 ### Step 2.4: Document migration path
 
-- [ ] **Update CLAUDE.md** — Add "Backend Architecture" section documenting:
+- [x] **Update CLAUDE.md** — Add "Backend Architecture" section documenting:
   - `inference.TextModel` (iterator-based) is the preferred API for new code
   - `ml.Backend` (string-based) is the compatibility layer, still supported
   - `StreamingBackend` is deprecated, use `iter.Seq[Token]` directly
