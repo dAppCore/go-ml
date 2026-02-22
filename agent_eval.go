@@ -216,7 +216,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
+		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		if err != nil {
 			log.Printf("  [%s] ERROR: %v", probe.ID, err)
 			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: err.Error()}
@@ -227,7 +227,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 			continue
 		}
 
-		clean := StripThinkBlocks(response)
+		clean := StripThinkBlocks(res.Text)
 		passed := probe.Check(clean)
 		total++
 		if passed {
@@ -276,7 +276,8 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		response, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
+		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
+		response := res.Text
 		if err != nil {
 			log.Printf("  [%s] ERROR: %v", probe.ID, err)
 			response = fmt.Sprintf("ERROR: %v", err)
@@ -336,13 +337,13 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	var responses []ContentResponse
 
 	for _, probe := range ContentProbes {
-		reply, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
+		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
 		if err != nil {
 			log.Printf("  [content:%s] ERROR: %v", probe.ID, err)
 			continue
 		}
 
-		reply = StripThinkBlocks(reply)
+		reply := StripThinkBlocks(res.Text)
 		log.Printf("  [content:%s] got %d chars", probe.ID, len(reply))
 
 		responses = append(responses, ContentResponse{

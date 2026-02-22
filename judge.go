@@ -60,7 +60,8 @@ func NewJudge(backend Backend) *Judge {
 
 // judgeChat sends a formatted prompt to the judge backend and returns the raw response.
 func (j *Judge) judgeChat(ctx context.Context, prompt string) (string, error) {
-	return j.backend.Generate(ctx, prompt, DefaultGenOpts())
+	res, err := j.backend.Generate(ctx, prompt, DefaultGenOpts())
+	return res.Text, err
 }
 
 // ScoreSemantic scores a response on sovereignty, ethical depth, creative

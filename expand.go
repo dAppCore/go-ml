@@ -100,7 +100,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 	for idx, p := range remaining {
 		start := time.Now()
-		response, err := backend.Generate(ctx, p.Prompt, GenOpts{Temperature: 0.7, MaxTokens: 2048})
+		res, err := backend.Generate(ctx, p.Prompt, GenOpts{Temperature: 0.7, MaxTokens: 2048})
 		elapsed := time.Since(start).Seconds()
 
 		if err != nil {
@@ -108,6 +108,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			continue
 		}
 
+		response := res.Text
 		chars := len(response)
 		completedCount++
 
