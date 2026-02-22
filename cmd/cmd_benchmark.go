@@ -15,7 +15,7 @@ import (
 
 	"forge.lthn.ai/core/go-i18n/reversal"
 	"forge.lthn.ai/core/go-ml"
-	"forge.lthn.ai/core/go/pkg/cli"
+	"forge.lthn.ai/core/cli/pkg/cli"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.

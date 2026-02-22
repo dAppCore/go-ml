@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"forge.lthn.ai/core/go/pkg/cli"
+	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 )
 

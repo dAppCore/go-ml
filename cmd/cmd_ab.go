@@ -16,7 +16,7 @@ import (
 
 	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/go-mlx"
-	"forge.lthn.ai/core/go/pkg/cli"
+	"forge.lthn.ai/core/cli/pkg/cli"
 )
 
 var abCmd = &cli.Command{
