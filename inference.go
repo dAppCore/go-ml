@@ -17,15 +17,23 @@ import (
 	"forge.lthn.ai/core/go-inference"
 )
 
+// Result holds the response text and optional inference metrics.
+// Backends that support metrics (e.g. MLX via InferenceAdapter) populate
+// Metrics; HTTP and subprocess backends leave it nil.
+type Result struct {
+	Text    string
+	Metrics *inference.GenerateMetrics
+}
+
 // Backend generates text from prompts. Implementations include HTTPBackend
 // (OpenAI-compatible API), LlamaBackend (managed llama-server process), and
 // OllamaBackend (Ollama native API).
 type Backend interface {
 	// Generate sends a single user prompt and returns the response.
-	Generate(ctx context.Context, prompt string, opts GenOpts) (string, error)
+	Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error)
 
 	// Chat sends a multi-turn conversation and returns the response.
-	Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error)
+	Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error)
 
 	// Name returns the backend identifier (e.g. "http", "llama", "ollama").
 	Name() string
