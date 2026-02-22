@@ -142,13 +142,13 @@ func (s *Service) Engine() *Engine {
 }
 
 // Generate generates text using the named backend (or default).
-func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts GenOpts) (string, error) {
+func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts GenOpts) (Result, error) {
 	b := s.Backend(backendName)
 	if b == nil {
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return "", fmt.Errorf("no backend available (requested: %q)", backendName)
+		return Result{}, fmt.Errorf("no backend available (requested: %q)", backendName)
 	}
 	return b.Generate(ctx, prompt, opts)
 }
