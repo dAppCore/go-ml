@@ -30,31 +30,31 @@ func NewInferenceAdapter(model inference.TextModel, name string) *InferenceAdapt
 }
 
 // Generate collects all tokens from the model's iterator into a single string.
-func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (string, error) {
+func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
 	var b strings.Builder
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
 	if err := a.model.Err(); err != nil {
-		return b.String(), err
+		return Result{Text: b.String()}, err
 	}
-	return b.String(), nil
+	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
 }
 
 // Chat sends a multi-turn conversation to the underlying TextModel and collects
 // all tokens. Since ml.Message is now a type alias for inference.Message, no
 // conversion is needed.
-func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error) {
+func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
 	var b strings.Builder
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
 	if err := a.model.Err(); err != nil {
-		return b.String(), err
+		return Result{Text: b.String()}, err
 	}
-	return b.String(), nil
+	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
 }
 
 // GenerateStream forwards each generated token's text to the callback.
@@ -117,4 +117,10 @@ func convertOpts(opts GenOpts) []inference.GenerateOption {
 	}
 	// GenOpts.Model is ignored — the model is already loaded.
 	return out
+}
+
+// metricsPtr returns a copy of the model's latest metrics, or nil if unavailable.
+func metricsPtr(m inference.TextModel) *inference.GenerateMetrics {
+	met := m.Metrics()
+	return &met
 }
