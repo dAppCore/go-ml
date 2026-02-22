@@ -74,13 +74,13 @@ func (b *HTTPBackend) BaseURL() string { return b.baseURL }
 func (b *HTTPBackend) SetMaxTokens(n int) { b.maxTokens = n }
 
 // Generate sends a single prompt and returns the response.
-func (b *HTTPBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (string, error) {
+func (b *HTTPBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
 	return b.Chat(ctx, []Message{{Role: "user", Content: prompt}}, opts)
 }
 
 // Chat sends a multi-turn conversation and returns the response.
 // Retries up to 3 times with exponential backoff on transient failures.
-func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error) {
+func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	model := b.model
 	if opts.Model != "" {
 		model = opts.Model
@@ -100,7 +100,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 
 	body, err := json.Marshal(req)
 	if err != nil {
-		return "", log.E("ml.HTTPBackend.Chat", "marshal request", err)
+		return Result{}, log.E("ml.HTTPBackend.Chat", "marshal request", err)
 	}
 
 	const maxAttempts = 3
@@ -114,17 +114,17 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 
 		result, err := b.doRequest(ctx, body)
 		if err == nil {
-			return result, nil
+			return Result{Text: result}, nil
 		}
 		lastErr = err
 
 		var re *retryableError
 		if !errors.As(err, &re) {
-			return "", err
+			return Result{}, err
 		}
 	}
 
-	return "", log.E("ml.HTTPBackend.Chat", fmt.Sprintf("exhausted %d retries", maxAttempts), lastErr)
+	return Result{}, log.E("ml.HTTPBackend.Chat", fmt.Sprintf("exhausted %d retries", maxAttempts), lastErr)
 }
 
 // doRequest sends a single HTTP request and parses the response.
