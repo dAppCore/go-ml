@@ -113,17 +113,17 @@ func (b *LlamaBackend) Stop() error {
 }
 
 // Generate sends a prompt to the managed llama-server.
-func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (string, error) {
+func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
 	if !b.Available() {
-		return "", log.E("ml.LlamaBackend.Generate", "llama-server not available", nil)
+		return Result{}, log.E("ml.LlamaBackend.Generate", "llama-server not available", nil)
 	}
 	return b.http.Generate(ctx, prompt, opts)
 }
 
 // Chat sends a conversation to the managed llama-server.
-func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (string, error) {
+func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	if !b.Available() {
-		return "", log.E("ml.LlamaBackend.Chat", "llama-server not available", nil)
+		return Result{}, log.E("ml.LlamaBackend.Chat", "llama-server not available", nil)
 	}
 	return b.http.Chat(ctx, messages, opts)
 }
