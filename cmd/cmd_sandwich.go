@@ -172,7 +172,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 		)
 
 		// Generate response
-		response, err := backend.Chat(context.Background(), messages, opts)
+		res, err := backend.Chat(context.Background(), messages, opts)
 		if err != nil {
 			slog.Error("sandwich: generation failed",
 				"id", seed.ID,
@@ -181,6 +181,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 			continue
 		}
 
+		response := res.Text
 		elapsed := time.Since(seedStart)
 		totalTokenTime += elapsed
 

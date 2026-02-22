@@ -254,7 +254,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				"id", prompt.ID,
 			)
 
-			response, err := backend.Chat(cmd.Context(), messages, opts)
+			res, err := backend.Chat(cmd.Context(), messages, opts)
 			if err != nil {
 				slog.Error("sequence: generation failed",
 					"lesson", lesson.ID,
@@ -264,6 +264,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				continue
 			}
 
+			response := res.Text
 			record := struct {
 				Messages []ml.Message `json:"messages"`
 			}{

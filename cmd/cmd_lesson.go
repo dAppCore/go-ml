@@ -242,7 +242,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 		messages = append(messages, ml.Message{Role: "user", Content: userContent})
 
 		// Generate
-		response, err := backend.Chat(context.Background(), messages, opts)
+		res, err := backend.Chat(context.Background(), messages, opts)
 		if err != nil {
 			slog.Error("lesson: generation failed",
 				"id", prompt.ID,
@@ -251,6 +251,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			continue
 		}
 
+		response := res.Text
 		elapsed := time.Since(promptStart)
 
 		// Write training record

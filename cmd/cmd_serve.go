@@ -247,7 +247,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		// Non-streaming path
-		text, err := backend.Generate(r.Context(), req.Prompt, opts)
+		res, err := backend.Generate(r.Context(), req.Prompt, opts)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -258,7 +258,7 @@ func runServe(cmd *cli.Command, args []string) error {
 			Object:  "text_completion",
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
-			Choices: []completionChoice{{Text: text, FinishReason: "stop"}},
+			Choices: []completionChoice{{Text: res.Text, FinishReason: "stop"}},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -377,7 +377,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		// Non-streaming path
-		text, err := backend.Chat(r.Context(), req.Messages, opts)
+		res, err := backend.Chat(r.Context(), req.Messages, opts)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -389,7 +389,7 @@ func runServe(cmd *cli.Command, args []string) error {
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
 			Choices: []chatChoice{{
-				Message:      ml.Message{Role: "assistant", Content: text},
+				Message:      ml.Message{Role: "assistant", Content: res.Text},
 				FinishReason: "stop",
 			}},
 		}

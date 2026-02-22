@@ -249,7 +249,7 @@ func runAB(cmd *cli.Command, args []string) error {
 			"id", p.ID,
 			"condition", "baseline",
 		)
-		baseResp, err := backend.Chat(context.Background(), []ml.Message{
+		res, err := backend.Chat(context.Background(), []ml.Message{
 			{Role: "user", Content: p.Prompt},
 		}, opts)
 		if err != nil {
@@ -257,6 +257,7 @@ func runAB(cmd *cli.Command, args []string) error {
 			runtime.GC()
 			continue
 		}
+		baseResp := res.Text
 		baseH := ml.ScoreHeuristic(baseResp)
 		condScores["baseline"] = abConditionScore{
 			Response:  baseResp,
@@ -272,7 +273,7 @@ func runAB(cmd *cli.Command, args []string) error {
 				"id", p.ID,
 				"condition", k.Name,
 			)
-			resp, err := backend.Chat(context.Background(), []ml.Message{
+			res, err := backend.Chat(context.Background(), []ml.Message{
 				{Role: "system", Content: k.Text},
 				{Role: "user", Content: p.Prompt},
 			}, opts)
@@ -280,6 +281,7 @@ func runAB(cmd *cli.Command, args []string) error {
 				slog.Error("ab: failed", "id", p.ID, "condition", k.Name, "error", err)
 				continue
 			}
+			resp := res.Text
 			h := ml.ScoreHeuristic(resp)
 			condScores[k.Name] = abConditionScore{
 				Response:  resp,
