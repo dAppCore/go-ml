@@ -39,7 +39,8 @@ func TestMLXBackend_InferenceAdapter_Generate_Good(t *testing.T) {
 
 	result, err := backend.Generate(context.Background(), "prompt", GenOpts{Temperature: 0.5})
 	require.NoError(t, err)
-	assert.Equal(t, "MLX output", result)
+	assert.Equal(t, "MLX output", result.Text)
+	assert.NotNil(t, result.Metrics)
 }
 
 // TestMLXBackend_InferenceAdapter_Chat_Good verifies chat through the
@@ -58,7 +59,8 @@ func TestMLXBackend_InferenceAdapter_Chat_Good(t *testing.T) {
 	}
 	result, err := adapter.Chat(context.Background(), messages, GenOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "chat reply", result)
+	assert.Equal(t, "chat reply", result.Text)
+	assert.NotNil(t, result.Metrics)
 }
 
 // TestMLXBackend_InferenceAdapter_Stream_Good verifies streaming through
@@ -99,7 +101,8 @@ func TestMLXBackend_InferenceAdapter_ModelError_Bad(t *testing.T) {
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
 	assert.Error(t, err)
-	assert.Equal(t, "partial", result, "partial output should still be returned")
+	assert.Equal(t, "partial", result.Text, "partial output should still be returned")
+	assert.Nil(t, result.Metrics, "metrics should be nil on error")
 }
 
 // TestMLXBackend_InferenceAdapter_Close_Good verifies that Close delegates

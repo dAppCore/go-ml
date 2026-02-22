@@ -122,7 +122,8 @@ func TestLlamaBackend_Generate_Good(t *testing.T) {
 
 	result, err := lb.Generate(context.Background(), "test prompt", DefaultGenOpts())
 	require.NoError(t, err)
-	assert.Equal(t, "generated response", result)
+	assert.Equal(t, "generated response", result.Text)
+	assert.Nil(t, result.Metrics)
 }
 
 func TestLlamaBackend_Generate_NotAvailable_Bad(t *testing.T) {
@@ -169,7 +170,7 @@ func TestLlamaBackend_Chat_Good(t *testing.T) {
 
 	result, err := lb.Chat(context.Background(), messages, DefaultGenOpts())
 	require.NoError(t, err)
-	assert.Equal(t, "chat reply", result)
+	assert.Equal(t, "chat reply", result.Text)
 }
 
 func TestLlamaBackend_Chat_MultiTurn_Good(t *testing.T) {
@@ -186,7 +187,7 @@ func TestLlamaBackend_Chat_MultiTurn_Good(t *testing.T) {
 
 	result, err := lb.Chat(context.Background(), messages, DefaultGenOpts())
 	require.NoError(t, err)
-	assert.Equal(t, "multi-turn reply", result)
+	assert.Equal(t, "multi-turn reply", result.Text)
 }
 
 func TestLlamaBackend_Chat_NotAvailable_Bad(t *testing.T) {
@@ -327,7 +328,7 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *testing.T) {
 	opts := GenOpts{Temperature: 0.7, MaxTokens: 256}
 	result, err := lb.Generate(context.Background(), "test", opts)
 	require.NoError(t, err)
-	assert.Equal(t, "ok", result)
+	assert.Equal(t, "ok", result.Text)
 }
 
 // --- Verify Backend interface compliance ---

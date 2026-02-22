@@ -35,8 +35,11 @@ func TestHTTPBackend_Generate_Good(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
-	if result != "world" {
-		t.Errorf("got %q, want %q", result, "world")
+	if result.Text != "world" {
+		t.Errorf("got %q, want %q", result.Text, "world")
+	}
+	if result.Metrics != nil {
+		t.Error("HTTP backend should return nil Metrics")
 	}
 }
 
@@ -75,8 +78,8 @@ func TestHTTPBackend_Retry_Ugly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate after retry: %v", err)
 	}
-	if result != "recovered" {
-		t.Errorf("got %q, want %q", result, "recovered")
+	if result.Text != "recovered" {
+		t.Errorf("got %q, want %q", result.Text, "recovered")
 	}
 	if attempts != 3 {
 		t.Errorf("expected 3 attempts, got %d", attempts)

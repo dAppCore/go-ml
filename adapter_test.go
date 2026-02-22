@@ -70,7 +70,8 @@ func TestInferenceAdapter_Generate_Good(t *testing.T) {
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "Hello world", result)
+	assert.Equal(t, "Hello world", result.Text)
+	assert.NotNil(t, result.Metrics)
 }
 
 func TestInferenceAdapter_Generate_Empty_Good(t *testing.T) {
@@ -79,7 +80,8 @@ func TestInferenceAdapter_Generate_Empty_Good(t *testing.T) {
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "", result)
+	assert.Equal(t, "", result.Text)
+	assert.NotNil(t, result.Metrics)
 }
 
 func TestInferenceAdapter_Generate_ModelError_Bad(t *testing.T) {
@@ -95,7 +97,9 @@ func TestInferenceAdapter_Generate_ModelError_Bad(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "out of memory")
 	// Partial output is still returned.
-	assert.Equal(t, "partial", result)
+	assert.Equal(t, "partial", result.Text)
+	// Metrics are nil on error.
+	assert.Nil(t, result.Metrics)
 }
 
 func TestInferenceAdapter_GenerateStream_Good(t *testing.T) {
@@ -171,7 +175,8 @@ func TestInferenceAdapter_Chat_Good(t *testing.T) {
 	}
 	result, err := adapter.Chat(context.Background(), messages, GenOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "Hi there", result)
+	assert.Equal(t, "Hi there", result.Text)
+	assert.NotNil(t, result.Metrics)
 }
 
 func TestInferenceAdapter_ChatStream_Good(t *testing.T) {
