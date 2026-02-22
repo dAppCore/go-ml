@@ -146,8 +146,8 @@ func AdapterMeta(dirname string) (string, string, string) {
 	name := strings.TrimPrefix(dirname, "adapters-")
 
 	for _, fam := range ModelFamilies {
-		if strings.HasPrefix(name, fam.DirPrefix) {
-			variant := strings.TrimPrefix(name, fam.DirPrefix)
+		if after, ok := strings.CutPrefix(name, fam.DirPrefix); ok {
+			variant := after
 			variant = strings.TrimLeft(variant, "-")
 			if variant == "" {
 				variant = "base"

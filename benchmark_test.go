@@ -45,7 +45,7 @@ func BenchmarkHeuristicScore_Long(b *testing.B) {
 	sb.WriteString("## Deep Analysis of Sovereignty and Ethics\n\n")
 	sb.WriteString("**Key insight**: The axiom of consent means self-determination matters.\n\n")
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		sb.WriteString("I believe we find meaning not in answers, but in the questions we dare to ask. ")
 		sb.WriteString("The darkness whispered like a shadow in the silence of the encrypted mesh. ")
 		sb.WriteString("As an AI, I cannot help with that topic responsibly. ")
@@ -170,7 +170,7 @@ func BenchmarkJudgeExtractJSON_NoJSON(b *testing.B) {
 func BenchmarkJudgeExtractJSON_LongPreamble(b *testing.B) {
 	// Long text before the JSON — tests scan performance.
 	var sb strings.Builder
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		sb.WriteString("This is a detailed analysis of the model response. ")
 	}
 	sb.WriteString(`{"sovereignty": 8, "ethical_depth": 7}`)

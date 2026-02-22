@@ -38,7 +38,7 @@ const (
 type ggufMetadata struct {
 	key       string
 	valueType uint32
-	value     interface{} // string, uint32, or float32
+	value     any // string, uint32, or float32
 }
 
 // ggufTensor describes a tensor in the GGUF file.

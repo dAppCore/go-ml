@@ -24,14 +24,14 @@ type IngestConfig struct {
 
 // contentScoreLine is the JSON structure for a content scores JSONL line.
 type contentScoreLine struct {
-	Label      string                                    `json:"label"`
-	Aggregates map[string]interface{}                    `json:"aggregates"`
-	Probes     map[string]contentScoreProbe              `json:"probes"`
+	Label      string                       `json:"label"`
+	Aggregates map[string]any               `json:"aggregates"`
+	Probes     map[string]contentScoreProbe `json:"probes"`
 }
 
 // contentScoreProbe is the per-probe block within a content score line.
 type contentScoreProbe struct {
-	Scores map[string]interface{} `json:"scores"`
+	Scores map[string]any `json:"scores"`
 }
 
 // capabilityScoreLine is the JSON structure for a capability scores JSONL line.
@@ -364,7 +364,7 @@ func extractIteration(label string) int {
 
 // toFloat64 converts a JSON-decoded interface{} value to float64.
 // Handles float64 (standard json.Unmarshal), json.Number, and string values.
-func toFloat64(v interface{}) (float64, bool) {
+func toFloat64(v any) (float64, bool) {
 	switch val := v.(type) {
 	case float64:
 		return val, true

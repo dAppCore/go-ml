@@ -360,7 +360,7 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 	var responses []ContentResponse
 
 	for _, probe := range ContentProbes {
-		req := map[string]interface{}{
+		req := map[string]any{
 			"prompt":     probe.Prompt,
 			"max_tokens": ContentMaxTokens,
 			"temp":       ContentTemperature,

@@ -85,7 +85,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 		return fmt.Errorf("upload adapter config: %w", err)
 	}
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
+	reqBody, _ := json.Marshal(map[string]any{
 		"model": modelName,
 		"from":  baseModel,
 		"adapters": map[string]string{

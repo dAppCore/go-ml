@@ -27,7 +27,7 @@ func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 		suites["standard"] = true
 		suites["exact"] = true
 	} else {
-		for _, s := range strings.Split(suiteList, ",") {
+		for s := range strings.SplitSeq(suiteList, ",") {
 			s = strings.TrimSpace(s)
 			if s != "" {
 				suites[s] = true

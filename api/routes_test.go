@@ -192,7 +192,7 @@ func TestEnvelope_Good_ErrorFormat(t *testing.T) {
 
 	// "data" should be absent or null for failure responses.
 	if data, ok := raw["data"]; ok {
-		var d interface{}
+		var d any
 		if err := json.Unmarshal(data, &d); err == nil && d != nil {
 			t.Fatal("expected 'data' to be absent or null for failure response")
 		}

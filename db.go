@@ -51,14 +51,14 @@ func (db *DB) Path() string {
 }
 
 // Exec executes a query without returning rows.
-func (db *DB) Exec(query string, args ...interface{}) error {
+func (db *DB) Exec(query string, args ...any) error {
 	_, err := db.conn.Exec(query, args...)
 	return err
 }
 
 // QueryRowScan executes a query expected to return at most one row and scans
 // the result into dest. It is a convenience wrapper around sql.DB.QueryRow.
-func (db *DB) QueryRowScan(query string, dest interface{}, args ...interface{}) error {
+func (db *DB) QueryRowScan(query string, dest any, args ...any) error {
 	return db.conn.QueryRow(query, args...).Scan(dest)
 }
 
@@ -125,7 +125,7 @@ func (db *DB) CountGoldenSet() (int, error) {
 func (db *DB) QueryExpansionPrompts(status string, limit int) ([]ExpansionPromptRow, error) {
 	query := "SELECT idx, seed_id, region, domain, language, prompt, prompt_en, priority, status " +
 		"FROM expansion_prompts"
-	var args []interface{}
+	var args []any
 
 	if status != "" {
 		query += " WHERE status = ?"
@@ -178,7 +178,7 @@ func (db *DB) UpdateExpansionStatus(idx int64, status string) error {
 }
 
 // QueryRows executes an arbitrary SQL query and returns results as maps.
-func (db *DB) QueryRows(query string, args ...interface{}) ([]map[string]interface{}, error) {
+func (db *DB) QueryRows(query string, args ...any) ([]map[string]any, error) {
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
@@ -190,17 +190,17 @@ func (db *DB) QueryRows(query string, args ...interface{}) ([]map[string]interfa
 		return nil, fmt.Errorf("columns: %w", err)
 	}
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	for rows.Next() {
-		values := make([]interface{}, len(cols))
-		ptrs := make([]interface{}, len(cols))
+		values := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
 		for i := range values {
 			ptrs[i] = &values[i]
 		}
 		if err := rows.Scan(ptrs...); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
-		row := make(map[string]interface{}, len(cols))
+		row := make(map[string]any, len(cols))
 		for i, col := range cols {
 			row[col] = values[i]
 		}

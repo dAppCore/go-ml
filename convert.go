@@ -32,7 +32,7 @@ func RenameMLXKey(mlxKey string) string {
 
 // SafetensorsHeader represents the header of a safetensors file.
 type SafetensorsHeader struct {
-	Metadata map[string]string              `json:"__metadata__,omitempty"`
+	Metadata map[string]string                `json:"__metadata__,omitempty"`
 	Tensors  map[string]SafetensorsTensorInfo `json:"-"`
 }
 
@@ -142,7 +142,7 @@ func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, ten
 		offset += len(data)
 	}
 
-	headerMap := make(map[string]interface{})
+	headerMap := make(map[string]any)
 	for k, info := range updatedTensors {
 		headerMap[k] = info
 	}
@@ -268,7 +268,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 	}
 	sort.Ints(sortedLayers)
 
-	peftConfig := map[string]interface{}{
+	peftConfig := map[string]any{
 		"auto_mapping":            nil,
 		"base_model_name_or_path": baseModelName,
 		"bias":                    "none",

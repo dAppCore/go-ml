@@ -133,7 +133,7 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 
 // toInt converts a DuckDB value to int. DuckDB returns integers as int64 (not
 // float64 like InfluxDB), so we handle both types.
-func toInt(v interface{}) int {
+func toInt(v any) int {
 	switch n := v.(type) {
 	case int64:
 		return int(n)

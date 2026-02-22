@@ -84,7 +84,7 @@ func RunWorkerLoop(cfg *WorkerConfig) {
 }
 
 func workerRegister(cfg *WorkerConfig) error {
-	body := map[string]interface{}{
+	body := map[string]any{
 		"worker_id": cfg.WorkerID,
 		"name":      cfg.Name,
 		"version":   "0.1.0",
@@ -109,7 +109,7 @@ func workerRegister(cfg *WorkerConfig) error {
 }
 
 func workerHeartbeat(cfg *WorkerConfig) {
-	body := map[string]interface{}{
+	body := map[string]any{
 		"worker_id": cfg.WorkerID,
 	}
 	apiPost(cfg, "/api/lem/workers/heartbeat", body)
@@ -146,7 +146,7 @@ func workerPoll(cfg *WorkerConfig) int {
 	for _, task := range result.Tasks {
 		if err := workerProcessTask(cfg, task); err != nil {
 			log.Printf("Task %d failed: %v", task.ID, err)
-			apiDelete(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]interface{}{
+			apiDelete(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 				"worker_id": cfg.WorkerID,
 			})
 			continue
@@ -161,14 +161,14 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 	log.Printf("Processing task %d: %s [%s/%s] %d chars prompt",
 		task.ID, task.TaskType, task.Language, task.Domain, len(task.PromptText))
 
-	_, err := apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]interface{}{
+	_, err := apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 		"worker_id": cfg.WorkerID,
 	})
 	if err != nil {
 		return fmt.Errorf("claim: %w", err)
 	}
 
-	apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]interface{}{
+	apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
 		"worker_id": cfg.WorkerID,
 		"status":    "in_progress",
 	})
@@ -183,7 +183,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 	genTime := time.Since(start)
 
 	if err != nil {
-		apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]interface{}{
+		apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
 			"worker_id": cfg.WorkerID,
 			"status":    "abandoned",
 		})
@@ -195,7 +195,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		modelUsed = "default"
 	}
 
-	_, err = apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]interface{}{
+	_, err = apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]any{
 		"worker_id":     cfg.WorkerID,
 		"response_text": response,
 		"model_used":    modelUsed,
@@ -225,7 +225,7 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 		}
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"model":       task.ModelName,
 		"messages":    messages,
 		"temperature": temp,
@@ -310,19 +310,19 @@ func apiGet(cfg *WorkerConfig, path string) ([]byte, error) {
 	return body, nil
 }
 
-func apiPost(cfg *WorkerConfig, path string, data map[string]interface{}) ([]byte, error) {
+func apiPost(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
 	return apiRequest(cfg, "POST", path, data)
 }
 
-func apiPatch(cfg *WorkerConfig, path string, data map[string]interface{}) ([]byte, error) {
+func apiPatch(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
 	return apiRequest(cfg, "PATCH", path, data)
 }
 
-func apiDelete(cfg *WorkerConfig, path string, data map[string]interface{}) ([]byte, error) {
+func apiDelete(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
 	return apiRequest(cfg, "DELETE", path, data)
 }
 
-func apiRequest(cfg *WorkerConfig, method, path string, data map[string]interface{}) ([]byte, error) {
+func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]byte, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -386,7 +386,7 @@ func ReadKeyFile() string {
 // SplitComma splits a comma-separated string into trimmed parts.
 func SplitComma(s string) []string {
 	var result []string
-	for _, part := range bytes.Split([]byte(s), []byte(",")) {
+	for part := range bytes.SplitSeq([]byte(s), []byte(",")) {
 		trimmed := bytes.TrimSpace(part)
 		if len(trimmed) > 0 {
 			result = append(result, string(trimmed))

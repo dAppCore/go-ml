@@ -109,7 +109,7 @@ func PrintStatus(influx *InfluxClient, w io.Writer) error {
 
 // dedupeTraining merges training status and loss rows, keeping only the first
 // (latest) row per model.
-func dedupeTraining(statusRows, lossRows []map[string]interface{}) []trainingRow {
+func dedupeTraining(statusRows, lossRows []map[string]any) []trainingRow {
 	lossMap := make(map[string]float64)
 	lossSeenMap := make(map[string]bool)
 	for _, row := range lossRows {
@@ -154,7 +154,7 @@ func dedupeTraining(statusRows, lossRows []map[string]interface{}) []trainingRow
 }
 
 // dedupeGeneration deduplicates generation progress rows by worker.
-func dedupeGeneration(rows []map[string]interface{}) []genRow {
+func dedupeGeneration(rows []map[string]any) []genRow {
 	seen := make(map[string]bool)
 	var result []genRow
 	for _, row := range rows {
@@ -180,7 +180,7 @@ func dedupeGeneration(rows []map[string]interface{}) []genRow {
 }
 
 // strVal extracts a string value from a row map.
-func strVal(row map[string]interface{}, key string) string {
+func strVal(row map[string]any, key string) string {
 	v, ok := row[key]
 	if !ok {
 		return ""
@@ -193,7 +193,7 @@ func strVal(row map[string]interface{}, key string) string {
 }
 
 // floatVal extracts a float64 value from a row map.
-func floatVal(row map[string]interface{}, key string) float64 {
+func floatVal(row map[string]any, key string) float64 {
 	v, ok := row[key]
 	if !ok {
 		return 0
@@ -207,6 +207,6 @@ func floatVal(row map[string]interface{}, key string) float64 {
 
 // intVal extracts an integer value from a row map. InfluxDB JSON returns all
 // numbers as float64, so this truncates to int.
-func intVal(row map[string]interface{}, key string) int {
+func intVal(row map[string]any, key string) int {
 	return int(floatVal(row, key))
 }

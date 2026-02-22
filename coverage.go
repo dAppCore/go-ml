@@ -38,10 +38,7 @@ func PrintCoverage(db *DB, w io.Writer) error {
 	fmt.Fprintln(w, "\nRegion distribution (underrepresented first):")
 	avg := float64(total) / float64(len(regionRows))
 	for _, r := range regionRows {
-		barLen := int(float64(r.n) / avg * 10)
-		if barLen > 40 {
-			barLen = 40
-		}
+		barLen := min(int(float64(r.n)/avg*10), 40)
 		bar := strings.Repeat("#", barLen)
 		gap := ""
 		if float64(r.n) < avg*0.5 {

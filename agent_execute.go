@@ -108,13 +108,13 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 	iterRe := regexp.MustCompile(`(\d+)`)
 
 	var adapterDirs []string
-	for _, dirpath := range strings.Split(strings.TrimSpace(out), "\n") {
+	for dirpath := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		if dirpath == "" {
 			continue
 		}
 		subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
 		if subErr == nil && strings.TrimSpace(subOut) != "" {
-			for _, sub := range strings.Split(strings.TrimSpace(subOut), "\n") {
+			for sub := range strings.SplitSeq(strings.TrimSpace(subOut), "\n") {
 				if sub != "" {
 					adapterDirs = append(adapterDirs, sub)
 				}
@@ -132,7 +132,7 @@ func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
 			continue
 		}
 
-		for _, fp := range strings.Split(strings.TrimSpace(filesOut), "\n") {
+		for fp := range strings.SplitSeq(strings.TrimSpace(filesOut), "\n") {
 			if fp == "" {
 				continue
 			}

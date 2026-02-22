@@ -295,7 +295,7 @@ func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
 func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
 	workDir := t.TempDir()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		cp := Checkpoint{
 			Dirname:   "dir",
 			Iteration: i * 100,

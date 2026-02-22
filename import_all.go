@@ -301,7 +301,7 @@ func importBenchmarkFile(db *DB, path, source string) int {
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
-		var rec map[string]interface{}
+		var rec map[string]any
 		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
 			continue
 		}
@@ -333,7 +333,7 @@ func importBenchmarkQuestions(db *DB, path, benchmark string) int {
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
-		var rec map[string]interface{}
+		var rec map[string]any
 		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
 			continue
 		}
@@ -371,26 +371,26 @@ func importSeeds(db *DB, seedDir string) int {
 		region := strings.TrimSuffix(filepath.Base(path), ".json")
 
 		// Try parsing as array or object with prompts/seeds field.
-		var seedsList []interface{}
-		var raw interface{}
+		var seedsList []any
+		var raw any
 		if err := json.Unmarshal(data, &raw); err != nil {
 			return nil
 		}
 
 		switch v := raw.(type) {
-		case []interface{}:
+		case []any:
 			seedsList = v
-		case map[string]interface{}:
-			if prompts, ok := v["prompts"].([]interface{}); ok {
+		case map[string]any:
+			if prompts, ok := v["prompts"].([]any); ok {
 				seedsList = prompts
-			} else if seeds, ok := v["seeds"].([]interface{}); ok {
+			} else if seeds, ok := v["seeds"].([]any); ok {
 				seedsList = seeds
 			}
 		}
 
 		for _, s := range seedsList {
 			switch seed := s.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				prompt := strOrEmpty(seed, "prompt")
 				if prompt == "" {
 					prompt = strOrEmpty(seed, "text")
@@ -416,14 +416,14 @@ func importSeeds(db *DB, seedDir string) int {
 	return count
 }
 
-func strOrEmpty(m map[string]interface{}, key string) string {
+func strOrEmpty(m map[string]any, key string) string {
 	if v, ok := m[key]; ok {
 		return fmt.Sprintf("%v", v)
 	}
 	return ""
 }
 
-func floatOrZero(m map[string]interface{}, key string) float64 {
+func floatOrZero(m map[string]any, key string) float64 {
 	if v, ok := m[key]; ok {
 		if f, ok := v.(float64); ok {
 			return f

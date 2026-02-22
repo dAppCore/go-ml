@@ -78,7 +78,7 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 }
 
 // QuerySQL runs a SQL query against InfluxDB and returns the result rows.
-func (c *InfluxClient) QuerySQL(sql string) ([]map[string]interface{}, error) {
+func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 	reqBody := map[string]string{
 		"db": c.db,
 		"q":  sql,
@@ -114,7 +114,7 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf("query failed %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var rows []map[string]interface{}
+	var rows []map[string]any
 	if err := json.Unmarshal(respBody, &rows); err != nil {
 		return nil, fmt.Errorf("unmarshal query response: %w", err)
 	}

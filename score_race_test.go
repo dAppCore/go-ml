@@ -43,7 +43,7 @@ func TestScoreAll_ConcurrentSemantic_Good(t *testing.T) {
 	engine := NewEngine(judge, 4, "heuristic,semantic") // concurrency=4
 
 	var responses []Response
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		responses = append(responses, Response{
 			ID:       idForIndex(i),
 			Prompt:   "test prompt",
@@ -153,7 +153,7 @@ func TestScoreAll_SemaphoreBoundary_Good(t *testing.T) {
 	engine := NewEngine(judge, 1, "semantic") // concurrency=1
 
 	var responses []Response
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		responses = append(responses, Response{
 			ID: idForIndex(i), Prompt: "p", Response: "r", Model: "m",
 		})
@@ -209,7 +209,7 @@ func TestScoreAll_HeuristicOnlyNoRace_Good(t *testing.T) {
 	engine := NewEngine(nil, 4, "heuristic")
 
 	var responses []Response
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		responses = append(responses, Response{
 			ID:       idForIndex(i),
 			Prompt:   "prompt",
@@ -249,7 +249,7 @@ func TestScoreAll_MultiModelConcurrent_Good(t *testing.T) {
 	var responses []Response
 	models := []string{"alpha", "beta", "gamma", "delta"}
 	for _, model := range models {
-		for j := 0; j < 5; j++ {
+		for j := range 5 {
 			responses = append(responses, Response{
 				ID:       model + "-" + idForIndex(j),
 				Prompt:   "test",
