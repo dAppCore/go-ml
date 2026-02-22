@@ -45,7 +45,7 @@ func (m *HTTPTextModel) Generate(ctx context.Context, prompt string, opts ...inf
 			return
 		}
 		m.lastErr = nil
-		yield(inference.Token{Text: result})
+		yield(inference.Token{Text: result.Text})
 	}
 }
 
@@ -67,7 +67,7 @@ func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, 
 			return
 		}
 		m.lastErr = nil
-		yield(inference.Token{Text: result})
+		yield(inference.Token{Text: result.Text})
 	}
 }
 
