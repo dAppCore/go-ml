@@ -132,6 +132,7 @@ Key behaviours:
 - `GenerateStream` and `ChatStream` forward each token's text to the provided `TokenCallback`. If the callback returns an error, iteration stops.
 - `Available()` always returns `true` — the model is already loaded when the adapter is constructed.
 - `Close()` delegates to `TextModel.Close()`, releasing GPU memory.
+- `InspectAttention()` delegates to the underlying `TextModel` via type assertion to `inference.AttentionInspector`. Returns an error if the backend doesn't support attention inspection. This enables LEM's Q/K Bone Orientation analysis through the adapter without consumers needing to unwrap the underlying model.
 
 ### MLX Backend (`backend_mlx.go`, darwin/arm64 only)
 
