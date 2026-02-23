@@ -1,3 +1,7 @@
+[![Go Reference](https://pkg.go.dev/badge/forge.lthn.ai/core/go-ml.svg)](https://pkg.go.dev/forge.lthn.ai/core/go-ml)
+[![License: EUPL-1.2](https://img.shields.io/badge/License-EUPL--1.2-blue.svg)](LICENSE.md)
+[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go)](go.mod)
+
 # go-ml
 
 ML inference backends, multi-suite scoring engine, and agent orchestrator for the Lethean AI stack. The package provides pluggable backends (Apple Metal via go-mlx, managed llama-server subprocesses, and OpenAI-compatible HTTP APIs), a concurrent scoring engine that evaluates model responses across heuristic, semantic, content, and standard benchmark suites, 23 capability probes, GGUF model management, and an SSH-based agent orchestrator that streams checkpoint evaluation results to InfluxDB and DuckDB.
