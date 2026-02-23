@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -10,10 +12,10 @@ import (
 )
 
 var (
-	scoreInput   string
-	scoreSuites  string
-	scoreOutput  string
-	scoreConcur  int
+	scoreInput  string
+	scoreSuites string
+	scoreOutput string
+	scoreConcur int
 )
 
 var scoreCmd = &cli.Command{
@@ -65,10 +67,11 @@ func runScore(cmd *cli.Command, args []string) error {
 		}
 		fmt.Printf("Scores written to %s\n", scoreOutput)
 	} else {
-		for model, avgs := range averages {
+		for _, model := range slices.Sorted(maps.Keys(averages)) {
+			avgs := averages[model]
 			fmt.Printf("%s:\n", model)
-			for field, val := range avgs {
-				fmt.Printf("  %-25s %.3f\n", field, val)
+			for _, field := range slices.Sorted(maps.Keys(avgs)) {
+				fmt.Printf("  %-25s %.3f\n", field, avgs[field])
 			}
 		}
 	}

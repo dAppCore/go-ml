@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -199,11 +201,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 // SuiteNames returns the enabled suite names as a sorted slice.
 func (e *Engine) SuiteNames() []string {
-	names := make([]string, 0, len(e.suites))
-	for name := range e.suites {
-		names = append(names, name)
-	}
-	return names
+	return slices.Sorted(maps.Keys(e.suites))
 }
 
 // String returns a human-readable description of the engine configuration.

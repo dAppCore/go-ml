@@ -3,7 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -72,10 +74,7 @@ func runQuery(cmd *cli.Command, args []string) error {
 	}
 
 	// Collect column names in stable order from first row.
-	var cols []string
-	for col := range rows[0] {
-		cols = append(cols, col)
-	}
+	cols := slices.Sorted(maps.Keys(rows[0]))
 
 	// Calculate column widths (capped at 60).
 	const maxWidth = 60

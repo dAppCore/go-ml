@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 )
@@ -109,11 +110,7 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
 	))
 
-	cats := make([]string, 0, len(results.ByCategory))
-	for cat := range results.ByCategory {
-		cats = append(cats, cat)
-	}
-	sort.Strings(cats)
+	cats := slices.Sorted(maps.Keys(results.ByCategory))
 
 	for i, cat := range cats {
 		data := results.ByCategory[cat]
@@ -147,11 +144,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
 	))
 
-	cats := make([]string, 0, len(results.ByCategory))
-	for cat := range results.ByCategory {
-		cats = append(cats, cat)
-	}
-	sort.Strings(cats)
+	cats := slices.Sorted(maps.Keys(results.ByCategory))
 
 	for i, cat := range cats {
 		data := results.ByCategory[cat]
@@ -167,11 +160,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 		))
 	}
 
-	probeIDs := make([]string, 0, len(results.Probes))
-	for id := range results.Probes {
-		probeIDs = append(probeIDs, id)
-	}
-	sort.Strings(probeIDs)
+	probeIDs := slices.Sorted(maps.Keys(results.Probes))
 
 	for j, probeID := range probeIDs {
 		probeRes := results.Probes[probeID]

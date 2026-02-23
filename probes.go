@@ -2,6 +2,7 @@ package ml
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -248,15 +249,17 @@ var CapabilityProbes = []Probe{
 
 // ProbeCategories returns sorted unique categories from CapabilityProbes.
 func ProbeCategories() []string {
-	seen := make(map[string]bool)
-	var cats []string
-	for _, p := range CapabilityProbes {
-		if !seen[p.Category] {
-			seen[p.Category] = true
-			cats = append(cats, p.Category)
+	return slices.Sorted(func(yield func(string) bool) {
+		seen := make(map[string]bool)
+		for _, p := range CapabilityProbes {
+			if !seen[p.Category] {
+				seen[p.Category] = true
+				if !yield(p.Category) {
+					return
+				}
+			}
 		}
-	}
-	return cats
+	})
 }
 
 // StripThinkBlocks removes <think>...</think> blocks from DeepSeek R1 responses.

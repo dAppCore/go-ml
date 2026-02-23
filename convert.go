@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -126,11 +127,7 @@ func TransposeBFloat16(data []byte, rows, cols int) []byte {
 
 // WriteSafetensors writes tensors to a safetensors file.
 func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, tensorData map[string][]byte) error {
-	keys := make([]string, 0, len(tensors))
-	for k := range tensors {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(tensors))
 
 	offset := 0
 	updatedTensors := make(map[string]SafetensorsTensorInfo)
@@ -256,17 +253,8 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		}
 	}
 
-	sortedModules := make([]string, 0, len(modules))
-	for m := range modules {
-		sortedModules = append(sortedModules, m)
-	}
-	sort.Strings(sortedModules)
-
-	sortedLayers := make([]int, 0, len(layers))
-	for l := range layers {
-		sortedLayers = append(sortedLayers, l)
-	}
-	sort.Ints(sortedLayers)
+	sortedModules := slices.Sorted(maps.Keys(modules))
+	sortedLayers := slices.Sorted(maps.Keys(layers))
 
 	peftConfig := map[string]any{
 		"auto_mapping":            nil,

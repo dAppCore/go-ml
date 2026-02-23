@@ -3,10 +3,11 @@ package ml
 import (
 	"context"
 	"fmt"
+	"iter"
 	"log"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 )
@@ -93,75 +94,89 @@ func RunAgentLoop(cfg *AgentConfig) {
 
 // DiscoverCheckpoints lists all adapter directories and checkpoint files on M3 via SSH.
 func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
-	pattern := "adapters-*"
-	if cfg.Filter != "" {
-		pattern = "adapters-" + cfg.Filter + "*"
-	}
-	t := cfg.transport()
-	ctx := context.Background()
-	out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
-	if err != nil {
-		return nil, fmt.Errorf("list adapter dirs: %w", err)
-	}
-
 	var checkpoints []Checkpoint
-	iterRe := regexp.MustCompile(`(\d+)`)
-
-	var adapterDirs []string
-	for dirpath := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
-		if dirpath == "" {
-			continue
+	for cp, err := range DiscoverCheckpointsIter(cfg) {
+		if err != nil {
+			return nil, err
 		}
-		subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
-		if subErr == nil && strings.TrimSpace(subOut) != "" {
-			for sub := range strings.SplitSeq(strings.TrimSpace(subOut), "\n") {
-				if sub != "" {
-					adapterDirs = append(adapterDirs, sub)
+		checkpoints = append(checkpoints, cp)
+	}
+	return checkpoints, nil
+}
+
+// DiscoverCheckpointsIter returns an iterator over discovered adapter checkpoints.
+func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
+	return func(yield func(Checkpoint, error) bool) {
+		pattern := "adapters-*"
+		if cfg.Filter != "" {
+			pattern = "adapters-" + cfg.Filter + "*"
+		}
+		t := cfg.transport()
+		ctx := context.Background()
+		out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
+		if err != nil {
+			yield(Checkpoint{}, fmt.Errorf("list adapter dirs: %w", err))
+			return
+		}
+
+		iterRe := regexp.MustCompile(`(\d+)`)
+
+		var adapterDirs []string
+		for dirpath := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+			if dirpath == "" {
+				continue
+			}
+			subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
+			if subErr == nil && strings.TrimSpace(subOut) != "" {
+				for sub := range strings.SplitSeq(strings.TrimSpace(subOut), "\n") {
+					if sub != "" {
+						adapterDirs = append(adapterDirs, sub)
+					}
+				}
+			} else {
+				adapterDirs = append(adapterDirs, dirpath)
+			}
+		}
+
+		for _, dirpath := range adapterDirs {
+			dirname := strings.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
+
+			filesOut, err := t.Run(ctx, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
+			if err != nil {
+				continue
+			}
+
+			for fp := range strings.SplitSeq(strings.TrimSpace(filesOut), "\n") {
+				if fp == "" {
+					continue
+				}
+				filename := fileBase(fp)
+
+				match := iterRe.FindStringSubmatch(filename)
+				if len(match) < 2 {
+					continue
+				}
+				iteration := 0
+				fmt.Sscanf(match[1], "%d", &iteration)
+
+				modelTag, labelPrefix, stem := AdapterMeta(dirname)
+				label := fmt.Sprintf("%s @%s", labelPrefix, match[1])
+				runID := fmt.Sprintf("%s-capability-auto", stem)
+
+				if !yield(Checkpoint{
+					RemoteDir: dirpath,
+					Filename:  filename,
+					Dirname:   dirname,
+					Iteration: iteration,
+					ModelTag:  modelTag,
+					Label:     label,
+					RunID:     runID,
+				}, nil) {
+					return
 				}
 			}
-		} else {
-			adapterDirs = append(adapterDirs, dirpath)
 		}
 	}
-
-	for _, dirpath := range adapterDirs {
-		dirname := strings.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
-
-		filesOut, err := t.Run(ctx, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
-		if err != nil {
-			continue
-		}
-
-		for fp := range strings.SplitSeq(strings.TrimSpace(filesOut), "\n") {
-			if fp == "" {
-				continue
-			}
-			filename := fileBase(fp)
-
-			match := iterRe.FindStringSubmatch(filename)
-			if len(match) < 2 {
-				continue
-			}
-			iteration := 0
-			fmt.Sscanf(match[1], "%d", &iteration)
-
-			modelTag, labelPrefix, stem := AdapterMeta(dirname)
-			label := fmt.Sprintf("%s @%s", labelPrefix, match[1])
-			runID := fmt.Sprintf("%s-capability-auto", stem)
-
-			checkpoints = append(checkpoints, Checkpoint{
-				RemoteDir: dirpath,
-				Filename:  filename,
-				Dirname:   dirname,
-				Iteration: iteration,
-				ModelTag:  modelTag,
-				Label:     label,
-				RunID:     runID,
-			})
-		}
-	}
-
-	return checkpoints, nil
 }
 
 // GetScoredLabels returns all (run_id, label) pairs already scored in InfluxDB.
@@ -185,18 +200,29 @@ func GetScoredLabels(influx *InfluxClient) (map[[2]string]bool, error) {
 // FindUnscored filters checkpoints to only unscored ones, sorted by (dirname, iteration).
 func FindUnscored(checkpoints []Checkpoint, scored map[[2]string]bool) []Checkpoint {
 	var unscored []Checkpoint
-	for _, c := range checkpoints {
-		if !scored[[2]string{c.RunID, c.Label}] {
-			unscored = append(unscored, c)
-		}
+	for c := range FindUnscoredIter(checkpoints, scored) {
+		unscored = append(unscored, c)
 	}
-	sort.Slice(unscored, func(i, j int) bool {
-		if unscored[i].Dirname != unscored[j].Dirname {
-			return unscored[i].Dirname < unscored[j].Dirname
+	slices.SortFunc(unscored, func(a, b Checkpoint) int {
+		if a.Dirname != b.Dirname {
+			return strings.Compare(a.Dirname, b.Dirname)
 		}
-		return unscored[i].Iteration < unscored[j].Iteration
+		return a.Iteration - b.Iteration
 	})
 	return unscored
+}
+
+// FindUnscoredIter returns an iterator over checkpoints that have not yet been scored.
+func FindUnscoredIter(checkpoints []Checkpoint, scored map[[2]string]bool) iter.Seq[Checkpoint] {
+	return func(yield func(Checkpoint) bool) {
+		for _, c := range checkpoints {
+			if !scored[[2]string{c.RunID, c.Label}] {
+				if !yield(c) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // isMLXNative returns true if this model can be served directly on M3 via

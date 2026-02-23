@@ -7,16 +7,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
+	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/go-mlx"
-	"forge.lthn.ai/core/cli/pkg/cli"
 )
 
 var abCmd = &cli.Command{
@@ -94,22 +95,22 @@ type abConditionScore struct {
 
 // abProbeResult holds all condition results for a single probe.
 type abProbeResult struct {
-	ID         string                       `json:"id"`
-	Category   string                       `json:"category"`
-	Prompt     string                       `json:"prompt"`
-	Conditions map[string]abConditionScore  `json:"conditions"`
+	ID         string                      `json:"id"`
+	Category   string                      `json:"category"`
+	Prompt     string                      `json:"prompt"`
+	Conditions map[string]abConditionScore `json:"conditions"`
 }
 
 // abConditionSummary holds aggregate metrics for one condition.
 type abConditionSummary struct {
-	Name       string  `json:"name"`
-	Source     string  `json:"source"`
-	Chars      int     `json:"kernel_chars"`
-	AvgLEK     float64 `json:"avg_lek"`
+	Name        string  `json:"name"`
+	Source      string  `json:"source"`
+	Chars       int     `json:"kernel_chars"`
+	AvgLEK      float64 `json:"avg_lek"`
 	DeltaVsBase float64 `json:"delta_vs_baseline"`
-	Improved   int     `json:"improved"`
-	Regressed  int     `json:"regressed"`
-	Unchanged  int     `json:"unchanged"`
+	Improved    int     `json:"improved"`
+	Regressed   int     `json:"regressed"`
+	Unchanged   int     `json:"unchanged"`
 }
 
 // abSummary holds the full test output.
@@ -480,11 +481,7 @@ func printABSummary(s abSummary, condNames []string) {
 	fmt.Println(header)
 	fmt.Println(divider)
 
-	cats := make([]string, 0, len(s.Categories))
-	for cat := range s.Categories {
-		cats = append(cats, cat)
-	}
-	sort.Strings(cats)
+	cats := slices.Sorted(maps.Keys(s.Categories))
 
 	for _, cat := range cats {
 		line := fmt.Sprintf("  %-30s", cat)

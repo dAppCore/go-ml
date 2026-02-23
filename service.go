@@ -3,6 +3,8 @@ package ml
 import (
 	"context"
 	"fmt"
+	"iter"
+	"slices"
 	"sync"
 
 	"forge.lthn.ai/core/go/pkg/framework"
@@ -122,13 +124,20 @@ func (s *Service) DefaultBackend() Backend {
 
 // Backends returns the names of all registered backends.
 func (s *Service) Backends() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	names := make([]string, 0, len(s.backends))
-	for name := range s.backends {
-		names = append(names, name)
+	return slices.Collect(s.BackendsIter())
+}
+
+// BackendsIter returns an iterator over the names of all registered backends.
+func (s *Service) BackendsIter() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		for name := range s.backends {
+			if !yield(name) {
+				return
+			}
+		}
 	}
-	return names
 }
 
 // Judge returns the configured judge, or nil if not set up.

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -69,7 +70,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	skipped := 0
 
 	matches, _ := filepath.Glob(filepath.Join(cfg.OutputDir, cfg.Pattern))
-	sort.Strings(matches)
+	slices.Sort(matches)
 
 	for _, local := range matches {
 		f, err := os.Open(local)
@@ -108,11 +109,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 		mergedPath = filepath.Join(cfg.OutputDir, "..", "gold-merged.jsonl")
 	}
 
-	idxs := make([]int, 0, len(seen))
-	for idx := range seen {
-		idxs = append(idxs, idx)
-	}
-	sort.Ints(idxs)
+	idxs := slices.Sorted(maps.Keys(seen))
 
 	out, err := os.Create(mergedPath)
 	if err != nil {
