@@ -4,6 +4,7 @@ package ml
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"forge.lthn.ai/core/go-inference"
@@ -96,6 +97,17 @@ func (a *InferenceAdapter) Close() error { return a.model.Close() }
 // Model returns the underlying go-inference TextModel for direct access
 // to Classify, BatchGenerate, Metrics, Info, etc.
 func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
+
+// InspectAttention delegates to the underlying TextModel if it implements
+// inference.AttentionInspector. Returns an error if the backend does not support
+// attention inspection.
+func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) (*inference.AttentionSnapshot, error) {
+	inspector, ok := a.model.(inference.AttentionInspector)
+	if !ok {
+		return nil, fmt.Errorf("backend %q does not support attention inspection", a.name)
+	}
+	return inspector.InspectAttention(ctx, prompt, opts...)
+}
 
 // convertOpts maps ml.GenOpts to go-inference functional options.
 func convertOpts(opts GenOpts) []inference.GenerateOption {
