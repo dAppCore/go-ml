@@ -61,48 +61,6 @@ var chatStyles = `
     background: #f04747;
   }
 `;
-var messagesStyles = `
-  :host {
-    display: block;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 16px 0;
-    scroll-behavior: smooth;
-  }
-
-  :host::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  :host::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  :host::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 3px;
-  }
-
-  .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 12px;
-    color: rgba(255, 255, 255, 0.25);
-  }
-
-  .empty-icon {
-    font-size: 36px;
-    opacity: 0.4;
-  }
-
-  .empty-text {
-    font-size: 14px;
-  }
-`;
 var messageStyles = `
   :host {
     display: block;
@@ -245,140 +203,6 @@ var messageStyles = `
     50% { opacity: 0; }
   }
 `;
-var inputStyles = `
-  :host {
-    display: block;
-    padding: 12px 16px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    flex-shrink: 0;
-  }
-
-  .input-wrapper {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 8px 12px;
-    transition: border-color 0.15s;
-  }
-
-  .input-wrapper:focus-within {
-    border-color: var(--lem-accent, #5865f2);
-  }
-
-  textarea {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--lem-text, #e0e0e0);
-    font-family: inherit;
-    font-size: 14px;
-    line-height: 1.5;
-    resize: none;
-    max-height: 120px;
-    min-height: 22px;
-    padding: 0;
-  }
-
-  textarea::placeholder {
-    color: rgba(255, 255, 255, 0.25);
-  }
-
-  .send-btn {
-    background: var(--lem-accent, #5865f2);
-    border: none;
-    border-radius: 8px;
-    color: #fff;
-    width: 32px;
-    height: 32px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-
-  .send-btn:hover {
-    opacity: 0.85;
-  }
-
-  .send-btn:active {
-    transform: scale(0.95);
-  }
-
-  .send-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-    transform: none;
-  }
-
-  .send-btn svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-// src/lem-messages.ts
-var LemMessages = class extends HTMLElement {
-  shadow;
-  container;
-  emptyEl;
-  shouldAutoScroll = true;
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: "open" });
-  }
-  connectedCallback() {
-    const style = document.createElement("style");
-    style.textContent = messagesStyles;
-    this.container = document.createElement("div");
-    this.emptyEl = document.createElement("div");
-    this.emptyEl.className = "empty";
-    const emptyIcon = document.createElement("div");
-    emptyIcon.className = "empty-icon";
-    emptyIcon.textContent = "\u2728";
-    const emptyText = document.createElement("div");
-    emptyText.className = "empty-text";
-    emptyText.textContent = "Start a conversation";
-    this.emptyEl.appendChild(emptyIcon);
-    this.emptyEl.appendChild(emptyText);
-    this.shadow.appendChild(style);
-    this.shadow.appendChild(this.emptyEl);
-    this.shadow.appendChild(this.container);
-    this.addEventListener("scroll", () => {
-      const threshold = 60;
-      this.shouldAutoScroll = this.scrollHeight - this.scrollTop - this.clientHeight < threshold;
-    });
-  }
-  addMessage(role, text) {
-    this.emptyEl.style.display = "none";
-    const msg = document.createElement("lem-message");
-    msg.setAttribute("role", role);
-    this.container.appendChild(msg);
-    if (text) {
-      msg.text = text;
-    }
-    this.scrollToBottom();
-    return msg;
-  }
-  scrollToBottom() {
-    if (this.shouldAutoScroll) {
-      requestAnimationFrame(() => {
-        this.scrollTop = this.scrollHeight;
-      });
-    }
-  }
-  clear() {
-    this.container.replaceChildren();
-    this.emptyEl.style.display = "";
-    this.shouldAutoScroll = true;
-  }
-};
-customElements.define("lem-messages", LemMessages);
 
 // src/markdown.ts
 function escapeHtml(text) {
@@ -392,6 +216,11 @@ function parseInline(text) {
   result = result.replace(/(?<!\w)\*([^*]+)\*(?!\w)/g, "<em>$1</em>");
   result = result.replace(/(?<!\w)_([^_]+)_(?!\w)/g, "<em>$1</em>");
   return result;
+}
+function wrapParagraph(lines) {
+  const joined = lines.join("<br>");
+  if (joined.startsWith("<pre")) return joined;
+  return `<p>${joined}</p>`;
 }
 function renderMarkdown(text) {
   const lines = text.split("\n");
@@ -407,9 +236,7 @@ function renderMarkdown(text) {
         codeLines = [];
       } else {
         const langAttr = codeLang ? ` data-lang="${escapeHtml(codeLang)}"` : "";
-        output.push(
-          `<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`
-        );
+        output.push(`<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
         inCodeBlock = false;
         codeLines = [];
         codeLang = "";
@@ -428,9 +255,7 @@ function renderMarkdown(text) {
   }
   if (inCodeBlock) {
     const langAttr = codeLang ? ` data-lang="${escapeHtml(codeLang)}"` : "";
-    output.push(
-      `<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`
-    );
+    output.push(`<pre${langAttr}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
   }
   const paragraphs = [];
   let current = [];
@@ -449,11 +274,6 @@ function renderMarkdown(text) {
   }
   return paragraphs.join("");
 }
-function wrapParagraph(lines) {
-  const joined = lines.join("<br>");
-  if (joined.startsWith("<pre")) return joined;
-  return `<p>${joined}</p>`;
-}
 
 // src/lem-message.ts
 var LemMessage = class extends HTMLElement {
@@ -462,7 +282,7 @@ var LemMessage = class extends HTMLElement {
   thinkContent;
   thinkLabel;
   contentEl;
-  cursorEl;
+  cursorEl = null;
   _text = "";
   _streaming = false;
   _thinkCollapsed = false;
@@ -504,7 +324,7 @@ var LemMessage = class extends HTMLElement {
     this.shadow.appendChild(style);
     this.shadow.appendChild(bubble);
     if (this._text) {
-      this.render();
+      this.updateContent();
     }
   }
   get text() {
@@ -512,18 +332,18 @@ var LemMessage = class extends HTMLElement {
   }
   set text(value) {
     this._text = value;
-    this.render();
+    this.updateContent();
   }
   get streaming() {
     return this._streaming;
   }
   set streaming(value) {
     this._streaming = value;
-    this.render();
+    this.updateContent();
   }
   appendToken(token) {
     this._text += token;
-    this.render();
+    this.updateContent();
   }
   /**
    * Splits text into think/response portions and renders each.
@@ -532,7 +352,7 @@ var LemMessage = class extends HTMLElement {
    * inline formatting is applied. The source is the local MLX model output,
    * not arbitrary user HTML. Shadow DOM provides additional isolation.
    */
-  render() {
+  updateContent() {
     if (!this.contentEl) return;
     const { think, response } = this.splitThink(this._text);
     if (think !== null && this.thinkPanel) {
@@ -554,10 +374,6 @@ var LemMessage = class extends HTMLElement {
       }
     }
   }
-  /**
-   * Split raw text into think content and response content.
-   * Returns { think: string | null, response: string }
-   */
   splitThink(text) {
     const thinkStart = text.indexOf("<think>");
     if (thinkStart === -1) {
@@ -579,99 +395,6 @@ var LemMessage = class extends HTMLElement {
   }
 };
 customElements.define("lem-message", LemMessage);
-
-// src/lem-input.ts
-var LemInput = class extends HTMLElement {
-  shadow;
-  textarea;
-  sendBtn;
-  _disabled = false;
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: "open" });
-  }
-  connectedCallback() {
-    const style = document.createElement("style");
-    style.textContent = inputStyles;
-    const wrapper = document.createElement("div");
-    wrapper.className = "input-wrapper";
-    this.textarea = document.createElement("textarea");
-    this.textarea.rows = 1;
-    this.textarea.placeholder = "Message LEM...";
-    this.sendBtn = document.createElement("button");
-    this.sendBtn.className = "send-btn";
-    this.sendBtn.type = "button";
-    this.sendBtn.disabled = true;
-    this.sendBtn.appendChild(this.createSendIcon());
-    wrapper.appendChild(this.textarea);
-    wrapper.appendChild(this.sendBtn);
-    this.shadow.appendChild(style);
-    this.shadow.appendChild(wrapper);
-    this.textarea.addEventListener("input", () => {
-      this.textarea.style.height = "auto";
-      this.textarea.style.height = Math.min(this.textarea.scrollHeight, 120) + "px";
-      this.sendBtn.disabled = this._disabled || this.textarea.value.trim() === "";
-    });
-    this.textarea.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        this.submit();
-      }
-    });
-    this.sendBtn.addEventListener("click", () => this.submit());
-  }
-  /** Build the send arrow SVG using DOM API (no innerHTML) */
-  createSendIcon() {
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "2");
-    svg.setAttribute("stroke-linecap", "round");
-    svg.setAttribute("stroke-linejoin", "round");
-    svg.setAttribute("width", "16");
-    svg.setAttribute("height", "16");
-    const line = document.createElementNS(ns, "line");
-    line.setAttribute("x1", "22");
-    line.setAttribute("y1", "2");
-    line.setAttribute("x2", "11");
-    line.setAttribute("y2", "13");
-    const polygon = document.createElementNS(ns, "polygon");
-    polygon.setAttribute("points", "22 2 15 22 11 13 2 9 22 2");
-    svg.appendChild(line);
-    svg.appendChild(polygon);
-    return svg;
-  }
-  submit() {
-    const text = this.textarea.value.trim();
-    if (!text || this._disabled) return;
-    this.dispatchEvent(
-      new CustomEvent("lem-send", {
-        bubbles: true,
-        composed: true,
-        detail: { text }
-      })
-    );
-    this.textarea.value = "";
-    this.textarea.style.height = "auto";
-    this.sendBtn.disabled = true;
-    this.textarea.focus();
-  }
-  get disabled() {
-    return this._disabled;
-  }
-  set disabled(value) {
-    this._disabled = value;
-    this.textarea.disabled = value;
-    this.sendBtn.disabled = value || this.textarea.value.trim() === "";
-    this.textarea.placeholder = value ? "LEM is thinking..." : "Message LEM...";
-  }
-  focus() {
-    this.textarea?.focus();
-  }
-};
-customElements.define("lem-input", LemInput);
 
 // src/lem-chat.ts
 var LemChat = class extends HTMLElement {
@@ -715,7 +438,8 @@ var LemChat = class extends HTMLElement {
     this.shadow.appendChild(this.messages);
     this.shadow.appendChild(this.input);
     this.addEventListener("lem-send", ((e) => {
-      this.handleSend(e.detail.text);
+      const detail = e.detail;
+      this.handleSend(detail.text);
     }));
     const systemPrompt = this.getAttribute("system-prompt");
     if (systemPrompt) {
