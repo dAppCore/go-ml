@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -31,7 +32,7 @@ func runSeedInflux(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB required")
+		return errors.New("--db or LEM_DB required")
 	}
 
 	db, err := ml.OpenDB(path)

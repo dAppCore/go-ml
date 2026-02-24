@@ -1,9 +1,10 @@
 package ml
 
 import (
+	"cmp"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 )
 
 // trainingRow holds deduplicated training status + loss for a single model.
@@ -146,8 +147,8 @@ func dedupeTraining(statusRows, lossRows []map[string]any) []trainingRow {
 		rows = append(rows, tr)
 	}
 
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].model < rows[j].model
+	slices.SortFunc(rows, func(a, b trainingRow) int {
+		return cmp.Compare(a.model, b.model)
 	})
 
 	return rows
@@ -172,8 +173,8 @@ func dedupeGeneration(rows []map[string]any) []genRow {
 		})
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].worker < result[j].worker
+	slices.SortFunc(result, func(a, b genRow) int {
+		return cmp.Compare(a.worker, b.worker)
 	})
 
 	return result

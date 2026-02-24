@@ -1,6 +1,7 @@
 package ml
 
 import (
+	"cmp"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"math"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -174,8 +175,8 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 		}
 	}
 
-	sort.Slice(ggufTensors, func(i, j int) bool {
-		return ggufTensors[i].name < ggufTensors[j].name
+	slices.SortFunc(ggufTensors, func(a, b ggufTensor) int {
+		return cmp.Compare(a.name, b.name)
 	})
 
 	metadata := []ggufMetadata{

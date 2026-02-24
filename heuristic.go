@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"math"
 	"regexp"
 	"strings"
 )
@@ -122,7 +121,7 @@ func scoreCreativeForm(response string) int {
 
 	// Metaphor density.
 	metaphorCount := len(metaphorPattern.FindAllString(response, -1))
-	score += int(math.Min(float64(metaphorCount), 3))
+	score += min(metaphorCount, 3)
 
 	return score
 }
@@ -147,7 +146,7 @@ func scoreEngagementDepth(response string) int {
 
 	// Tech depth.
 	techCount := len(techDepthPattern.FindAllString(response, -1))
-	score += int(math.Min(float64(techCount), 3))
+	score += min(techCount, 3)
 
 	// Word count bonuses.
 	words := len(strings.Fields(response))

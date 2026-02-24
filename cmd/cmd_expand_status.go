@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -21,7 +22,7 @@ func runExpandStatus(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB required")
+		return errors.New("--db or LEM_DB required")
 	}
 
 	db, err := ml.OpenDB(path)
@@ -80,8 +81,8 @@ func runExpandStatus(cmd *cli.Command, args []string) error {
 	return nil
 }
 
-// toInt converts an interface{} (typically from QueryRows) to int.
-func toInt(v interface{}) int {
+// toInt converts an any (typically from QueryRows) to int.
+func toInt(v any) int {
 	switch n := v.(type) {
 	case int:
 		return n

@@ -3,6 +3,7 @@ package ml
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -59,10 +60,10 @@ var (
 // At least one of ContentFile, CapabilityFile, or TrainingLog must be set.
 func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 	if cfg.ContentFile == "" && cfg.CapabilityFile == "" && cfg.TrainingLog == "" {
-		return fmt.Errorf("at least one of --content, --capability, or --training-log is required")
+		return errors.New("at least one of --content, --capability, or --training-log is required")
 	}
 	if cfg.Model == "" {
-		return fmt.Errorf("--model is required")
+		return errors.New("--model is required")
 	}
 	if cfg.RunID == "" {
 		cfg.RunID = cfg.Model
@@ -362,7 +363,7 @@ func extractIteration(label string) int {
 	return n
 }
 
-// toFloat64 converts a JSON-decoded interface{} value to float64.
+// toFloat64 converts a JSON-decoded any value to float64.
 // Handles float64 (standard json.Unmarshal), json.Number, and string values.
 func toFloat64(v any) (float64, bool) {
 	switch val := v.(type) {

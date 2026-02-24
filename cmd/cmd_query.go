@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -35,7 +36,7 @@ func runQuery(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB env is required")
+		return errors.New("--db or LEM_DB env is required")
 	}
 
 	db, err := ml.OpenDB(path)
@@ -129,7 +130,7 @@ func runQuery(cmd *cli.Command, args []string) error {
 	return nil
 }
 
-func formatValue(v interface{}) string {
+func formatValue(v any) string {
 	if v == nil {
 		return "NULL"
 	}

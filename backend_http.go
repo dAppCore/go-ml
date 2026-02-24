@@ -161,7 +161,7 @@ func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) (string, error
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
+		return "", errors.New("no choices in response")
 	}
 
 	return chatResp.Choices[0].Message.Content, nil

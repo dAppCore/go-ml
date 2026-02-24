@@ -5,14 +5,15 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"runtime"
 	"time"
 
-	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
+	"forge.lthn.ai/core/go-ml"
 )
 
 var sandwichCmd = &cli.Command{
@@ -108,7 +109,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	)
 
 	if len(seeds) == 0 {
-		return fmt.Errorf("no seed prompts found")
+		return errors.New("no seed prompts found")
 	}
 
 	// Open output file

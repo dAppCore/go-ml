@@ -2,6 +2,7 @@ package ml
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,12 +35,12 @@ type uploadEntry struct {
 // or ~/.huggingface/token, in that order.
 func Publish(cfg PublishConfig, w io.Writer) error {
 	if cfg.InputDir == "" {
-		return fmt.Errorf("input directory is required")
+		return errors.New("input directory is required")
 	}
 
 	token := resolveHFToken(cfg.Token)
 	if token == "" && !cfg.DryRun {
-		return fmt.Errorf("HuggingFace token required (--token, HF_TOKEN env, or ~/.huggingface/token)")
+		return errors.New("HuggingFace token required (--token, HF_TOKEN env, or ~/.huggingface/token)")
 	}
 
 	files, err := collectUploadFiles(cfg.InputDir)

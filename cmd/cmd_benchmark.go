@@ -3,19 +3,21 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"os"
 	"runtime"
-	"sort"
+	"slices"
 	"time"
 
+	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-i18n/reversal"
 	"forge.lthn.ai/core/go-ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.
@@ -65,10 +67,10 @@ func computeGrammarScore(imp reversal.GrammarImprint) grammarScore {
 	}
 
 	tenseNorm := gs.TenseEntropy / 1.585 // max entropy for 3 tenses = log2(3)
-	vocabNorm := math.Min(gs.VocabRichness*10, 1.0)
-	questionNorm := math.Min(gs.QuestionRatio*5, 1.0)
-	verbNorm := math.Min(float64(gs.VerbDiversity)/30.0, 1.0)
-	nounNorm := math.Min(float64(gs.NounDiversity)/40.0, 1.0)
+	vocabNorm := min(gs.VocabRichness*10, 1.0)
+	questionNorm := min(gs.QuestionRatio*5, 1.0)
+	verbNorm := min(float64(gs.VerbDiversity)/30.0, 1.0)
+	nounNorm := min(float64(gs.NounDiversity)/40.0, 1.0)
 
 	gs.Composite = 0.25*tenseNorm +
 		0.25*vocabNorm +
@@ -176,16 +178,16 @@ type benchmarkResult struct {
 
 // benchmarkSummary holds aggregate comparison metrics.
 type benchmarkSummary struct {
-	BaselineModel   string             `json:"baseline_model"`
-	TrainedModel    string             `json:"trained_model"`
-	TotalPrompts    int                `json:"total_prompts"`
-	AvgBaselineLEK  float64            `json:"avg_baseline_lek"`
-	AvgTrainedLEK   float64            `json:"avg_trained_lek"`
-	AvgDelta        float64            `json:"avg_delta"`
-	Improved        int                `json:"improved"`
-	Regressed       int                `json:"regressed"`
-	Unchanged       int                `json:"unchanged"`
-	Duration        string             `json:"duration"`
+	BaselineModel  string  `json:"baseline_model"`
+	TrainedModel   string  `json:"trained_model"`
+	TotalPrompts   int     `json:"total_prompts"`
+	AvgBaselineLEK float64 `json:"avg_baseline_lek"`
+	AvgTrainedLEK  float64 `json:"avg_trained_lek"`
+	AvgDelta       float64 `json:"avg_delta"`
+	Improved       int     `json:"improved"`
+	Regressed      int     `json:"regressed"`
+	Unchanged      int     `json:"unchanged"`
+	Duration       string  `json:"duration"`
 
 	// Grammar v3 aggregates
 	AvgBaselineGrammar float64 `json:"avg_baseline_grammar"`
@@ -351,7 +353,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	n := float64(len(results))
 	if n == 0 {
-		return fmt.Errorf("no results to compare")
+		return errors.New("no results to compare")
 	}
 
 	summary := benchmarkSummary{
@@ -464,6 +466,6 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		prompts = append(prompts, benchPrompt{id: id, prompt: r.Prompt})
 	}
 
-	sort.Slice(prompts, func(i, j int) bool { return prompts[i].id < prompts[j].id })
+	slices.SortFunc(prompts, func(a, b benchPrompt) int { return cmp.Compare(a.id, b.id) })
 	return prompts, nil
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,10 +11,10 @@ import (
 )
 
 var (
-	expandWorker  string
-	expandOutput  string
-	expandLimit   int
-	expandDryRun  bool
+	expandWorker string
+	expandOutput string
+	expandLimit  int
+	expandDryRun bool
 )
 
 var expandCmd = &cli.Command{
@@ -32,7 +33,7 @@ func init() {
 
 func runExpand(cmd *cli.Command, args []string) error {
 	if modelName == "" {
-		return fmt.Errorf("--model is required")
+		return errors.New("--model is required")
 	}
 
 	path := dbPath
@@ -40,7 +41,7 @@ func runExpand(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB env is required")
+		return errors.New("--db or LEM_DB env is required")
 	}
 
 	if expandWorker == "" {

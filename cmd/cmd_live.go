@@ -71,7 +71,7 @@ func runLive(cmd *cli.Command, args []string) error {
 }
 
 // sqlScalar extracts the first numeric value from a QuerySQL result.
-func sqlScalar(rows []map[string]interface{}) int {
+func sqlScalar(rows []map[string]any) int {
 	if len(rows) == 0 {
 		return 0
 	}

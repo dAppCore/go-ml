@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -33,10 +33,10 @@ func init() {
 
 func runIngest(cmd *cli.Command, args []string) error {
 	if modelName == "" {
-		return fmt.Errorf("--model is required")
+		return errors.New("--model is required")
 	}
 	if ingestContent == "" && ingestCapability == "" && ingestTraining == "" {
-		return fmt.Errorf("at least one of --content, --capability, or --training-log is required")
+		return errors.New("at least one of --content, --capability, or --training-log is required")
 	}
 
 	influx := ml.NewInfluxClient(influxURL, influxDB)

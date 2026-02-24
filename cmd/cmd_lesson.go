@@ -5,6 +5,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -13,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
+	"forge.lthn.ai/core/go-ml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -90,9 +91,9 @@ type lessonPrompt struct {
 
 // lessonState tracks progress through a lesson.
 type lessonState struct {
-	LessonID  string                    `json:"lesson_id"`
-	Completed map[string]lessonResult   `json:"completed"`
-	UpdatedAt string                    `json:"updated_at"`
+	LessonID  string                  `json:"lesson_id"`
+	Completed map[string]lessonResult `json:"completed"`
+	UpdatedAt string                  `json:"updated_at"`
 }
 
 type lessonResult struct {
@@ -162,7 +163,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	)
 
 	if len(lesson.Prompts) == 0 {
-		return fmt.Errorf("lesson has no prompts")
+		return errors.New("lesson has no prompts")
 	}
 
 	// Load state for resume
