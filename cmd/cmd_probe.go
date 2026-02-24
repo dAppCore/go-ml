@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -27,7 +28,7 @@ func init() {
 
 func runProbe(cmd *cli.Command, args []string) error {
 	if apiURL == "" {
-		return fmt.Errorf("--api-url is required")
+		return errors.New("--api-url is required")
 	}
 
 	model := modelName

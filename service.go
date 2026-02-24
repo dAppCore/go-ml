@@ -2,6 +2,7 @@ package ml
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"slices"
@@ -165,7 +166,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 // ScoreResponses scores a batch of responses using the configured engine.
 func (s *Service) ScoreResponses(ctx context.Context, responses []Response) (map[string][]PromptScore, error) {
 	if s.engine == nil {
-		return nil, fmt.Errorf("scoring engine not configured (set JudgeURL and JudgeModel)")
+		return nil, errors.New("scoring engine not configured (set JudgeURL and JudgeModel)")
 	}
 	return s.engine.ScoreAll(ctx, responses), nil
 }

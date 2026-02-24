@@ -3,6 +3,7 @@ package ml
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -271,7 +272,7 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
+		return "", errors.New("no choices in response")
 	}
 
 	content := chatResp.Choices[0].Message.Content

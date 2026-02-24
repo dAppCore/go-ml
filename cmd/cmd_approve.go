@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ func runApprove(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB required")
+		return errors.New("--db or LEM_DB required")
 	}
 
 	output := approveOutput

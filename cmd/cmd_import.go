@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +18,7 @@ var importCmd = &cli.Command{
 }
 
 var (
-	importSkipM3 bool
+	importSkipM3  bool
 	importDataDir string
 	importM3Host  string
 )
@@ -34,7 +35,7 @@ func runImportAll(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB required")
+		return errors.New("--db or LEM_DB required")
 	}
 
 	dataDir := importDataDir

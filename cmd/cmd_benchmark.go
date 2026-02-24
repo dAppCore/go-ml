@@ -5,6 +5,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -13,9 +14,9 @@ import (
 	"sort"
 	"time"
 
+	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-i18n/reversal"
 	"forge.lthn.ai/core/go-ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.
@@ -176,16 +177,16 @@ type benchmarkResult struct {
 
 // benchmarkSummary holds aggregate comparison metrics.
 type benchmarkSummary struct {
-	BaselineModel   string             `json:"baseline_model"`
-	TrainedModel    string             `json:"trained_model"`
-	TotalPrompts    int                `json:"total_prompts"`
-	AvgBaselineLEK  float64            `json:"avg_baseline_lek"`
-	AvgTrainedLEK   float64            `json:"avg_trained_lek"`
-	AvgDelta        float64            `json:"avg_delta"`
-	Improved        int                `json:"improved"`
-	Regressed       int                `json:"regressed"`
-	Unchanged       int                `json:"unchanged"`
-	Duration        string             `json:"duration"`
+	BaselineModel  string  `json:"baseline_model"`
+	TrainedModel   string  `json:"trained_model"`
+	TotalPrompts   int     `json:"total_prompts"`
+	AvgBaselineLEK float64 `json:"avg_baseline_lek"`
+	AvgTrainedLEK  float64 `json:"avg_trained_lek"`
+	AvgDelta       float64 `json:"avg_delta"`
+	Improved       int     `json:"improved"`
+	Regressed      int     `json:"regressed"`
+	Unchanged      int     `json:"unchanged"`
+	Duration       string  `json:"duration"`
 
 	// Grammar v3 aggregates
 	AvgBaselineGrammar float64 `json:"avg_baseline_grammar"`
@@ -351,7 +352,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	n := float64(len(results))
 	if n == 0 {
-		return fmt.Errorf("no results to compare")
+		return errors.New("no results to compare")
 	}
 
 	summary := benchmarkSummary{

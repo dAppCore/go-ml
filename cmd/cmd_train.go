@@ -10,6 +10,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,9 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/go-mlx"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"github.com/ollama/ollama/tokenizer"
 )
 
 var trainCmd = &cli.Command{
@@ -36,15 +38,15 @@ Training data format (one JSON object per line):
 }
 
 var (
-	trainModelPath  string
-	trainData       string
-	trainOutput     string
-	trainRank       int
-	trainAlpha      float64
-	trainLR         float64
-	trainEpochs     int
-	trainMaxSeqLen  int
-	trainTargets    string
+	trainModelPath   string
+	trainData        string
+	trainOutput      string
+	trainRank        int
+	trainAlpha       float64
+	trainLR          float64
+	trainEpochs      int
+	trainMaxSeqLen   int
+	trainTargets     string
 	trainMemoryLimit int
 )
 
@@ -113,7 +115,7 @@ func runTrain(cmd *cli.Command, args []string) error {
 	slog.Info("training data loaded", "samples", len(samples))
 
 	if len(samples) == 0 {
-		return fmt.Errorf("no training samples loaded")
+		return errors.New("no training samples loaded")
 	}
 
 	// --- Training loop ---

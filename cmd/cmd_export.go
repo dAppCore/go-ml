@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -46,7 +47,7 @@ func runExport(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return fmt.Errorf("--db or LEM_DB env is required")
+		return errors.New("--db or LEM_DB env is required")
 	}
 
 	db, err := ml.OpenDB(path)

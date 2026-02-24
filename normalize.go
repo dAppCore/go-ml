@@ -1,6 +1,7 @@
 package ml
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -29,7 +30,7 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 	fmt.Fprintf(w, "Seeds table: %d rows\n", seedCount)
 
 	if seedCount == 0 {
-		return fmt.Errorf("seeds table is empty, nothing to normalize")
+		return errors.New("seeds table is empty, nothing to normalize")
 	}
 
 	// 2. Drop and recreate expansion_prompts.

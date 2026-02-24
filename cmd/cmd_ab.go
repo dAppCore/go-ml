@@ -5,6 +5,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -319,7 +320,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 
 	if len(results) == 0 {
-		return fmt.Errorf("no results to compare")
+		return errors.New("no results to compare")
 	}
 
 	// Build condition summaries
@@ -551,7 +552,7 @@ func loadABProbes() ([]abProbe, error) {
 
 func loadABKernels() ([]abKernelDef, error) {
 	if len(abKernels) == 0 {
-		return nil, fmt.Errorf("at least one --kernel is required (raw file content is used as system message with zero instruction)")
+		return nil, errors.New("at least one --kernel is required (raw file content is used as system message with zero instruction)")
 	}
 
 	var defs []abKernelDef

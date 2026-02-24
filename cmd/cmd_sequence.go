@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
+	"forge.lthn.ai/core/go-ml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -70,10 +71,10 @@ type sequenceDef struct {
 
 // sequenceState tracks progress through a sequence.
 type sequenceState struct {
-	SequenceID string            `json:"sequence_id"`
-	Completed  map[string]bool   `json:"completed"` // lesson ID → done
-	Current    string            `json:"current"`
-	UpdatedAt  string            `json:"updated_at"`
+	SequenceID string          `json:"sequence_id"`
+	Completed  map[string]bool `json:"completed"` // lesson ID → done
+	Current    string          `json:"current"`
+	UpdatedAt  string          `json:"updated_at"`
 }
 
 func runSequence(cmd *cli.Command, args []string) error {
@@ -103,7 +104,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		modelPath = seq.ModelPath
 	}
 	if modelPath == "" {
-		return fmt.Errorf("model-path is required (flag or sequence YAML)")
+		return errors.New("model-path is required (flag or sequence YAML)")
 	}
 
 	// Resolve output

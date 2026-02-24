@@ -3,6 +3,7 @@ package ml
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"maps"
@@ -52,7 +53,7 @@ func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, err
 	}
 
 	if len(data) < 8 {
-		return nil, nil, fmt.Errorf("file too small")
+		return nil, nil, errors.New("file too small")
 	}
 
 	headerSize := int(binary.LittleEndian.Uint64(data[:8]))

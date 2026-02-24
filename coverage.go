@@ -1,6 +1,7 @@
 package ml
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -21,7 +22,7 @@ func PrintCoverage(db *DB, w io.Writer) error {
 		return fmt.Errorf("count seeds: %w (run: core ml import-all first)", err)
 	}
 	if len(rows) == 0 {
-		return fmt.Errorf("no seeds table found (run: core ml import-all first)")
+		return errors.New("no seeds table found (run: core ml import-all first)")
 	}
 	total := toInt(rows[0]["total"])
 
