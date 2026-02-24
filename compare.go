@@ -2,7 +2,8 @@ package ml
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 )
 
 // RunCompare reads two score files and prints a comparison table for each
@@ -28,13 +29,7 @@ func RunCompare(oldPath, newPath string) error {
 	}
 
 	// Sort model names for deterministic output.
-	sortedModels := make([]string, 0, len(models))
-	for m := range models {
-		sortedModels = append(sortedModels, m)
-	}
-	sort.Strings(sortedModels)
-
-	for _, model := range sortedModels {
+	for _, model := range slices.Sorted(maps.Keys(models)) {
 		oldAvgs := oldOutput.ModelAverages[model]
 		newAvgs := newOutput.ModelAverages[model]
 
@@ -54,13 +49,7 @@ func RunCompare(oldPath, newPath string) error {
 			metrics[k] = true
 		}
 
-		sortedMetrics := make([]string, 0, len(metrics))
-		for k := range metrics {
-			sortedMetrics = append(sortedMetrics, k)
-		}
-		sort.Strings(sortedMetrics)
-
-		for _, metric := range sortedMetrics {
+		for _, metric := range slices.Sorted(maps.Keys(metrics)) {
 			oldVal := oldAvgs[metric]
 			newVal := newAvgs[metric]
 			delta := newVal - oldVal
