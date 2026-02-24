@@ -129,7 +129,7 @@ func runQuery(cmd *cli.Command, args []string) error {
 	return nil
 }
 
-func formatValue(v interface{}) string {
+func formatValue(v any) string {
 	if v == nil {
 		return "NULL"
 	}

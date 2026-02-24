@@ -362,7 +362,7 @@ func extractIteration(label string) int {
 	return n
 }
 
-// toFloat64 converts a JSON-decoded interface{} value to float64.
+// toFloat64 converts a JSON-decoded any value to float64.
 // Handles float64 (standard json.Unmarshal), json.Number, and string values.
 func toFloat64(v any) (float64, bool) {
 	switch val := v.(type) {

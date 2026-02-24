@@ -80,8 +80,8 @@ func runExpandStatus(cmd *cli.Command, args []string) error {
 	return nil
 }
 
-// toInt converts an interface{} (typically from QueryRows) to int.
-func toInt(v interface{}) int {
+// toInt converts an any (typically from QueryRows) to int.
+func toInt(v any) int {
 	switch n := v.(type) {
 	case int:
 		return n
