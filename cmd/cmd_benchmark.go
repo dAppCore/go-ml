@@ -67,10 +67,10 @@ func computeGrammarScore(imp reversal.GrammarImprint) grammarScore {
 	}
 
 	tenseNorm := gs.TenseEntropy / 1.585 // max entropy for 3 tenses = log2(3)
-	vocabNorm := math.Min(gs.VocabRichness*10, 1.0)
-	questionNorm := math.Min(gs.QuestionRatio*5, 1.0)
-	verbNorm := math.Min(float64(gs.VerbDiversity)/30.0, 1.0)
-	nounNorm := math.Min(float64(gs.NounDiversity)/40.0, 1.0)
+	vocabNorm := min(gs.VocabRichness*10, 1.0)
+	questionNorm := min(gs.QuestionRatio*5, 1.0)
+	verbNorm := min(float64(gs.VerbDiversity)/30.0, 1.0)
+	nounNorm := min(float64(gs.NounDiversity)/40.0, 1.0)
 
 	gs.Composite = 0.25*tenseNorm +
 		0.25*vocabNorm +
