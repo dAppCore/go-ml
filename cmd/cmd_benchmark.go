@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,7 +12,7 @@ import (
 	"math"
 	"os"
 	"runtime"
-	"sort"
+	"slices"
 	"time"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -465,6 +466,6 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		prompts = append(prompts, benchPrompt{id: id, prompt: r.Prompt})
 	}
 
-	sort.Slice(prompts, func(i, j int) bool { return prompts[i].id < prompts[j].id })
+	slices.SortFunc(prompts, func(a, b benchPrompt) int { return cmp.Compare(a.id, b.id) })
 	return prompts, nil
 }
