@@ -131,7 +131,7 @@ func runTrain(cmd *cli.Command, args []string) error {
 	var totalLoss float64
 	var totalSteps int
 
-	for epoch := 0; epoch < trainEpochs; epoch++ {
+	for epoch := range trainEpochs {
 		var epochLoss float64
 		epochStart := time.Now()
 
