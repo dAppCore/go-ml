@@ -1,9 +1,4 @@
-// TODO(virgil): Re-enable when go-mlx exports concrete model type for training.
-// The old go-ai/mlx/model and go-ai/mlx/tokenizer packages were extracted to go-mlx
-// but the training-specific API (LoadModel→concrete type with ApplyLoRA, Forward,
-// NewCache, Tokenizer) is not yet re-exported through the public interface.
-// See: https://forge.lthn.ai/core/go-mlx — needs training API surface.
-//go:build ignore
+//go:build darwin && arm64
 
 package cmd
 
@@ -19,9 +14,10 @@ import (
 	"time"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-ml"
+	ml "forge.lthn.ai/core/go-ml"
+
+	"forge.lthn.ai/core/go-inference"
 	"forge.lthn.ai/core/go-mlx"
-	"github.com/ollama/ollama/tokenizer"
 )
 
 var trainCmd = &cli.Command{
@@ -74,41 +70,42 @@ type trainSample struct {
 func runTrain(cmd *cli.Command, args []string) error {
 	start := time.Now()
 
-	// --- Load model ---
+	// --- Load model via go-inference TrainableModel ---
 	slog.Info("loading model", "path", trainModelPath)
-	m, err := model.LoadModel(trainModelPath)
+	tm, err := inference.LoadTrainable(trainModelPath)
 	if err != nil {
 		return fmt.Errorf("load model: %w", err)
 	}
+	defer tm.Close()
 
 	mlx.SetCacheLimit(uint64(trainMemoryLimit) * 1024 * 1024 * 1024)
 	mlx.SetMemoryLimit(uint64(trainMemoryLimit) * 1024 * 1024 * 1024)
 
-	tok := m.Tokenizer()
 	slog.Info("model loaded",
-		"type", m.ModelType(),
-		"layers", m.NumLayers(),
+		"type", tm.ModelType(),
+		"layers", tm.NumLayers(),
 	)
 
 	// --- Apply LoRA ---
 	targets := strings.Split(trainTargets, ",")
-	cfg := mlx.LoRAConfig{
+	cfg := inference.LoRAConfig{
 		Rank:       trainRank,
 		Alpha:      float32(trainAlpha),
 		TargetKeys: targets,
 	}
 
-	adapter := m.ApplyLoRA(cfg)
+	adapter := tm.ApplyLoRA(cfg)
+	loraAdapter := mlx.ConcreteAdapter(adapter)
 	slog.Info("LoRA applied",
 		"rank", cfg.Rank,
 		"alpha", cfg.Alpha,
 		"targets", targets,
 		"trainable_params", adapter.TotalParams(),
-		"layers", len(adapter.Layers),
+		"layers", len(loraAdapter.Layers),
 	)
 
 	// --- Load training data ---
-	samples, err := loadTrainingSamples(trainData, tok, m.ModelType(), trainMaxSeqLen)
+	samples, err := loadTrainingSamples(trainData, tm, trainMaxSeqLen)
 	if err != nil {
 		return fmt.Errorf("load training data: %w", err)
 	}
@@ -118,8 +115,11 @@ func runTrain(cmd *cli.Command, args []string) error {
 		return errors.New("no training samples loaded")
 	}
 
+	// --- Get concrete Metal model for training loop ---
+	internal := mlx.TrainingModel(tm)
+
 	// --- Training loop ---
-	params := adapter.AllTrainableParams()
+	params := loraAdapter.AllTrainableParams()
 	opt := mlx.NewAdamW(trainLR)
 
 	// Build argument indices for ValueAndGrad (all params)
@@ -160,13 +160,13 @@ func runTrain(cmd *cli.Command, args []string) error {
 			// Loss function closure — takes LoRA params as inputs
 			lossFn := func(inputs []*mlx.Array) []*mlx.Array {
 				// Set LoRA params from inputs
-				adapter.SetAllParams(inputs)
+				loraAdapter.SetAllParams(inputs)
 
 				// Forward pass with fresh caches (no KV caching for training)
-				caches := m.NewCache()
-				logits := m.Forward(inputArr, caches)
+				caches := internal.NewCache()
+				logits := internal.Forward(inputArr, caches)
 
-				// Cast targets to int32 for take_along_axis
+				// Masked cross-entropy loss on assistant tokens only
 				loss := mlx.MaskedCrossEntropyLoss(logits, targetArr, maskArr)
 				return []*mlx.Array{loss}
 			}
@@ -187,7 +187,7 @@ func runTrain(cmd *cli.Command, args []string) error {
 
 			// Update parameters
 			params = opt.Step(params, grads)
-			adapter.SetAllParams(params)
+			loraAdapter.SetAllParams(params)
 			mlx.Materialize(params...)
 
 			// Periodic cleanup
@@ -235,13 +235,14 @@ func runTrain(cmd *cli.Command, args []string) error {
 }
 
 // loadTrainingSamples reads JSONL and tokenises each conversation.
-func loadTrainingSamples(path string, tok *tokenizer.Tokenizer, modelType string, maxSeqLen int) ([]trainSample, error) {
+func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int) ([]trainSample, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
+	modelType := tm.ModelType()
 	var samples []trainSample
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 1<<20), 1<<20) // 1MB line buffer
@@ -266,7 +267,7 @@ func loadTrainingSamples(path string, tok *tokenizer.Tokenizer, modelType string
 			continue
 		}
 
-		sample := tokeniseConversation(entry.Messages, tok, modelType, maxSeqLen)
+		sample := tokeniseConversation(entry.Messages, tm, modelType, maxSeqLen)
 		if sample != nil {
 			samples = append(samples, *sample)
 		}
@@ -277,13 +278,13 @@ func loadTrainingSamples(path string, tok *tokenizer.Tokenizer, modelType string
 
 // tokeniseConversation formats and tokenises a conversation, creating a mask
 // that is 1 for assistant tokens and 0 for system/user tokens.
-func tokeniseConversation(messages []ml.Message, tok *tokenizer.Tokenizer, modelType string, maxSeqLen int) *trainSample {
+func tokeniseConversation(messages []ml.Message, tm inference.TrainableModel, modelType string, maxSeqLen int) *trainSample {
 	// Strategy: tokenise the full conversation, then tokenise just the prefix
 	// (non-assistant parts) to determine the mask boundary.
 
 	// Build full conversation text
 	fullText := formatConversation(messages, modelType, true)
-	fullTokens := tok.Encode(fullText)
+	fullTokens := tm.Encode(fullText)
 
 	if len(fullTokens) < 2 {
 		return nil
@@ -297,7 +298,7 @@ func tokeniseConversation(messages []ml.Message, tok *tokenizer.Tokenizer, model
 	// Build mask: tokenise prefix (everything up to last assistant response)
 	// then mark remaining tokens as assistant (mask=1)
 	prefixText := formatConversation(messages, modelType, false)
-	prefixTokens := tok.Encode(prefixText)
+	prefixTokens := tm.Encode(prefixText)
 
 	mask := make([]int32, len(fullTokens))
 	for i := range mask {
