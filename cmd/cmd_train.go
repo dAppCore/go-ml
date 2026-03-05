@@ -65,8 +65,9 @@ var (
 	trainValidSplit   float64
 	trainRunID        string
 	trainPhase        string
-	trainNoTelemetry  bool
+	trainNoTelemetry    bool
 	trainGradCheckpoint bool
+	trainNoTUI          bool
 )
 
 func init() {
@@ -91,6 +92,7 @@ func init() {
 	trainCmd.Flags().StringVar(&trainPhase, "phase", "P0", "Training phase tag for telemetry")
 	trainCmd.Flags().BoolVar(&trainNoTelemetry, "no-telemetry", false, "Disable InfluxDB telemetry")
 	trainCmd.Flags().BoolVar(&trainGradCheckpoint, "grad-checkpoint", true, "Enable gradient checkpointing (saves memory)")
+	trainCmd.Flags().BoolVar(&trainNoTUI, "no-tui", false, "Disable TUI dashboard (log to stdout instead)")
 	trainCmd.MarkFlagRequired("model-path")
 	trainCmd.MarkFlagRequired("data")
 }
@@ -111,6 +113,30 @@ func cosineDecay(step, totalSteps int, maxLR, minLR float64) float64 {
 }
 
 func runTrain(cobraCmd *cli.Command, args []string) error {
+	// --- TUI mode ---
+	if !trainNoTUI {
+		return runTrainTUI(cobraCmd, args)
+	}
+	return runTrainLoop(cobraCmd, nil)
+}
+
+// runTrainTUI launches the TUI dashboard and runs training in a background goroutine.
+func runTrainTUI(cobraCmd *cli.Command, _ []string) error {
+	tui := NewTrainFrame()
+
+	// Run training in background, send ticks to TUI
+	var trainErr error
+	go func() {
+		trainErr = runTrainLoop(cobraCmd, tui)
+		tui.SendDone(trainErr)
+	}()
+
+	tui.Run()
+	return trainErr
+}
+
+// runTrainLoop is the core training loop. If tui is non-nil, it sends progress ticks.
+func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	start := time.Now()
 
 	// --- Auto-generate run ID ---
@@ -308,15 +334,19 @@ func runTrain(cobraCmd *cli.Command, args []string) error {
 			tps := float64(dtok) / dt
 			perplexity := math.Exp(math.Min(avgLoss, 20))
 
-			slog.Info("train",
-				"iter", fmt.Sprintf("%d/%d", it, totalIters),
-				"loss", fmt.Sprintf("%.4f", avgLoss),
-				"ppl", fmt.Sprintf("%.2f", perplexity),
-				"lr", fmt.Sprintf("%.2e", lr),
-				"tok/s", fmt.Sprintf("%.0f", tps),
-				"peak", fmt.Sprintf("%.1fGB", peak),
-				"tokens", trainedTokens,
-			)
+			if tui == nil {
+				slog.Info("train",
+					"iter", fmt.Sprintf("%d/%d", it, totalIters),
+					"loss", fmt.Sprintf("%.4f", avgLoss),
+					"ppl", fmt.Sprintf("%.2f", perplexity),
+					"lr", fmt.Sprintf("%.2e", lr),
+					"tok/s", fmt.Sprintf("%.0f", tps),
+					"peak", fmt.Sprintf("%.1fGB", peak),
+					"tokens", trainedTokens,
+				)
+			} else {
+				tui.SendTick(it, totalIters, avgLoss, 0, lr, tps, peak, trainedTokens, trainPhase, trainRunID)
+			}
 
 			// InfluxDB telemetry
 			if influx != nil {
@@ -339,11 +369,16 @@ func runTrain(cobraCmd *cli.Command, args []string) error {
 		if trainValEvery > 0 && len(validSamples) > 0 && it%trainValEvery == 0 {
 			valLoss := evalValidation(internal, loraAdapter, validSamples, trainMaxSeqLen)
 
-			slog.Info("validation",
-				"iter", it,
-				"val_loss", fmt.Sprintf("%.4f", valLoss),
-				"val_ppl", fmt.Sprintf("%.2f", math.Exp(math.Min(valLoss, 20))),
-			)
+			if tui == nil {
+				slog.Info("validation",
+					"iter", it,
+					"val_loss", fmt.Sprintf("%.4f", valLoss),
+					"val_ppl", fmt.Sprintf("%.2f", math.Exp(math.Min(valLoss, 20))),
+				)
+			} else {
+				peak := float64(mlx.GetPeakMemory()) / 1e9
+				tui.SendTick(it, totalIters, 0, valLoss, lr, 0, peak, trainedTokens, trainPhase, trainRunID)
+			}
 
 			if influx != nil {
 				lp := fmt.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=val loss=%.6f,iteration=%di",

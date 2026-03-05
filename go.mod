@@ -9,6 +9,7 @@ require (
 	forge.lthn.ai/core/go-i18n v0.1.0
 	forge.lthn.ai/core/go-inference v0.1.0
 	forge.lthn.ai/core/go-mlx v0.1.0
+	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.11.0
 	github.com/marcboeker/go-duckdb v1.8.5
 	github.com/parquet-go/parquet-go v0.27.0
@@ -32,7 +33,6 @@ require (
 	github.com/casbin/casbin/v2 v2.135.0 // indirect
 	github.com/casbin/govaluate v1.10.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/bubbletea v1.3.10 // indirect
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834 // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
