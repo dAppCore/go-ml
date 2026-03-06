@@ -1,0 +1,25 @@
+version: 1
+
+project:
+  name: go-ml
+  description: Machine learning — training and scoring
+  main: ./cmd/lem
+  binary: lem
+
+build:
+  cgo: false
+  flags:
+    - -trimpath
+  ldflags:
+    - -s
+    - -w
+
+targets:
+  - os: linux
+    arch: amd64
+  - os: linux
+    arch: arm64
+  - os: darwin
+    arch: arm64
+  - os: windows
+    arch: amd64
