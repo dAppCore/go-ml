@@ -14,6 +14,7 @@ forge.lthn.ai/core/go-log v0.0.1 h1:x/E6EfF9vixzqiLHQOl2KT25HyBcMc9qiBkomqVlpPg=
 forge.lthn.ai/core/go-log v0.0.1/go.mod h1:r14MXKOD3LF/sI8XUJQhRk/SZHBE7jAFVuCfgkXoZPw=
 forge.lthn.ai/core/go-mlx v0.1.0 h1:nMDhMma3M9iSm2ymNyqMe+aAbJDasNnxgi/1dZ+Zq7c=
 forge.lthn.ai/core/go-mlx v0.1.0/go.mod h1:b4BJX67nx9QZiyREl2lmYIPJ+Yp5amZug3y7vXaRy/Y=
+forge.lthn.ai/core/go-process v0.1.0 h1:lRpliQuu/Omt+kAHMFoQYOb5PKEIKg8yTMchFhejpK8=
 github.com/99designs/gqlgen v0.17.87 h1:pSnCIMhBQezAE8bc1GNmfdLXFmnWtWl1GRDFEE/nHP8=
 github.com/99designs/gqlgen v0.17.87/go.mod h1:fK05f1RqSNfQpd4CfW5qk/810Tqi4/56Wf6Nem0khAg=
 github.com/DATA-DOG/go-sqlmock v1.5.2 h1:OcvFkGmslmlZibjAjaHm3L//6LiuBgolP7OputlJIzU=

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"forge.lthn.ai/core/go-log"
-	"forge.lthn.ai/core/go/pkg/process"
+	"forge.lthn.ai/core/go-process"
 )
 
 // LlamaBackend manages a llama-server process and delegates HTTP calls to it.

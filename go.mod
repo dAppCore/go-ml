@@ -10,6 +10,7 @@ require (
 	forge.lthn.ai/core/go-inference v0.1.0
 	forge.lthn.ai/core/go-log v0.0.1
 	forge.lthn.ai/core/go-mlx v0.1.0
+	forge.lthn.ai/core/go-process v0.1.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.11.0
 	github.com/marcboeker/go-duckdb v1.8.5
@@ -142,3 +143,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
+

@@ -8,12 +8,12 @@ import (
 	"slices"
 	"sync"
 
-	"forge.lthn.ai/core/go/pkg/framework"
+	"forge.lthn.ai/core/go/pkg/core"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.
 type Service struct {
-	*framework.ServiceRuntime[Options]
+	*core.ServiceRuntime[Options]
 
 	backends map[string]Backend
 	mu       sync.RWMutex
@@ -56,11 +56,11 @@ type Options struct {
 
 // NewService creates an ML service factory for Core registration.
 //
-//	core, _ := framework.New(
-//	    framework.WithName("ml", ml.NewService(ml.Options{})),
+//	core, _ := core.New(
+//	    core.WithName("ml", ml.NewService(ml.Options{})),
 //	)
-func NewService(opts Options) func(*framework.Core) (any, error) {
-	return func(c *framework.Core) (any, error) {
+func NewService(opts Options) func(*core.Core) (any, error) {
+	return func(c *core.Core) (any, error) {
 		if opts.Concurrency == 0 {
 			opts.Concurrency = 4
 		}
@@ -69,7 +69,7 @@ func NewService(opts Options) func(*framework.Core) (any, error) {
 		}
 
 		svc := &Service{
-			ServiceRuntime: framework.NewServiceRuntime(c, opts),
+			ServiceRuntime: core.NewServiceRuntime(c, opts),
 			backends:       make(map[string]Backend),
 		}
 		return svc, nil
