@@ -10,6 +10,8 @@ forge.lthn.ai/core/go-i18n v0.1.0 h1:F7JVSoVkZtzx9JfhpntM9z3iQm1vnuMUi/Zklhz8PCI
 forge.lthn.ai/core/go-i18n v0.1.0/go.mod h1:Q4xsrxuNCl/6NfMv1daria7t1RSiyy8ml+6jiPtUcBs=
 forge.lthn.ai/core/go-inference v0.1.0 h1:pO7etYgqV8LMKFdpW8/2RWncuECZJCIcf8nnezeZ5R4=
 forge.lthn.ai/core/go-inference v0.1.0/go.mod h1:jfWz+IJX55wAH98+ic6FEqqGB6/P31CHlg7VY7pxREw=
+forge.lthn.ai/core/go-log v0.0.1 h1:x/E6EfF9vixzqiLHQOl2KT25HyBcMc9qiBkomqVlpPg=
+forge.lthn.ai/core/go-log v0.0.1/go.mod h1:r14MXKOD3LF/sI8XUJQhRk/SZHBE7jAFVuCfgkXoZPw=
 forge.lthn.ai/core/go-mlx v0.1.0 h1:nMDhMma3M9iSm2ymNyqMe+aAbJDasNnxgi/1dZ+Zq7c=
 forge.lthn.ai/core/go-mlx v0.1.0/go.mod h1:b4BJX67nx9QZiyREl2lmYIPJ+Yp5amZug3y7vXaRy/Y=
 github.com/99designs/gqlgen v0.17.87 h1:pSnCIMhBQezAE8bc1GNmfdLXFmnWtWl1GRDFEE/nHP8=

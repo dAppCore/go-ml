@@ -8,6 +8,7 @@ require (
 	forge.lthn.ai/core/go-api v0.1.0
 	forge.lthn.ai/core/go-i18n v0.1.0
 	forge.lthn.ai/core/go-inference v0.1.0
+	forge.lthn.ai/core/go-log v0.0.1
 	forge.lthn.ai/core/go-mlx v0.1.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.11.0
