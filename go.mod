@@ -20,8 +20,8 @@ require (
 )
 
 require (
-	forge.lthn.ai/core/go-crypt v0.1.0 // indirect
-	forge.lthn.ai/core/go-io v0.0.5 // indirect
+	forge.lthn.ai/core/go-crypt v0.1.6 // indirect
+	forge.lthn.ai/core/go-io v0.1.0 // indirect
 	github.com/99designs/gqlgen v0.17.87 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
