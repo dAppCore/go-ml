@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	goapi "forge.lthn.ai/core/go-api"
+	goapi "forge.lthn.ai/core/api"
 	mlapi "forge.lthn.ai/core/go-ml/api"
 	"github.com/gin-gonic/gin"
 )

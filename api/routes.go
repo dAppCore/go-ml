@@ -7,7 +7,7 @@ package api
 import (
 	"net/http"
 
-	goapi "forge.lthn.ai/core/go-api"
+	goapi "forge.lthn.ai/core/api"
 	"forge.lthn.ai/core/go-ml"
 	"github.com/gin-gonic/gin"
 )
