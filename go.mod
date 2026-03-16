@@ -3,15 +3,15 @@ module forge.lthn.ai/core/go-ml
 go 1.26.0
 
 require (
-	forge.lthn.ai/core/api v0.1.3
-	forge.lthn.ai/core/cli v0.3.1
+	forge.lthn.ai/core/api v0.1.4
+	forge.lthn.ai/core/cli v0.3.6
 	forge.lthn.ai/core/go v0.3.1
-	forge.lthn.ai/core/go-i18n v0.1.4
-	forge.lthn.ai/core/go-inference v0.1.4
-	forge.lthn.ai/core/go-io v0.1.2
+	forge.lthn.ai/core/go-i18n v0.1.6
+	forge.lthn.ai/core/go-inference v0.1.5
+	forge.lthn.ai/core/go-io v0.1.5
 	forge.lthn.ai/core/go-log v0.0.4
 	forge.lthn.ai/core/go-mlx v0.1.3
-	forge.lthn.ai/core/go-process v0.2.3
+	forge.lthn.ai/core/go-process v0.2.7
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/marcboeker/go-duckdb v1.8.5
@@ -22,10 +22,8 @@ require (
 )
 
 require (
-	forge.lthn.ai/core/go-crypt v0.1.7 // indirect
 	github.com/99designs/gqlgen v0.17.88 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/apache/arrow-go/v18 v18.5.2 // indirect
@@ -44,7 +42,6 @@ require (
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -112,7 +109,7 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
