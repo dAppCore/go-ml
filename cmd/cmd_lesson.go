@@ -5,7 +5,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,6 +16,10 @@ import (
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 	"gopkg.in/yaml.v3"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var lessonCmd = &cli.Command{
@@ -106,14 +109,14 @@ func runLesson(cmd *cli.Command, args []string) error {
 	start := time.Now()
 
 	// Load lesson YAML
-	data, err := os.ReadFile(lessonFile)
+	data, err := coreio.Local.Read(lessonFile)
 	if err != nil {
-		return fmt.Errorf("read lesson: %w", err)
+		return coreerr.E("cmd.runLesson", "read lesson", err)
 	}
 
 	var lesson lessonDef
-	if err := yaml.Unmarshal(data, &lesson); err != nil {
-		return fmt.Errorf("parse lesson: %w", err)
+	if err := yaml.Unmarshal([]byte(data), &lesson); err != nil {
+		return coreerr.E("cmd.runLesson", "parse lesson", err)
 	}
 
 	if lesson.ID == "" {
@@ -135,22 +138,22 @@ func runLesson(cmd *cli.Command, args []string) error {
 			if !filepath.IsAbs(kbPath) {
 				kbPath = filepath.Join(baseDir, kbPath)
 			}
-			d, err := os.ReadFile(kbPath)
+			d, err := coreio.Local.Read(kbPath)
 			if err != nil {
-				return fmt.Errorf("read KB: %w", err)
+				return coreerr.E("cmd.runLesson", "read KB", err)
 			}
-			kbText = string(d)
+			kbText = d
 		}
 		if lesson.Sandwich.Kernel != "" {
 			kernelPath := lesson.Sandwich.Kernel
 			if !filepath.IsAbs(kernelPath) {
 				kernelPath = filepath.Join(baseDir, kernelPath)
 			}
-			d, err := os.ReadFile(kernelPath)
+			d, err := coreio.Local.Read(kernelPath)
 			if err != nil {
-				return fmt.Errorf("read kernel: %w", err)
+				return coreerr.E("cmd.runLesson", "read kernel", err)
 			}
-			kernelText = string(d)
+			kernelText = d
 		}
 		sandwich = kbText != "" && kernelText != ""
 	}
@@ -163,7 +166,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	)
 
 	if len(lesson.Prompts) == 0 {
-		return errors.New("lesson has no prompts")
+		return coreerr.E("cmd.runLesson", "lesson has no prompts", nil)
 	}
 
 	// Load state for resume
@@ -203,7 +206,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	slog.Info("lesson: loading model", "path", lessonModelPath)
 	backend, err := ml.NewMLXBackend(lessonModelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runLesson", "load model", err)
 	}
 
 	opts := ml.GenOpts{
@@ -214,7 +217,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	// Open output file (append mode for resume)
 	outFile, err := os.OpenFile(lessonOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return coreerr.E("cmd.runLesson", "create output", err)
 	}
 	defer outFile.Close()
 	encoder := json.NewEncoder(outFile)
@@ -265,7 +268,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			},
 		}
 		if err := encoder.Encode(record); err != nil {
-			return fmt.Errorf("write record: %w", err)
+			return coreerr.E("cmd.runLesson", "write record", err)
 		}
 
 		// Update state
@@ -324,12 +327,12 @@ func runLesson(cmd *cli.Command, args []string) error {
 }
 
 func loadLessonState(path string) lessonState {
-	data, err := os.ReadFile(path)
+	data, err := coreio.Local.Read(path)
 	if err != nil {
 		return lessonState{}
 	}
 	var state lessonState
-	json.Unmarshal(data, &state)
+	json.Unmarshal([]byte(data), &state)
 	return state
 }
 
@@ -338,5 +341,5 @@ func saveLessonState(path string, state lessonState) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	return coreio.Local.Write(path, string(data))
 }

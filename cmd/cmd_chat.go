@@ -14,6 +14,10 @@ import (
 
 	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var chatCmd = &cli.Command{
@@ -61,18 +65,18 @@ func runChat(cmd *cli.Command, args []string) error {
 	// Load optional KB and kernel for sandwich signing
 	var kbText, kernelText string
 	if chatKB != "" {
-		data, err := os.ReadFile(chatKB)
+		data, err := coreio.Local.Read(chatKB)
 		if err != nil {
-			return fmt.Errorf("read KB: %w", err)
+			return coreerr.E("cmd.runChat", "read KB", err)
 		}
-		kbText = string(data)
+		kbText = data
 	}
 	if chatKernel != "" {
-		data, err := os.ReadFile(chatKernel)
+		data, err := coreio.Local.Read(chatKernel)
 		if err != nil {
-			return fmt.Errorf("read kernel: %w", err)
+			return coreerr.E("cmd.runChat", "read kernel", err)
 		}
-		kernelText = string(data)
+		kernelText = data
 	}
 	sandwich := kbText != "" && kernelText != ""
 
@@ -80,7 +84,7 @@ func runChat(cmd *cli.Command, args []string) error {
 	slog.Info("chat: loading model", "path", chatModelPath)
 	backend, err := ml.NewMLXBackend(chatModelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runChat", "load model", err)
 	}
 
 	opts := ml.GenOpts{
@@ -250,7 +254,7 @@ done:
 		savedConversations = append(savedConversations, history)
 
 		if err := writeChatJSONL(chatOutput, savedConversations, sandwich, kbText, kernelText); err != nil {
-			return fmt.Errorf("save conversation: %w", err)
+			return coreerr.E("cmd.runChat", "save conversation", err)
 		}
 	}
 

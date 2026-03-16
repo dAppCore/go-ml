@@ -10,6 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ProbeResult holds the result of running all probes against a checkpoint.
@@ -63,7 +67,7 @@ type probeRunnerResponse struct {
 func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
 	ollamaBase, ok := OllamaBaseModelMap[cp.ModelTag]
 	if !ok {
-		return fmt.Errorf("unknown Ollama model for tag %s", cp.ModelTag)
+		return coreerr.E("ml.processMLXNative", fmt.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
 	}
 	hfBase := HFBaseModelMap[cp.ModelTag]
 	if hfBase == "" {
@@ -74,7 +78,7 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	localAdapterDir := filepath.Join(cfg.WorkDir, "adapter-"+cp.Dirname)
 	peftDir := filepath.Join(cfg.WorkDir, "peft-"+cp.Dirname)
 
-	os.MkdirAll(localAdapterDir, 0755)
+	coreio.Local.EnsureDir(localAdapterDir)
 
 	defer func() {
 		os.RemoveAll(localAdapterDir)
@@ -91,20 +95,20 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	ctx := context.Background()
 	t := cfg.transport()
 	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
-		return fmt.Errorf("scp safetensors: %w", err)
+		return coreerr.E("ml.processMLXNative", "scp safetensors", err)
 	}
 	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
-		return fmt.Errorf("scp config: %w", err)
+		return coreerr.E("ml.processMLXNative", "scp config", err)
 	}
 
 	log.Println("Converting MLX → PEFT format...")
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
-		return fmt.Errorf("convert adapter: %w", err)
+		return coreerr.E("ml.processMLXNative", "convert adapter", err)
 	}
 
 	log.Printf("Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
 	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
-		return fmt.Errorf("ollama create: %w", err)
+		return coreerr.E("ml.processMLXNative", "ollama create", err)
 	}
 	log.Printf("Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
@@ -153,14 +157,14 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 // processWithConversion fetches adapter locally, converts MLX→PEFT, and scores.
 func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
 	localAdapterDir := filepath.Join(cfg.WorkDir, cp.Dirname)
-	os.MkdirAll(localAdapterDir, 0755)
+	coreio.Local.EnsureDir(localAdapterDir)
 
 	localSF := filepath.Join(localAdapterDir, cp.Filename)
 	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
 
 	defer func() {
-		os.Remove(localSF)
-		os.Remove(localCfg)
+		coreio.Local.Delete(localSF)
+		coreio.Local.Delete(localCfg)
 		peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
 		os.RemoveAll(peftDir)
 	}()
@@ -172,16 +176,16 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	ctx := context.Background()
 	t := cfg.transport()
 	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
-		return fmt.Errorf("scp safetensors: %w", err)
+		return coreerr.E("ml.processWithConversion", "scp safetensors", err)
 	}
 	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
-		return fmt.Errorf("scp config: %w", err)
+		return coreerr.E("ml.processWithConversion", "scp config", err)
 	}
 
 	log.Println("Converting MLX to PEFT format...")
 	peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
-		return fmt.Errorf("convert adapter: %w", err)
+		return coreerr.E("ml.processWithConversion", "convert adapter", err)
 	}
 
 	log.Printf("Running %d capability probes...", len(CapabilityProbes))

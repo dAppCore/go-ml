@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var normalizeMinLen int
@@ -28,12 +28,12 @@ func runNormalize(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB env is required")
+		return coreerr.E("cmd.runNormalize", "--db or LEM_DB env is required", nil)
 	}
 
 	db, err := ml.OpenDBReadWrite(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runNormalize", "open db", err)
 	}
 	defer db.Close()
 

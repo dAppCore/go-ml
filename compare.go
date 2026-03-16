@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // RunCompare reads two score files and prints a comparison table for each
@@ -11,12 +13,12 @@ import (
 func RunCompare(oldPath, newPath string) error {
 	oldOutput, err := ReadScorerOutput(oldPath)
 	if err != nil {
-		return fmt.Errorf("read old file: %w", err)
+		return coreerr.E("ml.RunCompare", "read old file", err)
 	}
 
 	newOutput, err := ReadScorerOutput(newPath)
 	if err != nil {
-		return fmt.Errorf("read new file: %w", err)
+		return coreerr.E("ml.RunCompare", "read new file", err)
 	}
 
 	// Collect all models present in both files.

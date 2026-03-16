@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -33,7 +33,7 @@ func runApprove(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB required")
+		return coreerr.E("cmd.runApprove", "--db or LEM_DB required", nil)
 	}
 
 	output := approveOutput
@@ -43,7 +43,7 @@ func runApprove(cmd *cli.Command, args []string) error {
 
 	db, err := ml.OpenDB(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runApprove", "open db", err)
 	}
 	defer db.Close()
 

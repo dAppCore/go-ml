@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"iter"
 	"log"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // RunAgentLoop is the main scoring agent loop.
@@ -27,7 +30,7 @@ func RunAgentLoop(cfg *AgentConfig) {
 	log.Println(strings.Repeat("=", LogSeparatorWidth))
 
 	influx := NewInfluxClient(cfg.InfluxURL, cfg.InfluxDB)
-	os.MkdirAll(cfg.WorkDir, 0755)
+	coreio.Local.EnsureDir(cfg.WorkDir)
 
 	for {
 		ReplayInfluxBuffer(cfg.WorkDir, influx)
@@ -115,7 +118,7 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		ctx := context.Background()
 		out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
 		if err != nil {
-			yield(Checkpoint{}, fmt.Errorf("list adapter dirs: %w", err))
+			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", err))
 			return
 		}
 

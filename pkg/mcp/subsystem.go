@@ -4,7 +4,6 @@ package mcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -146,7 +145,7 @@ func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, in
 	m.logger.Info("MCP tool execution", "tool", "ml_generate", "backend", input.Backend, "user", log.Username())
 
 	if input.Prompt == "" {
-		return nil, MLGenerateOutput{}, errors.New("prompt cannot be empty")
+		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "prompt cannot be empty", nil)
 	}
 
 	opts := ml.GenOpts{
@@ -157,7 +156,7 @@ func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, in
 
 	result, err := m.service.Generate(ctx, input.Backend, input.Prompt, opts)
 	if err != nil {
-		return nil, MLGenerateOutput{}, fmt.Errorf("generate: %w", err)
+		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "generate", err)
 	}
 
 	return nil, MLGenerateOutput{
@@ -171,7 +170,7 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 	m.logger.Info("MCP tool execution", "tool", "ml_score", "suites", input.Suites, "user", log.Username())
 
 	if input.Prompt == "" || input.Response == "" {
-		return nil, MLScoreOutput{}, errors.New("prompt and response cannot be empty")
+		return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "prompt and response cannot be empty", nil)
 	}
 
 	suites := input.Suites
@@ -189,15 +188,15 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 		case "semantic":
 			judge := m.service.Judge()
 			if judge == nil {
-				return nil, MLScoreOutput{}, errors.New("semantic scoring requires a judge backend")
+				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic scoring requires a judge backend", nil)
 			}
 			s, err := judge.ScoreSemantic(ctx, input.Prompt, input.Response)
 			if err != nil {
-				return nil, MLScoreOutput{}, fmt.Errorf("semantic score: %w", err)
+				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic score", err)
 			}
 			output.Semantic = s
 		case "content":
-			return nil, MLScoreOutput{}, errors.New("content scoring requires a ContentProbe — use ml_probe instead")
+			return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "content scoring requires a ContentProbe — use ml_probe instead", nil)
 		}
 	}
 
@@ -258,7 +257,7 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	influx := ml.NewInfluxClient(url, db)
 	var buf strings.Builder
 	if err := ml.PrintStatus(influx, &buf); err != nil {
-		return nil, MLStatusOutput{}, fmt.Errorf("status: %w", err)
+		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
 	}
 
 	return nil, MLStatusOutput{Status: buf.String()}, nil

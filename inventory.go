@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // TargetTotal is the golden set target size used for progress reporting.
@@ -27,7 +29,7 @@ type tableDetail struct {
 func PrintInventory(db *DB, w io.Writer) error {
 	counts, err := db.TableCounts()
 	if err != nil {
-		return fmt.Errorf("table counts: %w", err)
+		return coreerr.E("ml.PrintInventory", "table counts", err)
 	}
 
 	details := gatherDetails(db, counts)

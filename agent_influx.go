@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
 )
 
 // bufferEntry is a JSONL-buffered result for when InfluxDB is down.
@@ -243,7 +245,7 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 // ReplayInfluxBuffer retries pushing buffered results to InfluxDB.
 func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 	bufPath := filepath.Join(workDir, InfluxBufferFile)
-	data, err := os.ReadFile(bufPath)
+	data, err := coreio.Local.Read(bufPath)
 	if err != nil {
 		return
 	}
@@ -266,9 +268,9 @@ func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 	}
 
 	if len(remaining) > 0 {
-		os.WriteFile(bufPath, []byte(strings.Join(remaining, "\n")+"\n"), 0644)
+		coreio.Local.Write(bufPath, strings.Join(remaining, "\n")+"\n")
 	} else {
-		os.Remove(bufPath)
+		coreio.Local.Delete(bufPath)
 		log.Println("Buffer fully replayed and cleared")
 	}
 }

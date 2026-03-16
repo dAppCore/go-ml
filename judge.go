@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // extractJSON extracts the first JSON object {...} from text.
@@ -71,17 +73,17 @@ func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) (*Se
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("semantic judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreSemantic", "semantic judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in semantic judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreSemantic", fmt.Sprintf("no JSON found in semantic judge response: %s", reply), nil)
 	}
 
 	var scores SemanticScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal semantic scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", err)
 	}
 
 	return &scores, nil
@@ -97,17 +99,17 @@ func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response s
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("content judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreContent", "content judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in content judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreContent", fmt.Sprintf("no JSON found in content judge response: %s", reply), nil)
 	}
 
 	var scores ContentScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal content scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", err)
 	}
 
 	return &scores, nil
@@ -120,17 +122,17 @@ func (j *Judge) ScoreCapability(ctx context.Context, prompt, expectedAnswer, res
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("capability judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreCapability", "capability judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in capability judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreCapability", fmt.Sprintf("no JSON found in capability judge response: %s", reply), nil)
 	}
 
 	var scores CapabilityScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal capability scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", err)
 	}
 
 	return &scores, nil
@@ -143,17 +145,17 @@ func (j *Judge) ScoreTruthfulQA(ctx context.Context, question, bestAnswer, respo
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("truthfulqa judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "truthfulqa judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in truthfulqa judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", fmt.Sprintf("no JSON found in truthfulqa judge response: %s", reply), nil)
 	}
 
 	var scores StandardScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal truthfulqa scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", err)
 	}
 
 	return &scores, nil
@@ -166,17 +168,17 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("donotanswer judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "donotanswer judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in donotanswer judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", fmt.Sprintf("no JSON found in donotanswer judge response: %s", reply), nil)
 	}
 
 	var scores StandardScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal donotanswer scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", err)
 	}
 
 	return &scores, nil
@@ -189,17 +191,17 @@ func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) (*Sta
 
 	reply, err := j.judgeChat(ctx, formatted)
 	if err != nil {
-		return nil, fmt.Errorf("toxigen judge chat: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreToxigen", "toxigen judge chat", err)
 	}
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, fmt.Errorf("no JSON found in toxigen judge response: %s", reply)
+		return nil, coreerr.E("ml.Judge.ScoreToxigen", fmt.Sprintf("no JSON found in toxigen judge response: %s", reply), nil)
 	}
 
 	var scores StandardScores
 	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, fmt.Errorf("unmarshal toxigen scores: %w", err)
+		return nil, coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", err)
 	}
 
 	return &scores, nil

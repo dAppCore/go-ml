@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -21,6 +20,10 @@ import (
 
 	"forge.lthn.ai/core/go-inference"
 	"forge.lthn.ai/core/go-mlx"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var trainCmd = &cli.Command{
@@ -148,7 +151,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	slog.Info("loading model", "path", trainModelPath)
 	tm, err := inference.LoadTrainable(trainModelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runTrainLoop", "load model", err)
 	}
 	defer tm.Close()
 
@@ -181,10 +184,10 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	// --- Load and split training data ---
 	allSamples, err := loadTrainingSamples(trainData, tm, trainMaxSeqLen)
 	if err != nil {
-		return fmt.Errorf("load training data: %w", err)
+		return coreerr.E("cmd.runTrainLoop", "load training data", err)
 	}
 	if len(allSamples) == 0 {
-		return errors.New("no training samples loaded")
+		return coreerr.E("cmd.runTrainLoop", "no training samples loaded", nil)
 	}
 
 	// Split into train/valid
@@ -206,8 +209,8 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	)
 
 	// --- Output directory ---
-	if err := os.MkdirAll(trainOutputDir, 0o755); err != nil {
-		return fmt.Errorf("create output dir: %w", err)
+	if err := coreio.Local.EnsureDir(trainOutputDir); err != nil {
+		return coreerr.E("cmd.runTrainLoop", "create output dir", err)
 	}
 	adapterFile := filepath.Join(trainOutputDir, "adapters.safetensors")
 
@@ -301,7 +304,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 		values, grads, err := grad.Apply(params...)
 		grad.Free()
 		if err != nil {
-			return fmt.Errorf("iter %d: gradient failed: %w", it, err)
+			return coreerr.E("cmd.runTrainLoop", fmt.Sprintf("iter %d: gradient failed", it), err)
 		}
 
 		mlx.Materialize(append(values, grads...)...)
@@ -407,7 +410,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 	// --- Final save ---
 	if err := adapter.Save(adapterFile); err != nil {
-		return fmt.Errorf("save final adapter: %w", err)
+		return coreerr.E("cmd.runTrainLoop", "save final adapter", err)
 	}
 	if err := writeAdapterConfig(trainOutputDir, cfg); err != nil {
 		slog.Warn("write adapter_config.json failed", "error", err)
@@ -539,7 +542,7 @@ func writeAdapterConfig(dir string, cfg inference.LoRAConfig) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "adapter_config.json"), data, 0o644)
+	return coreio.Local.Write(filepath.Join(dir, "adapter_config.json"), string(data))
 }
 
 func escapeFieldStr(s string, max int) string {

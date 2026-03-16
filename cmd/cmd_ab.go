@@ -5,7 +5,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -19,6 +18,10 @@ import (
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 	"forge.lthn.ai/core/go-mlx"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var abCmd = &cli.Command{
@@ -228,13 +231,13 @@ func runAB(cmd *cli.Command, args []string) error {
 	slog.Info("ab: loading model", "path", abModelPath)
 	backend, err := ml.NewMLXBackend(abModelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runAB", "load model", err)
 	}
 
 	// Open JSONL output for streaming writes
 	outFile, err := os.Create(abOutput)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return coreerr.E("cmd.runAB", "create output", err)
 	}
 	defer outFile.Close()
 	enc := json.NewEncoder(outFile)
@@ -320,7 +323,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 
 	if len(results) == 0 {
-		return errors.New("no results to compare")
+		return coreerr.E("cmd.runAB", "no results to compare", nil)
 	}
 
 	// Build condition summaries
@@ -518,14 +521,14 @@ func loadABProbes() ([]abProbe, error) {
 		return defaultABSeeds, nil
 	}
 
-	data, err := os.ReadFile(abPrompts)
+	data, err := coreio.Local.Read(abPrompts)
 	if err != nil {
-		return nil, fmt.Errorf("read probes: %w", err)
+		return nil, coreerr.E("cmd.loadABProbes", "read probes", err)
 	}
 
 	// Try standard abProbe format first
 	var probes []abProbe
-	if err := json.Unmarshal(data, &probes); err == nil && len(probes) > 0 && probes[0].Prompt != "" {
+	if err := json.Unmarshal([]byte(data), &probes); err == nil && len(probes) > 0 && probes[0].Prompt != "" {
 		return probes, nil
 	}
 
@@ -535,7 +538,7 @@ func loadABProbes() ([]abProbe, error) {
 		Domain string `json:"domain"`
 		Prompt string `json:"prompt"`
 	}
-	if err := json.Unmarshal(data, &seeds); err == nil && len(seeds) > 0 {
+	if err := json.Unmarshal([]byte(data), &seeds); err == nil && len(seeds) > 0 {
 		probes = make([]abProbe, len(seeds))
 		for i, s := range seeds {
 			probes[i] = abProbe{
@@ -547,12 +550,12 @@ func loadABProbes() ([]abProbe, error) {
 		return probes, nil
 	}
 
-	return nil, fmt.Errorf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts)
+	return nil, coreerr.E("cmd.loadABProbes", fmt.Sprintf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts), nil)
 }
 
 func loadABKernels() ([]abKernelDef, error) {
 	if len(abKernels) == 0 {
-		return nil, errors.New("at least one --kernel is required (raw file content is used as system message with zero instruction)")
+		return nil, coreerr.E("cmd.loadABKernels", "at least one --kernel is required (raw file content is used as system message with zero instruction)", nil)
 	}
 
 	var defs []abKernelDef
@@ -564,9 +567,9 @@ func loadABKernels() ([]abKernelDef, error) {
 			name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		}
 
-		data, err := os.ReadFile(path)
+		data, err := coreio.Local.Read(path)
 		if err != nil {
-			return nil, fmt.Errorf("read kernel %q: %w", path, err)
+			return nil, coreerr.E("cmd.loadABKernels", fmt.Sprintf("read kernel %q", path), err)
 		}
 
 		defs = append(defs, abKernelDef{

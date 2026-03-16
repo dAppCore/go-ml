@@ -3,7 +3,6 @@ package ml
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.
@@ -60,10 +61,10 @@ var (
 // At least one of ContentFile, CapabilityFile, or TrainingLog must be set.
 func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 	if cfg.ContentFile == "" && cfg.CapabilityFile == "" && cfg.TrainingLog == "" {
-		return errors.New("at least one of --content, --capability, or --training-log is required")
+		return coreerr.E("ml.Ingest", "at least one of --content, --capability, or --training-log is required", nil)
 	}
 	if cfg.Model == "" {
-		return errors.New("--model is required")
+		return coreerr.E("ml.Ingest", "--model is required", nil)
 	}
 	if cfg.RunID == "" {
 		cfg.RunID = cfg.Model
@@ -77,7 +78,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 	if cfg.ContentFile != "" {
 		n, err := ingestContentScores(influx, cfg, w)
 		if err != nil {
-			return fmt.Errorf("ingest content scores: %w", err)
+			return coreerr.E("ml.Ingest", "ingest content scores", err)
 		}
 		totalPoints += n
 	}
@@ -85,7 +86,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 	if cfg.CapabilityFile != "" {
 		n, err := ingestCapabilityScores(influx, cfg, w)
 		if err != nil {
-			return fmt.Errorf("ingest capability scores: %w", err)
+			return coreerr.E("ml.Ingest", "ingest capability scores", err)
 		}
 		totalPoints += n
 	}
@@ -93,7 +94,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 	if cfg.TrainingLog != "" {
 		n, err := ingestTrainingLog(influx, cfg, w)
 		if err != nil {
-			return fmt.Errorf("ingest training log: %w", err)
+			return coreerr.E("ml.Ingest", "ingest training log", err)
 		}
 		totalPoints += n
 	}
@@ -107,7 +108,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := os.Open(cfg.ContentFile)
 	if err != nil {
-		return 0, fmt.Errorf("open %s: %w", cfg.ContentFile, err)
+		return 0, coreerr.E("ml.ingestContentScores", fmt.Sprintf("open %s", cfg.ContentFile), err)
 	}
 	defer f.Close()
 
@@ -127,7 +128,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 
 		var entry contentScoreLine
 		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
-			return totalPoints, fmt.Errorf("line %d: parse json: %w", lineNum, err)
+			return totalPoints, coreerr.E("ml.ingestContentScores", fmt.Sprintf("line %d: parse json", lineNum), err)
 		}
 
 		label := entry.Label
@@ -173,20 +174,20 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 		// Flush batch if needed.
 		if len(lines) >= cfg.BatchSize {
 			if err := influx.WriteLp(lines); err != nil {
-				return totalPoints, fmt.Errorf("write batch: %w", err)
+				return totalPoints, coreerr.E("ml.ingestContentScores", "write batch", err)
 			}
 			lines = lines[:0]
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, fmt.Errorf("scan %s: %w", cfg.ContentFile, err)
+		return totalPoints, coreerr.E("ml.ingestContentScores", fmt.Sprintf("scan %s", cfg.ContentFile), err)
 	}
 
 	// Flush remaining lines.
 	if len(lines) > 0 {
 		if err := influx.WriteLp(lines); err != nil {
-			return totalPoints, fmt.Errorf("write final batch: %w", err)
+			return totalPoints, coreerr.E("ml.ingestContentScores", "write final batch", err)
 		}
 	}
 
@@ -199,7 +200,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := os.Open(cfg.CapabilityFile)
 	if err != nil {
-		return 0, fmt.Errorf("open %s: %w", cfg.CapabilityFile, err)
+		return 0, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("open %s", cfg.CapabilityFile), err)
 	}
 	defer f.Close()
 
@@ -219,7 +220,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 
 		var entry capabilityScoreLine
 		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
-			return totalPoints, fmt.Errorf("line %d: parse json: %w", lineNum, err)
+			return totalPoints, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("line %d: parse json", lineNum), err)
 		}
 
 		label := entry.Label
@@ -253,20 +254,20 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 		// Flush batch if needed.
 		if len(lines) >= cfg.BatchSize {
 			if err := influx.WriteLp(lines); err != nil {
-				return totalPoints, fmt.Errorf("write batch: %w", err)
+				return totalPoints, coreerr.E("ml.ingestCapabilityScores", "write batch", err)
 			}
 			lines = lines[:0]
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, fmt.Errorf("scan %s: %w", cfg.CapabilityFile, err)
+		return totalPoints, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("scan %s", cfg.CapabilityFile), err)
 	}
 
 	// Flush remaining lines.
 	if len(lines) > 0 {
 		if err := influx.WriteLp(lines); err != nil {
-			return totalPoints, fmt.Errorf("write final batch: %w", err)
+			return totalPoints, coreerr.E("ml.ingestCapabilityScores", "write final batch", err)
 		}
 	}
 
@@ -279,7 +280,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := os.Open(cfg.TrainingLog)
 	if err != nil {
-		return 0, fmt.Errorf("open %s: %w", cfg.TrainingLog, err)
+		return 0, coreerr.E("ml.ingestTrainingLog", fmt.Sprintf("open %s", cfg.TrainingLog), err)
 	}
 	defer f.Close()
 
@@ -328,20 +329,20 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 		// Flush batch if needed.
 		if len(lines) >= cfg.BatchSize {
 			if err := influx.WriteLp(lines); err != nil {
-				return totalPoints, fmt.Errorf("write batch: %w", err)
+				return totalPoints, coreerr.E("ml.ingestTrainingLog", "write batch", err)
 			}
 			lines = lines[:0]
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, fmt.Errorf("scan %s: %w", cfg.TrainingLog, err)
+		return totalPoints, coreerr.E("ml.ingestTrainingLog", fmt.Sprintf("scan %s", cfg.TrainingLog), err)
 	}
 
 	// Flush remaining lines.
 	if len(lines) > 0 {
 		if err := influx.WriteLp(lines); err != nil {
-			return totalPoints, fmt.Errorf("write final batch: %w", err)
+			return totalPoints, coreerr.E("ml.ingestTrainingLog", "write final batch", err)
 		}
 	}
 

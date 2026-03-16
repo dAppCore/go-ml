@@ -12,6 +12,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // GGUF format constants.
@@ -69,7 +73,7 @@ var mlxLoraKeyRe = regexp.MustCompile(`^model\.layers\.(\d+)\.(.*?)\.(lora_[ab])
 func MLXTensorToGGUF(mlxName string) (string, error) {
 	m := mlxLoraKeyRe.FindStringSubmatch(mlxName)
 	if m == nil {
-		return "", fmt.Errorf("unrecognised MLX LoRA key: %s", mlxName)
+		return "", coreerr.E("ml.MLXTensorToGGUF", fmt.Sprintf("unrecognised MLX LoRA key: %s", mlxName), nil)
 	}
 
 	layerNum := m[1]
@@ -78,7 +82,7 @@ func MLXTensorToGGUF(mlxName string) (string, error) {
 
 	ggufModule, ok := gemma3ModuleMap[module]
 	if !ok {
-		return "", fmt.Errorf("unknown module %q in %s", module, mlxName)
+		return "", coreerr.E("ml.MLXTensorToGGUF", fmt.Sprintf("unknown module %q in %s", module, mlxName), nil)
 	}
 
 	return fmt.Sprintf("blk.%s.%s.weight.%s", layerNum, ggufModule, loraSuffix), nil
@@ -94,15 +98,15 @@ func SafetensorsDtypeToGGML(dtype string) (uint32, error) {
 	case "BF16":
 		return ggmlTypeBF16, nil
 	default:
-		return 0, fmt.Errorf("unsupported dtype %q for GGUF", dtype)
+		return 0, coreerr.E("ml.SafetensorsDtypeToGGML", fmt.Sprintf("unsupported dtype %q for GGUF", dtype), nil)
 	}
 }
 
 // ConvertMLXtoGGUFLoRA converts an MLX LoRA adapter to GGUF LoRA format.
 func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture string) error {
-	cfgData, err := os.ReadFile(configPath)
+	cfgData, err := coreio.Local.Read(configPath)
 	if err != nil {
-		return fmt.Errorf("read config: %w", err)
+		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "read config", err)
 	}
 
 	var mlxConfig struct {
@@ -111,8 +115,8 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 			Scale float64 `json:"scale"`
 		} `json:"lora_parameters"`
 	}
-	if err := json.Unmarshal(cfgData, &mlxConfig); err != nil {
-		return fmt.Errorf("parse config: %w", err)
+	if err := json.Unmarshal([]byte(cfgData), &mlxConfig); err != nil {
+		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "parse config", err)
 	}
 
 	rank := mlxConfig.LoraParameters.Rank
@@ -127,7 +131,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 
 	tensors, tensorData, err := ReadSafetensors(safetensorsPath)
 	if err != nil {
-		return fmt.Errorf("read safetensors: %w", err)
+		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "read safetensors", err)
 	}
 	log.Printf("loaded %d tensors from %s", len(tensors), safetensorsPath)
 
@@ -140,7 +144,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 
 		ggmlType, err := SafetensorsDtypeToGGML(info.Dtype)
 		if err != nil {
-			return fmt.Errorf("tensor %s: %w", mlxKey, err)
+			return coreerr.E("ml.ConvertMLXtoGGUFLoRA", fmt.Sprintf("tensor %s", mlxKey), err)
 		}
 
 		data := GetTensorData(info, tensorData)
@@ -187,7 +191,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 	}
 
 	if err := writeGGUF(outputPath, metadata, ggufTensors); err != nil {
-		return fmt.Errorf("write GGUF: %w", err)
+		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "write GGUF", err)
 	}
 
 	log.Printf("wrote GGUF LoRA: %s (%d tensors, alpha=%.0f)", outputPath, len(ggufTensors), loraAlpha)
@@ -295,7 +299,7 @@ func (w *ggufWriter) writeString(s string) {
 
 // DetectArchFromConfig tries to infer the model architecture from adapter_config.json.
 func DetectArchFromConfig(configPath string) string {
-	data, err := os.ReadFile(configPath)
+	data, err := coreio.Local.Read(configPath)
 	if err != nil {
 		return "gemma3"
 	}
@@ -304,7 +308,7 @@ func DetectArchFromConfig(configPath string) string {
 			Rank int `json:"rank"`
 		} `json:"lora_parameters"`
 	}
-	json.Unmarshal(data, &cfg)
+	json.Unmarshal([]byte(data), &cfg)
 	return "gemma3"
 }
 
@@ -334,9 +338,9 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 	}
 
 	manifestPath := fmt.Sprintf("%s/manifests/registry.ollama.ai/library/%s/%s", ollamaModelsDir, family, tag)
-	data, err := os.ReadFile(manifestPath)
+	data, err := coreio.Local.Read(manifestPath)
 	if err != nil {
-		return "", fmt.Errorf("read manifest %s: %w", manifestPath, err)
+		return "", coreerr.E("ml.GGUFModelBlobPath", fmt.Sprintf("read manifest %s", manifestPath), err)
 	}
 
 	var manifest struct {
@@ -345,8 +349,8 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 			Digest    string `json:"digest"`
 		} `json:"layers"`
 	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return "", fmt.Errorf("parse manifest: %w", err)
+	if err := json.Unmarshal([]byte(data), &manifest); err != nil {
+		return "", coreerr.E("ml.GGUFModelBlobPath", "parse manifest", err)
 	}
 
 	for _, layer := range manifest.Layers {
@@ -356,7 +360,7 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no model layer found in manifest for %s", modelName)
+	return "", coreerr.E("ml.GGUFModelBlobPath", fmt.Sprintf("no model layer found in manifest for %s", modelName), nil)
 }
 
 // ParseLayerFromTensorName extracts the layer number from a GGUF tensor name.
@@ -364,7 +368,7 @@ func ParseLayerFromTensorName(name string) (int, error) {
 	re := regexp.MustCompile(`blk\.(\d+)\.`)
 	m := re.FindStringSubmatch(name)
 	if m == nil {
-		return 0, fmt.Errorf("no layer number in %s", name)
+		return 0, coreerr.E("ml.ParseLayerFromTensorName", fmt.Sprintf("no layer number in %s", name), nil)
 	}
 	return strconv.Atoi(m[1])
 }

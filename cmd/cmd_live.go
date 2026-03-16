@@ -6,6 +6,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 const targetTotal = 15000
@@ -23,27 +25,27 @@ func runLive(cmd *cli.Command, args []string) error {
 	// Total completed generations
 	totalRows, err := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
 	if err != nil {
-		return fmt.Errorf("live: query total: %w", err)
+		return coreerr.E("cmd.runLive", "live: query total", err)
 	}
 	total := sqlScalar(totalRows)
 
 	// Distinct domains and voices
 	domainRows, err := influx.QuerySQL("SELECT count(DISTINCT d) AS n FROM gold_gen")
 	if err != nil {
-		return fmt.Errorf("live: query domains: %w", err)
+		return coreerr.E("cmd.runLive", "live: query domains", err)
 	}
 	domains := sqlScalar(domainRows)
 
 	voiceRows, err := influx.QuerySQL("SELECT count(DISTINCT v) AS n FROM gold_gen")
 	if err != nil {
-		return fmt.Errorf("live: query voices: %w", err)
+		return coreerr.E("cmd.runLive", "live: query voices", err)
 	}
 	voices := sqlScalar(voiceRows)
 
 	// Per-worker breakdown
 	workers, err := influx.QuerySQL("SELECT w, count(DISTINCT i) AS n FROM gold_gen GROUP BY w ORDER BY n DESC")
 	if err != nil {
-		return fmt.Errorf("live: query workers: %w", err)
+		return coreerr.E("cmd.runLive", "live: query workers", err)
 	}
 
 	pct := float64(total) / float64(targetTotal) * 100

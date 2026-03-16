@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // RemoteTransport abstracts remote command execution and file transfer.
@@ -108,21 +112,21 @@ func (t *SSHTransport) Run(ctx context.Context, cmd string) (string, error) {
 	c := exec.CommandContext(ctx, "ssh", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("ssh %q: %w: %s", cmd, err, strings.TrimSpace(string(result)))
+		return "", coreerr.E("ml.SSHTransport.Run", fmt.Sprintf("ssh %q: %s", cmd, strings.TrimSpace(string(result))), err)
 	}
 	return string(result), nil
 }
 
 // CopyFrom copies a file from the remote host to a local path via scp.
 func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) error {
-	os.MkdirAll(filepath.Dir(local), 0755)
+	coreio.Local.EnsureDir(filepath.Dir(local))
 	args := t.commonArgs()
 	args = append(args, fmt.Sprintf("%s@%s:%s", t.User, t.Host, remote), local)
 
 	c := exec.CommandContext(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("scp %s: %w: %s", remote, err, strings.TrimSpace(string(result)))
+		return coreerr.E("ml.SSHTransport.CopyFrom", fmt.Sprintf("scp %s: %s", remote, strings.TrimSpace(string(result))), err)
 	}
 	return nil
 }
@@ -135,7 +139,7 @@ func (t *SSHTransport) CopyTo(ctx context.Context, local, remote string) error {
 	c := exec.CommandContext(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("scp to %s: %w: %s", remote, err, strings.TrimSpace(string(result)))
+		return coreerr.E("ml.SSHTransport.CopyTo", fmt.Sprintf("scp to %s: %s", remote, strings.TrimSpace(string(result))), err)
 	}
 	return nil
 }

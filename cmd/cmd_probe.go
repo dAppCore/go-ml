@@ -3,12 +3,14 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -28,7 +30,7 @@ func init() {
 
 func runProbe(cmd *cli.Command, args []string) error {
 	if apiURL == "" {
-		return errors.New("--api-url is required")
+		return coreerr.E("cmd.runProbe", "--api-url is required", nil)
 	}
 
 	model := modelName
@@ -55,10 +57,10 @@ func runProbe(cmd *cli.Command, args []string) error {
 	if probeOutput != "" {
 		data, err := json.MarshalIndent(results, "", "  ")
 		if err != nil {
-			return fmt.Errorf("marshal results: %w", err)
+			return coreerr.E("cmd.runProbe", "marshal results", err)
 		}
-		if err := os.WriteFile(probeOutput, data, 0644); err != nil {
-			return fmt.Errorf("write output: %w", err)
+		if err := coreio.Local.Write(probeOutput, string(data)); err != nil {
+			return coreerr.E("cmd.runProbe", "write output", err)
 		}
 		fmt.Printf("\nResults written to %s\n", probeOutput)
 	}

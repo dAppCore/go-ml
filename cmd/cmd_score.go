@@ -9,6 +9,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -36,7 +38,7 @@ func init() {
 func runScore(cmd *cli.Command, args []string) error {
 	responses, err := ml.ReadResponses(scoreInput)
 	if err != nil {
-		return fmt.Errorf("read input: %w", err)
+		return coreerr.E("cmd.runScore", "read input", err)
 	}
 
 	var judge *ml.Judge
@@ -63,7 +65,7 @@ func runScore(cmd *cli.Command, args []string) error {
 			PerPrompt:     perPrompt,
 		}
 		if err := ml.WriteScores(scoreOutput, output); err != nil {
-			return fmt.Errorf("write output: %w", err)
+			return coreerr.E("cmd.runScore", "write output", err)
 		}
 		fmt.Printf("Scores written to %s\n", scoreOutput)
 	} else {

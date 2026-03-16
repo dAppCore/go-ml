@@ -6,11 +6,9 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"runtime"
 	"slices"
 	"time"
@@ -18,6 +16,10 @@ import (
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-i18n/reversal"
 	"forge.lthn.ai/core/go-ml"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.
@@ -224,7 +226,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	slog.Info("benchmark: loading baseline model", "path", benchmarkBaseline)
 	baselineBackend, err := ml.NewMLXBackend(benchmarkBaseline)
 	if err != nil {
-		return fmt.Errorf("load baseline: %w", err)
+		return coreerr.E("cmd.runBenchmark", "load baseline", err)
 	}
 
 	baselineResponses := make(map[string]string)
@@ -254,7 +256,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	slog.Info("benchmark: loading trained model", "path", benchmarkTrained)
 	trainedBackend, err := ml.NewMLXBackend(benchmarkTrained)
 	if err != nil {
-		return fmt.Errorf("load trained: %w", err)
+		return coreerr.E("cmd.runBenchmark", "load trained", err)
 	}
 
 	trainedResponses := make(map[string]string)
@@ -353,7 +355,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	n := float64(len(results))
 	if n == 0 {
-		return errors.New("no results to compare")
+		return coreerr.E("cmd.runBenchmark", "no results to compare", nil)
 	}
 
 	summary := benchmarkSummary{
@@ -379,10 +381,10 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	// Write output
 	data, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
-		return fmt.Errorf("marshal output: %w", err)
+		return coreerr.E("cmd.runBenchmark", "marshal output", err)
 	}
-	if err := os.WriteFile(benchmarkOutput, data, 0644); err != nil {
-		return fmt.Errorf("write output: %w", err)
+	if err := coreio.Local.Write(benchmarkOutput, string(data)); err != nil {
+		return coreerr.E("cmd.runBenchmark", "write output", err)
 	}
 
 	// Print summary
@@ -431,13 +433,13 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 	}
 
 	// Try seeds JSON format first (array of {id, prompt, ...})
-	data, err := os.ReadFile(benchmarkPrompts)
+	data, err := coreio.Local.Read(benchmarkPrompts)
 	if err != nil {
-		return nil, fmt.Errorf("read prompts: %w", err)
+		return nil, coreerr.E("cmd.loadBenchmarkPrompts", "read prompts", err)
 	}
 
 	var seeds []seedPrompt
-	if json.Unmarshal(data, &seeds) == nil && len(seeds) > 0 {
+	if json.Unmarshal([]byte(data), &seeds) == nil && len(seeds) > 0 {
 		prompts := make([]benchPrompt, len(seeds))
 		for i, s := range seeds {
 			prompts[i] = benchPrompt{id: s.ID, prompt: s.Prompt}
@@ -448,7 +450,7 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 	// Try JSONL responses format
 	responses, err := ml.ReadResponses(benchmarkPrompts)
 	if err != nil {
-		return nil, fmt.Errorf("parse prompts: %w", err)
+		return nil, coreerr.E("cmd.loadBenchmarkPrompts", "parse prompts", err)
 	}
 
 	// Deduplicate by prompt

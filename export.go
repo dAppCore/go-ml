@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ChatMessage is a single message in the chat training format.
@@ -24,11 +26,11 @@ type TrainingExample struct {
 // and that none are negative.
 func ValidatePercentages(trainPct, validPct, testPct int) error {
 	if trainPct < 0 || validPct < 0 || testPct < 0 {
-		return fmt.Errorf("percentages must be non-negative: train=%d, valid=%d, test=%d", trainPct, validPct, testPct)
+		return coreerr.E("ml.ValidatePercentages", fmt.Sprintf("percentages must be non-negative: train=%d, valid=%d, test=%d", trainPct, validPct, testPct), nil)
 	}
 	sum := trainPct + validPct + testPct
 	if sum != 100 {
-		return fmt.Errorf("percentages must sum to 100, got %d (train=%d + valid=%d + test=%d)", sum, trainPct, validPct, testPct)
+		return coreerr.E("ml.ValidatePercentages", fmt.Sprintf("percentages must sum to 100, got %d (train=%d + valid=%d + test=%d)", sum, trainPct, validPct, testPct), nil)
 	}
 	return nil
 }
@@ -80,7 +82,7 @@ func SplitData(responses []Response, trainPct, validPct, testPct int, seed int64
 func WriteTrainingJSONL(path string, responses []Response) error {
 	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
+		return coreerr.E("ml.WriteTrainingJSONL", fmt.Sprintf("create %s", path), err)
 	}
 	defer f.Close()
 
@@ -97,14 +99,14 @@ func WriteTrainingJSONL(path string, responses []Response) error {
 
 		data, err := json.Marshal(example)
 		if err != nil {
-			return fmt.Errorf("marshal example: %w", err)
+			return coreerr.E("ml.WriteTrainingJSONL", "marshal example", err)
 		}
 
 		if _, err := w.Write(data); err != nil {
-			return fmt.Errorf("write line: %w", err)
+			return coreerr.E("ml.WriteTrainingJSONL", "write line", err)
 		}
 		if _, err := w.WriteString("\n"); err != nil {
-			return fmt.Errorf("write newline: %w", err)
+			return coreerr.E("ml.WriteTrainingJSONL", "write newline", err)
 		}
 	}
 

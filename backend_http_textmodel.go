@@ -4,10 +4,11 @@ package ml
 
 import (
 	"context"
-	"errors"
 	"iter"
 
 	"forge.lthn.ai/core/go-inference"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // HTTPTextModel wraps an HTTPBackend to satisfy the inference.TextModel interface.
@@ -73,7 +74,7 @@ func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, 
 
 // Classify is not supported by HTTP backends. Returns an error.
 func (m *HTTPTextModel) Classify(_ context.Context, _ []string, _ ...inference.GenerateOption) ([]inference.ClassifyResult, error) {
-	return nil, errors.New("classify not supported by HTTP backend")
+	return nil, coreerr.E("ml.HTTPTextModel.Classify", "classify not supported by HTTP backend", nil)
 }
 
 // BatchGenerate processes multiple prompts sequentially via Generate.

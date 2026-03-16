@@ -3,10 +3,11 @@
 package cmd
 
 import (
-	"fmt"
 	"log/slog"
 
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 func createServeBackend() (ml.Backend, error) {
@@ -14,7 +15,7 @@ func createServeBackend() (ml.Backend, error) {
 		slog.Info("ml serve: loading native MLX backend", "path", serveModelPath)
 		b, err := ml.NewMLXBackend(serveModelPath)
 		if err != nil {
-			return nil, fmt.Errorf("mlx backend: %w", err)
+			return nil, coreerr.E("cmd.createServeBackend", "mlx backend", err)
 		}
 		return b, nil
 	}

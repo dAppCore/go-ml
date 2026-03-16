@@ -10,6 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // InfluxClient talks to an InfluxDB v3 instance.
@@ -35,7 +39,7 @@ func NewInfluxClient(url, db string) *InfluxClient {
 	if token == "" {
 		home, err := os.UserHomeDir()
 		if err == nil {
-			data, err := os.ReadFile(filepath.Join(home, ".influx_token"))
+			data, err := coreio.Local.Read(filepath.Join(home, ".influx_token"))
 			if err == nil {
 				token = strings.TrimSpace(string(data))
 			}
@@ -57,7 +61,7 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("create write request: %w", err)
+		return coreerr.E("ml.InfluxClient.WriteLp", "create write request", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "text/plain")
@@ -65,13 +69,13 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("write request: %w", err)
+		return coreerr.E("ml.InfluxClient.WriteLp", "write request", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("write failed %d: %s", resp.StatusCode, string(respBody))
+		return coreerr.E("ml.InfluxClient.WriteLp", fmt.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	return nil
@@ -86,14 +90,14 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("marshal query request: %w", err)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "marshal query request", err)
 	}
 
 	url := c.url + "/api/v3/query_sql"
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
 	if err != nil {
-		return nil, fmt.Errorf("create query request: %w", err)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "create query request", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
@@ -101,22 +105,22 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("query request: %w", err)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "query request", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read query response: %w", err)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "read query response", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("query failed %d: %s", resp.StatusCode, string(respBody))
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", fmt.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	var rows []map[string]any
 	if err := json.Unmarshal(respBody, &rows); err != nil {
-		return nil, fmt.Errorf("unmarshal query response: %w", err)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", err)
 	}
 
 	return rows, nil

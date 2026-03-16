@@ -5,6 +5,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -33,7 +35,7 @@ func init() {
 
 func runConvert(cmd *cli.Command, args []string) error {
 	if err := ml.ConvertMLXtoPEFT(convertInput, convertConfig, convertOutputDir, convertBaseModel); err != nil {
-		return fmt.Errorf("convert to PEFT: %w", err)
+		return coreerr.E("cmd.runConvert", "convert to PEFT", err)
 	}
 	fmt.Printf("PEFT adapter written to %s\n", convertOutputDir)
 	return nil

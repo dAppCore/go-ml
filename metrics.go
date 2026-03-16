@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // PushMetrics queries golden_set stats from DuckDB and writes them to InfluxDB
@@ -17,7 +19,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 			"coalesce(avg(gen_time), 0), coalesce(avg(char_count), 0) FROM golden_set",
 	).Scan(&total, &domains, &voices, &avgGenTime, &avgChars)
 	if err != nil {
-		return fmt.Errorf("query golden_set stats: %w", err)
+		return coreerr.E("ml.PushMetrics", "query golden_set stats", err)
 	}
 
 	if total == 0 {
@@ -41,7 +43,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		"SELECT domain, count(*) AS cnt, coalesce(avg(gen_time), 0) AS avg_gt FROM golden_set GROUP BY domain ORDER BY domain",
 	)
 	if err != nil {
-		return fmt.Errorf("query golden_set domains: %w", err)
+		return coreerr.E("ml.PushMetrics", "query golden_set domains", err)
 	}
 	defer domainRows.Close()
 
@@ -50,7 +52,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		var count int
 		var avgGT float64
 		if err := domainRows.Scan(&domain, &count, &avgGT); err != nil {
-			return fmt.Errorf("scan domain row: %w", err)
+			return coreerr.E("ml.PushMetrics", "scan domain row", err)
 		}
 		lines = append(lines, fmt.Sprintf(
 			"golden_set_domain,domain=%s count=%di,avg_gen_time=%.2f %d",
@@ -58,7 +60,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		))
 	}
 	if err := domainRows.Err(); err != nil {
-		return fmt.Errorf("iterate domain rows: %w", err)
+		return coreerr.E("ml.PushMetrics", "iterate domain rows", err)
 	}
 
 	// Per-voice breakdown.
@@ -66,7 +68,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		"SELECT voice, count(*) AS cnt, coalesce(avg(char_count), 0) AS avg_cc, coalesce(avg(gen_time), 0) AS avg_gt FROM golden_set GROUP BY voice ORDER BY voice",
 	)
 	if err != nil {
-		return fmt.Errorf("query golden_set voices: %w", err)
+		return coreerr.E("ml.PushMetrics", "query golden_set voices", err)
 	}
 	defer voiceRows.Close()
 
@@ -75,7 +77,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		var count int
 		var avgCC, avgGT float64
 		if err := voiceRows.Scan(&voice, &count, &avgCC, &avgGT); err != nil {
-			return fmt.Errorf("scan voice row: %w", err)
+			return coreerr.E("ml.PushMetrics", "scan voice row", err)
 		}
 		lines = append(lines, fmt.Sprintf(
 			"golden_set_voice,voice=%s count=%di,avg_chars=%.0f,avg_gen_time=%.2f %d",
@@ -83,12 +85,12 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		))
 	}
 	if err := voiceRows.Err(); err != nil {
-		return fmt.Errorf("iterate voice rows: %w", err)
+		return coreerr.E("ml.PushMetrics", "iterate voice rows", err)
 	}
 
 	// Write all points to InfluxDB.
 	if err := influx.WriteLp(lines); err != nil {
-		return fmt.Errorf("write metrics to influxdb: %w", err)
+		return coreerr.E("ml.PushMetrics", "write metrics to influxdb", err)
 	}
 
 	fmt.Fprintf(w, "Pushed %d points to InfluxDB\n", len(lines))

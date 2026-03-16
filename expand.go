@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ExpandOutput is the JSONL output structure for expansion generation.
@@ -26,7 +28,7 @@ type ExpandOutput struct {
 func GetCompletedIDs(influx *InfluxClient) (map[string]bool, error) {
 	rows, err := influx.QuerySQL("SELECT DISTINCT seed_id FROM expansion_gen")
 	if err != nil {
-		return nil, fmt.Errorf("query expansion_gen: %w", err)
+		return nil, coreerr.E("ml.GetCompletedIDs", "query expansion_gen", err)
 	}
 
 	ids := make(map[string]bool, len(rows))
@@ -91,7 +93,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("expand-%s.jsonl", worker))
 	f, err := os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("open output file: %w", err)
+		return coreerr.E("ml.ExpandPrompts", "open output file", err)
 	}
 	defer f.Close()
 

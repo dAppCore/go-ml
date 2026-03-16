@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -11,6 +10,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var queryCmd = &cli.Command{
@@ -36,12 +37,12 @@ func runQuery(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB env is required")
+		return coreerr.E("cmd.runQuery", "--db or LEM_DB env is required", nil)
 	}
 
 	db, err := ml.OpenDB(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runQuery", "open db", err)
 	}
 	defer db.Close()
 
@@ -56,14 +57,14 @@ func runQuery(cmd *cli.Command, args []string) error {
 
 	rows, err := db.QueryRows(sql)
 	if err != nil {
-		return fmt.Errorf("query: %w", err)
+		return coreerr.E("cmd.runQuery", "query", err)
 	}
 
 	if queryJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(rows); err != nil {
-			return fmt.Errorf("encode json: %w", err)
+			return coreerr.E("cmd.runQuery", "encode json", err)
 		}
 		fmt.Fprintf(os.Stderr, "\n(%d rows)\n", len(rows))
 		return nil

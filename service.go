@@ -2,13 +2,14 @@ package ml
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"iter"
 	"slices"
 	"sync"
 
 	"forge.lthn.ai/core/go/pkg/core"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.
@@ -158,7 +159,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return Result{}, fmt.Errorf("no backend available (requested: %q)", backendName)
+		return Result{}, coreerr.E("ml.Service.Generate", fmt.Sprintf("no backend available (requested: %q)", backendName), nil)
 	}
 	return b.Generate(ctx, prompt, opts)
 }
@@ -166,7 +167,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 // ScoreResponses scores a batch of responses using the configured engine.
 func (s *Service) ScoreResponses(ctx context.Context, responses []Response) (map[string][]PromptScore, error) {
 	if s.engine == nil {
-		return nil, errors.New("scoring engine not configured (set JudgeURL and JudgeModel)")
+		return nil, coreerr.E("ml.Service.ScoreResponses", "scoring engine not configured (set JudgeURL and JudgeModel)", nil)
 	}
 	return s.engine.ScoreAll(ctx, responses), nil
 }

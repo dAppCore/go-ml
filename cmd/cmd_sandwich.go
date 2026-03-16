@@ -5,7 +5,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +13,10 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var sandwichCmd = &cli.Command{
@@ -79,27 +82,25 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	start := time.Now()
 
 	// Load KB document
-	kbBytes, err := os.ReadFile(sandwichKB)
+	kbText, err := coreio.Local.Read(sandwichKB)
 	if err != nil {
-		return fmt.Errorf("read KB: %w", err)
+		return coreerr.E("cmd.runSandwich", "read KB", err)
 	}
-	kbText := string(kbBytes)
 
 	// Load LEK-1 kernel
-	kernelBytes, err := os.ReadFile(sandwichKernel)
+	kernelText, err := coreio.Local.Read(sandwichKernel)
 	if err != nil {
-		return fmt.Errorf("read kernel: %w", err)
+		return coreerr.E("cmd.runSandwich", "read kernel", err)
 	}
-	kernelText := string(kernelBytes)
 
 	// Load seed prompts
-	seedBytes, err := os.ReadFile(sandwichSeeds)
+	seedBytes, err := coreio.Local.Read(sandwichSeeds)
 	if err != nil {
-		return fmt.Errorf("read seeds: %w", err)
+		return coreerr.E("cmd.runSandwich", "read seeds", err)
 	}
 	var seeds []seedPrompt
-	if err := json.Unmarshal(seedBytes, &seeds); err != nil {
-		return fmt.Errorf("parse seeds: %w", err)
+	if err := json.Unmarshal([]byte(seedBytes), &seeds); err != nil {
+		return coreerr.E("cmd.runSandwich", "parse seeds", err)
 	}
 
 	slog.Info("sandwich: loaded inputs",
@@ -109,13 +110,13 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	)
 
 	if len(seeds) == 0 {
-		return errors.New("no seed prompts found")
+		return coreerr.E("cmd.runSandwich", "no seed prompts found", nil)
 	}
 
 	// Open output file
 	outFile, err := os.Create(sandwichOutput)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return coreerr.E("cmd.runSandwich", "create output", err)
 	}
 	defer outFile.Close()
 	encoder := json.NewEncoder(outFile)
@@ -130,7 +131,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 				},
 			}
 			if err := encoder.Encode(record); err != nil {
-				return fmt.Errorf("write record: %w", err)
+				return coreerr.E("cmd.runSandwich", "write record", err)
 			}
 		}
 		slog.Info("sandwich: dry-run complete",
@@ -144,7 +145,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	slog.Info("sandwich: loading model", "path", sandwichModelPath)
 	backend, err := ml.NewMLXBackend(sandwichModelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runSandwich", "load model", err)
 	}
 
 	opts := ml.GenOpts{
@@ -194,7 +195,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 			},
 		}
 		if err := encoder.Encode(record); err != nil {
-			return fmt.Errorf("write record: %w", err)
+			return coreerr.E("cmd.runSandwich", "write record", err)
 		}
 
 		generated++

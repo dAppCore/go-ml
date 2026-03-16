@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var ingestCmd = &cli.Command{
@@ -33,10 +34,10 @@ func init() {
 
 func runIngest(cmd *cli.Command, args []string) error {
 	if modelName == "" {
-		return errors.New("--model is required")
+		return coreerr.E("cmd.runIngest", "--model is required", nil)
 	}
 	if ingestContent == "" && ingestCapability == "" && ingestTraining == "" {
-		return errors.New("at least one of --content, --capability, or --training-log is required")
+		return coreerr.E("cmd.runIngest", "at least one of --content, --capability, or --training-log is required", nil)
 	}
 
 	influx := ml.NewInfluxClient(influxURL, influxDB)

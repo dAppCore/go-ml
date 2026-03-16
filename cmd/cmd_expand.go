@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -33,7 +34,7 @@ func init() {
 
 func runExpand(cmd *cli.Command, args []string) error {
 	if modelName == "" {
-		return errors.New("--model is required")
+		return coreerr.E("cmd.runExpand", "--model is required", nil)
 	}
 
 	path := dbPath
@@ -41,7 +42,7 @@ func runExpand(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB env is required")
+		return coreerr.E("cmd.runExpand", "--db or LEM_DB env is required", nil)
 	}
 
 	if expandWorker == "" {
@@ -51,13 +52,13 @@ func runExpand(cmd *cli.Command, args []string) error {
 
 	db, err := ml.OpenDBReadWrite(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runExpand", "open db", err)
 	}
 	defer db.Close()
 
 	rows, err := db.QueryExpansionPrompts("pending", expandLimit)
 	if err != nil {
-		return fmt.Errorf("query expansion_prompts: %w", err)
+		return coreerr.E("cmd.runExpand", "query expansion_prompts", err)
 	}
 	fmt.Printf("Loaded %d pending prompts from %s\n", len(rows), path)
 

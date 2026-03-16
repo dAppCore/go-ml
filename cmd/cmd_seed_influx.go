@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var seedInfluxCmd = &cli.Command{
@@ -32,12 +32,12 @@ func runSeedInflux(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB required")
+		return coreerr.E("cmd.runSeedInflux", "--db or LEM_DB required", nil)
 	}
 
 	db, err := ml.OpenDB(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runSeedInflux", "open db", err)
 	}
 	defer db.Close()
 

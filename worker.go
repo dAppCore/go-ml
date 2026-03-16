@@ -3,7 +3,6 @@ package ml
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,7 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // WorkerConfig holds the worker's runtime configuration.
@@ -166,7 +170,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		"worker_id": cfg.WorkerID,
 	})
 	if err != nil {
-		return fmt.Errorf("claim: %w", err)
+		return coreerr.E("ml.workerProcessTask", "claim", err)
 	}
 
 	apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
@@ -188,7 +192,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 			"worker_id": cfg.WorkerID,
 			"status":    "abandoned",
 		})
-		return fmt.Errorf("inference: %w", err)
+		return coreerr.E("ml.workerProcessTask", "inference", err)
 	}
 
 	modelUsed := task.ModelName
@@ -203,7 +207,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		"gen_time_ms":   int(genTime.Milliseconds()),
 	})
 	if err != nil {
-		return fmt.Errorf("submit result: %w", err)
+		return coreerr.E("ml.workerProcessTask", "submit result", err)
 	}
 
 	log.Printf("  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
@@ -247,17 +251,17 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("inference request: %w", err)
+		return "", coreerr.E("ml.workerInfer", "inference request", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
+		return "", coreerr.E("ml.workerInfer", "read response", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200))
+		return "", coreerr.E("ml.workerInfer", fmt.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	var chatResp struct {
@@ -268,16 +272,16 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return "", fmt.Errorf("parse response: %w", err)
+		return "", coreerr.E("ml.workerInfer", "parse response", err)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", errors.New("no choices in response")
+		return "", coreerr.E("ml.workerInfer", "no choices in response", nil)
 	}
 
 	content := chatResp.Choices[0].Message.Content
 	if len(content) < 10 {
-		return "", fmt.Errorf("response too short: %d chars", len(content))
+		return "", coreerr.E("ml.workerInfer", fmt.Sprintf("response too short: %d chars", len(content)), nil)
 	}
 
 	return content, nil
@@ -305,7 +309,7 @@ func apiGet(cfg *WorkerConfig, path string) ([]byte, error) {
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200))
+		return nil, coreerr.E("ml.apiGet", fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -349,7 +353,7 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200))
+		return nil, coreerr.E("ml.apiRequest", fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -357,8 +361,8 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 
 // MachineID returns the machine ID from /etc/machine-id or hostname fallback.
 func MachineID() string {
-	if data, err := os.ReadFile("/etc/machine-id"); err == nil {
-		id := string(bytes.TrimSpace(data))
+	if data, err := coreio.Local.Read("/etc/machine-id"); err == nil {
+		id := strings.TrimSpace(data)
 		if len(id) > 0 {
 			return id
 		}
@@ -377,11 +381,11 @@ func Hostname() string {
 func ReadKeyFile() string {
 	home, _ := os.UserHomeDir()
 	path := filepath.Join(home, ".config", "lem", "api_key")
-	data, err := os.ReadFile(path)
+	data, err := coreio.Local.Read(path)
 	if err != nil {
 		return ""
 	}
-	return string(bytes.TrimSpace(data))
+	return strings.TrimSpace(data)
 }
 
 // SplitComma splits a comma-separated string into trimmed parts.

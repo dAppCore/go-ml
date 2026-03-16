@@ -5,6 +5,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -33,7 +35,7 @@ func init() {
 
 func runGGUF(cmd *cli.Command, args []string) error {
 	if err := ml.ConvertMLXtoGGUFLoRA(ggufInput, ggufConfig, ggufOutput, ggufArch); err != nil {
-		return fmt.Errorf("convert to GGUF: %w", err)
+		return coreerr.E("cmd.runGGUF", "convert to GGUF", err)
 	}
 	fmt.Printf("GGUF LoRA adapter written to %s\n", ggufOutput)
 	return nil

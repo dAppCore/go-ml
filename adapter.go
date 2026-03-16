@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"forge.lthn.ai/core/go-inference"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the
@@ -104,7 +106,7 @@ func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
 func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) (*inference.AttentionSnapshot, error) {
 	inspector, ok := a.model.(inference.AttentionInspector)
 	if !ok {
-		return nil, fmt.Errorf("backend %q does not support attention inspection", a.name)
+		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", fmt.Sprintf("backend %q does not support attention inspection", a.name), nil)
 	}
 	return inspector.InspectAttention(ctx, prompt, opts...)
 }

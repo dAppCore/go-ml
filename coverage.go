@@ -1,10 +1,11 @@
 package ml
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // regionRow holds a single row from the region distribution query.
@@ -19,10 +20,10 @@ type regionRow struct {
 func PrintCoverage(db *DB, w io.Writer) error {
 	rows, err := db.QueryRows("SELECT count(*) AS total FROM seeds")
 	if err != nil {
-		return fmt.Errorf("count seeds: %w (run: core ml import-all first)", err)
+		return coreerr.E("ml.PrintCoverage", "count seeds", err)
 	}
 	if len(rows) == 0 {
-		return errors.New("no seeds table found (run: core ml import-all first)")
+		return coreerr.E("ml.PrintCoverage", "no seeds table found (run: core ml import-all first)", nil)
 	}
 	total := toInt(rows[0]["total"])
 
@@ -33,7 +34,7 @@ func PrintCoverage(db *DB, w io.Writer) error {
 	// Region distribution.
 	regionRows, err := queryRegionDistribution(db)
 	if err != nil {
-		return fmt.Errorf("query regions: %w", err)
+		return coreerr.E("ml.PrintCoverage", "query regions", err)
 	}
 
 	fmt.Fprintln(w, "\nRegion distribution (underrepresented first):")

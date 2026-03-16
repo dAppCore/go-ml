@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ReadResponses reads a JSONL file and returns a slice of Response structs.
@@ -14,7 +18,7 @@ import (
 func ReadResponses(path string) ([]Response, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("open %s: %w", path, err)
+		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("open %s", path), err)
 	}
 	defer f.Close()
 
@@ -32,13 +36,13 @@ func ReadResponses(path string) ([]Response, error) {
 
 		var r Response
 		if err := json.Unmarshal([]byte(line), &r); err != nil {
-			return nil, fmt.Errorf("line %d: %w", lineNum, err)
+			return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("line %d", lineNum), err)
 		}
 		responses = append(responses, r)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scan %s: %w", path, err)
+		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("scan %s", path), err)
 	}
 
 	return responses, nil
@@ -48,11 +52,11 @@ func ReadResponses(path string) ([]Response, error) {
 func WriteScores(path string, output *ScorerOutput) error {
 	data, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		return fmt.Errorf("marshal scores: %w", err)
+		return coreerr.E("ml.WriteScores", "marshal scores", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", path, err)
+	if err := coreio.Local.Write(path, string(data)); err != nil {
+		return coreerr.E("ml.WriteScores", fmt.Sprintf("write %s", path), err)
 	}
 
 	return nil
@@ -60,14 +64,14 @@ func WriteScores(path string, output *ScorerOutput) error {
 
 // ReadScorerOutput reads a JSON file into a ScorerOutput struct.
 func ReadScorerOutput(path string) (*ScorerOutput, error) {
-	data, err := os.ReadFile(path)
+	data, err := coreio.Local.Read(path)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("read %s", path), err)
 	}
 
 	var output ScorerOutput
-	if err := json.Unmarshal(data, &output); err != nil {
-		return nil, fmt.Errorf("unmarshal %s: %w", path, err)
+	if err := json.Unmarshal([]byte(data), &output); err != nil {
+		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("unmarshal %s", path), err)
 	}
 
 	return &output, nil

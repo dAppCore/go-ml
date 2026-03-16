@@ -1,12 +1,15 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var (
@@ -47,18 +50,18 @@ func runExport(cmd *cli.Command, args []string) error {
 		path = os.Getenv("LEM_DB")
 	}
 	if path == "" {
-		return errors.New("--db or LEM_DB env is required")
+		return coreerr.E("cmd.runExport", "--db or LEM_DB env is required", nil)
 	}
 
 	db, err := ml.OpenDB(path)
 	if err != nil {
-		return fmt.Errorf("open db: %w", err)
+		return coreerr.E("cmd.runExport", "open db", err)
 	}
 	defer db.Close()
 
 	rows, err := db.QueryGoldenSet(exportMinChars)
 	if err != nil {
-		return fmt.Errorf("query golden set: %w", err)
+		return coreerr.E("cmd.runExport", "query golden set", err)
 	}
 	fmt.Printf("Loaded %d golden set rows (min %d chars)\n", len(rows), exportMinChars)
 
@@ -79,8 +82,8 @@ func runExport(cmd *cli.Command, args []string) error {
 	train, valid, test := ml.SplitData(filtered, exportTrainPct, exportValidPct, exportTestPct, exportSeed)
 	fmt.Printf("Split: train=%d, valid=%d, test=%d\n", len(train), len(valid), len(test))
 
-	if err := os.MkdirAll(exportOutputDir, 0755); err != nil {
-		return fmt.Errorf("create output dir: %w", err)
+	if err := coreio.Local.EnsureDir(exportOutputDir); err != nil {
+		return coreerr.E("cmd.runExport", "create output dir", err)
 	}
 
 	for _, split := range []struct {
@@ -93,7 +96,7 @@ func runExport(cmd *cli.Command, args []string) error {
 	} {
 		path := fmt.Sprintf("%s/%s.jsonl", exportOutputDir, split.name)
 		if err := ml.WriteTrainingJSONL(path, split.data); err != nil {
-			return fmt.Errorf("write %s: %w", split.name, err)
+			return coreerr.E("cmd.runExport", fmt.Sprintf("write %s", split.name), err)
 		}
 		fmt.Printf("  %s.jsonl: %d examples\n", split.name, len(split.data))
 	}
@@ -101,7 +104,7 @@ func runExport(cmd *cli.Command, args []string) error {
 	if exportParquet {
 		n, err := ml.ExportParquet(exportOutputDir, "")
 		if err != nil {
-			return fmt.Errorf("export parquet: %w", err)
+			return coreerr.E("cmd.runExport", "export parquet", err)
 		}
 		fmt.Printf("  Parquet: %d total rows\n", n)
 	}

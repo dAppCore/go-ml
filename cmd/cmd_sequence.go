@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -15,6 +14,10 @@ import (
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
 	"gopkg.in/yaml.v3"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var sequenceCmd = &cli.Command{
@@ -81,14 +84,14 @@ func runSequence(cmd *cli.Command, args []string) error {
 	start := time.Now()
 
 	// Load sequence YAML
-	data, err := os.ReadFile(sequenceFile)
+	data, err := coreio.Local.Read(sequenceFile)
 	if err != nil {
-		return fmt.Errorf("read sequence: %w", err)
+		return coreerr.E("cmd.runSequence", "read sequence", err)
 	}
 
 	var seq sequenceDef
-	if err := yaml.Unmarshal(data, &seq); err != nil {
-		return fmt.Errorf("parse sequence: %w", err)
+	if err := yaml.Unmarshal([]byte(data), &seq); err != nil {
+		return coreerr.E("cmd.runSequence", "parse sequence", err)
 	}
 
 	if seq.ID == "" {
@@ -104,7 +107,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		modelPath = seq.ModelPath
 	}
 	if modelPath == "" {
-		return errors.New("model-path is required (flag or sequence YAML)")
+		return coreerr.E("cmd.runSequence", "model-path is required (flag or sequence YAML)", nil)
 	}
 
 	// Resolve output
@@ -131,7 +134,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	slog.Info("sequence: loading model", "path", modelPath)
 	backend, err := ml.NewMLXBackend(modelPath)
 	if err != nil {
-		return fmt.Errorf("load model: %w", err)
+		return coreerr.E("cmd.runSequence", "load model", err)
 	}
 
 	opts := ml.GenOpts{
@@ -142,7 +145,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	// Open output file
 	outFile, err := os.OpenFile(sequenceOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return coreerr.E("cmd.runSequence", "create output", err)
 	}
 	defer outFile.Close()
 	encoder := json.NewEncoder(outFile)
@@ -157,26 +160,26 @@ func runSequence(cmd *cli.Command, args []string) error {
 		}
 
 		// Load lesson
-		lessonData, err := os.ReadFile(lessonPath)
+		lessonData, err := coreio.Local.Read(lessonPath)
 		if err != nil {
 			slog.Error("sequence: failed to read lesson",
 				"path", lessonPath,
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
-				return fmt.Errorf("vertical sequence halted: %w", err)
+				return coreerr.E("cmd.runSequence", "vertical sequence halted", err)
 			}
 			continue
 		}
 
 		var lesson lessonDef
-		if err := yaml.Unmarshal(lessonData, &lesson); err != nil {
+		if err := yaml.Unmarshal([]byte(lessonData), &lesson); err != nil {
 			slog.Error("sequence: failed to parse lesson",
 				"path", lessonPath,
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
-				return fmt.Errorf("vertical sequence halted: %w", err)
+				return coreerr.E("cmd.runSequence", "vertical sequence halted", err)
 			}
 			continue
 		}
@@ -213,11 +216,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 				if !filepath.IsAbs(kbPath) {
 					kbPath = filepath.Join(lessonDir, kbPath)
 				}
-				d, err := os.ReadFile(kbPath)
+				d, err := coreio.Local.Read(kbPath)
 				if err != nil {
 					slog.Error("sequence: failed to read KB", "error", err)
 				} else {
-					kbText = string(d)
+					kbText = d
 				}
 			}
 			if lesson.Sandwich.Kernel != "" {
@@ -225,11 +228,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 				if !filepath.IsAbs(kernelPath) {
 					kernelPath = filepath.Join(lessonDir, kernelPath)
 				}
-				d, err := os.ReadFile(kernelPath)
+				d, err := coreio.Local.Read(kernelPath)
 				if err != nil {
 					slog.Error("sequence: failed to read kernel", "error", err)
 				} else {
-					kernelText = string(d)
+					kernelText = d
 				}
 			}
 			hasSandwich = kbText != "" && kernelText != ""
@@ -275,7 +278,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				},
 			}
 			if err := encoder.Encode(record); err != nil {
-				return fmt.Errorf("write record: %w", err)
+				return coreerr.E("cmd.runSequence", "write record", err)
 			}
 
 			generated++
@@ -310,12 +313,12 @@ func runSequence(cmd *cli.Command, args []string) error {
 }
 
 func loadSequenceState(path string) sequenceState {
-	data, err := os.ReadFile(path)
+	data, err := coreio.Local.Read(path)
 	if err != nil {
 		return sequenceState{}
 	}
 	var state sequenceState
-	json.Unmarshal(data, &state)
+	json.Unmarshal([]byte(data), &state)
 	return state
 }
 
@@ -324,5 +327,5 @@ func saveSequenceState(path string, state sequenceState) {
 	if err != nil {
 		return
 	}
-	os.WriteFile(path, data, 0644)
+	coreio.Local.Write(path, string(data))
 }

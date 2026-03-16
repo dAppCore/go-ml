@@ -9,6 +9,10 @@ import (
 	"strings"
 
 	"github.com/parquet-go/parquet-go"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ParquetRow is the schema for exported Parquet files.
@@ -26,8 +30,8 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 	if outputDir == "" {
 		outputDir = filepath.Join(trainingDir, "parquet")
 	}
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return 0, fmt.Errorf("create output dir: %w", err)
+	if err := coreio.Local.EnsureDir(outputDir); err != nil {
+		return 0, coreerr.E("ml.ExportParquet", "create output dir", err)
 	}
 
 	total := 0
@@ -39,7 +43,7 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 
 		n, err := ExportSplitParquet(jsonlPath, outputDir, split)
 		if err != nil {
-			return total, fmt.Errorf("export %s: %w", split, err)
+			return total, coreerr.E("ml.ExportParquet", fmt.Sprintf("export %s", split), err)
 		}
 		total += n
 	}
@@ -52,7 +56,7 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 	f, err := os.Open(jsonlPath)
 	if err != nil {
-		return 0, fmt.Errorf("open %s: %w", jsonlPath, err)
+		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("open %s", jsonlPath), err)
 	}
 	defer f.Close()
 
@@ -101,7 +105,7 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return 0, fmt.Errorf("scan %s: %w", jsonlPath, err)
+		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("scan %s", jsonlPath), err)
 	}
 
 	if len(rows) == 0 {
@@ -112,7 +116,7 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 
 	out, err := os.Create(outPath)
 	if err != nil {
-		return 0, fmt.Errorf("create %s: %w", outPath, err)
+		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("create %s", outPath), err)
 	}
 
 	writer := parquet.NewGenericWriter[ParquetRow](out,
@@ -121,16 +125,16 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 
 	if _, err := writer.Write(rows); err != nil {
 		out.Close()
-		return 0, fmt.Errorf("write parquet rows: %w", err)
+		return 0, coreerr.E("ml.ExportSplitParquet", "write parquet rows", err)
 	}
 
 	if err := writer.Close(); err != nil {
 		out.Close()
-		return 0, fmt.Errorf("close parquet writer: %w", err)
+		return 0, coreerr.E("ml.ExportSplitParquet", "close parquet writer", err)
 	}
 
 	if err := out.Close(); err != nil {
-		return 0, fmt.Errorf("close file: %w", err)
+		return 0, coreerr.E("ml.ExportSplitParquet", "close file", err)
 	}
 
 	return len(rows), nil

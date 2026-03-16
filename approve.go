@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ApproveConfig holds options for the approve operation.
@@ -31,13 +33,13 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 		ORDER BY r.idx
 	`)
 	if err != nil {
-		return fmt.Errorf("query approved expansions: %w (have you run scoring?)", err)
+		return coreerr.E("ml.ApproveExpansions", "query approved expansions", err)
 	}
 	defer rows.Close()
 
 	f, err := os.Create(cfg.Output)
 	if err != nil {
-		return fmt.Errorf("create output %s: %w", cfg.Output, err)
+		return coreerr.E("ml.ApproveExpansions", fmt.Sprintf("create output %s", cfg.Output), err)
 	}
 	defer f.Close()
 
@@ -51,7 +53,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 		var seedID, region, domain, prompt, response, model string
 		var genTime, score float64
 		if err := rows.Scan(&idx, &seedID, &region, &domain, &prompt, &response, &genTime, &model, &score); err != nil {
-			return fmt.Errorf("scan approved row: %w", err)
+			return coreerr.E("ml.ApproveExpansions", "scan approved row", err)
 		}
 
 		example := TrainingExample{
@@ -62,7 +64,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 		}
 
 		if err := enc.Encode(example); err != nil {
-			return fmt.Errorf("encode example: %w", err)
+			return coreerr.E("ml.ApproveExpansions", "encode example", err)
 		}
 
 		regionSet[region] = true
@@ -71,7 +73,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate approved rows: %w", err)
+		return coreerr.E("ml.ApproveExpansions", "iterate approved rows", err)
 	}
 
 	fmt.Fprintf(w, "Approved: %d responses (threshold: heuristic > 0)\n", count)

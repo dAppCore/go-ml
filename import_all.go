@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
 )
 
 // ImportConfig holds options for the import-all operation.
@@ -84,14 +86,14 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	}
 
 	trainingLocal := filepath.Join(cfg.DataDir, "training")
-	os.MkdirAll(trainingLocal, 0755)
+	coreio.Local.EnsureDir(trainingLocal)
 
 	if !cfg.SkipM3 {
 		fmt.Fprintln(w, "  Pulling training sets from M3...")
 		for _, td := range trainingDirs {
 			for _, rel := range td.files {
 				local := filepath.Join(trainingLocal, rel)
-				os.MkdirAll(filepath.Dir(local), 0755)
+				coreio.Local.EnsureDir(filepath.Dir(local))
 				scpCmd := exec.Command("scp", fmt.Sprintf("%s:/Volumes/Data/lem/%s", m3Host, rel), local)
 				scpCmd.Run() // ignore errors, file might not exist
 			}
@@ -135,7 +137,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 
 	// ── 3. Benchmark results ──
 	benchLocal := filepath.Join(cfg.DataDir, "benchmarks")
-	os.MkdirAll(benchLocal, 0755)
+	coreio.Local.EnsureDir(benchLocal)
 
 	if !cfg.SkipM3 {
 		fmt.Fprintln(w, "  Pulling benchmarks from M3...")
@@ -147,7 +149,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 		}
 		for _, subdir := range []string{"results", "scale_results", "cross_arch_results", "deepseek-r1-7b"} {
 			localSub := filepath.Join(benchLocal, subdir)
-			os.MkdirAll(localSub, 0755)
+			coreio.Local.EnsureDir(localSub)
 			scpCmd := exec.Command("scp", "-r",
 				fmt.Sprintf("%s:/Volumes/Data/lem/benchmarks/%s/", m3Host, subdir),
 				filepath.Join(benchLocal)+"/")
@@ -362,7 +364,7 @@ func importSeeds(db *DB, seedDir string) int {
 			return nil
 		}
 
-		data, err := os.ReadFile(path)
+		data, err := coreio.Local.Read(path)
 		if err != nil {
 			return nil
 		}
@@ -373,7 +375,7 @@ func importSeeds(db *DB, seedDir string) int {
 		// Try parsing as array or object with prompts/seeds field.
 		var seedsList []any
 		var raw any
-		if err := json.Unmarshal(data, &raw); err != nil {
+		if err := json.Unmarshal([]byte(data), &raw); err != nil {
 			return nil
 		}
 

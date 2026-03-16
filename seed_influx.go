@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // SeedInfluxConfig holds options for the SeedInflux migration.
@@ -24,7 +26,7 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 	// Count source rows in DuckDB.
 	var total int
 	if err := db.conn.QueryRow("SELECT count(*) FROM golden_set").Scan(&total); err != nil {
-		return fmt.Errorf("no golden_set table: %w", err)
+		return coreerr.E("ml.SeedInflux", "no golden_set table", err)
 	}
 
 	// Check how many distinct records InfluxDB already has.
@@ -48,7 +50,7 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 		"SELECT idx, seed_id, domain, voice, gen_time, char_count FROM golden_set ORDER BY idx",
 	)
 	if err != nil {
-		return fmt.Errorf("query golden_set: %w", err)
+		return coreerr.E("ml.SeedInflux", "query golden_set", err)
 	}
 	defer dbRows.Close()
 
@@ -62,7 +64,7 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 		var charCount int
 
 		if err := dbRows.Scan(&idx, &seedID, &domain, &voice, &genTime, &charCount); err != nil {
-			return fmt.Errorf("scan row %d: %w", written, err)
+			return coreerr.E("ml.SeedInflux", fmt.Sprintf("scan row %d", written), err)
 		}
 
 		// Build line protocol point.
@@ -83,7 +85,7 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 
 		if len(batch) >= cfg.BatchSize {
 			if err := influx.WriteLp(batch); err != nil {
-				return fmt.Errorf("write batch at row %d: %w", written, err)
+				return coreerr.E("ml.SeedInflux", fmt.Sprintf("write batch at row %d", written), err)
 			}
 			written += len(batch)
 			batch = batch[:0]
@@ -95,13 +97,13 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 	}
 
 	if err := dbRows.Err(); err != nil {
-		return fmt.Errorf("iterate golden_set rows: %w", err)
+		return coreerr.E("ml.SeedInflux", "iterate golden_set rows", err)
 	}
 
 	// Flush remaining batch.
 	if len(batch) > 0 {
 		if err := influx.WriteLp(batch); err != nil {
-			return fmt.Errorf("write final batch: %w", err)
+			return coreerr.E("ml.SeedInflux", "write final batch", err)
 		}
 		written += len(batch)
 	}

@@ -1,10 +1,11 @@
 package ml
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // NormalizeConfig configures the seed normalization process.
@@ -25,17 +26,17 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 	// 1. Check seeds table exists and get count.
 	var seedCount int
 	if err := db.conn.QueryRow("SELECT count(*) FROM seeds").Scan(&seedCount); err != nil {
-		return fmt.Errorf("no seeds table (run import-all first): %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "no seeds table (run import-all first)", err)
 	}
 	fmt.Fprintf(w, "Seeds table: %d rows\n", seedCount)
 
 	if seedCount == 0 {
-		return errors.New("seeds table is empty, nothing to normalize")
+		return coreerr.E("ml.NormalizeSeeds", "seeds table is empty, nothing to normalize", nil)
 	}
 
 	// 2. Drop and recreate expansion_prompts.
 	if _, err := db.conn.Exec("DROP TABLE IF EXISTS expansion_prompts"); err != nil {
-		return fmt.Errorf("drop expansion_prompts: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "drop expansion_prompts", err)
 	}
 
 	createSQL := fmt.Sprintf(`
@@ -68,12 +69,12 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 	`, cfg.MinLength)
 
 	if _, err := db.conn.Exec(createSQL); err != nil {
-		return fmt.Errorf("create expansion_prompts: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "create expansion_prompts", err)
 	}
 
 	var epCount int
 	if err := db.conn.QueryRow("SELECT count(*) FROM expansion_prompts").Scan(&epCount); err != nil {
-		return fmt.Errorf("count expansion_prompts: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "count expansion_prompts", err)
 	}
 	fmt.Fprintf(w, "Expansion prompts created: %d (min length %d, deduped, excluding existing)\n", epCount, cfg.MinLength)
 
@@ -96,7 +97,7 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 		WHERE expansion_prompts.domain = sub.domain
 	`
 	if _, err := db.conn.Exec(prioritySQL); err != nil {
-		return fmt.Errorf("assign priority: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "assign priority", err)
 	}
 	fmt.Fprintln(w, "Priority assigned (underrepresented domains ranked higher).")
 
@@ -125,7 +126,7 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 		ORDER BY cnt DESC
 	`)
 	if err != nil {
-		return fmt.Errorf("region distribution query: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "region distribution query", err)
 	}
 	defer rows.Close()
 
@@ -135,13 +136,13 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 		var region string
 		var cnt int
 		if err := rows.Scan(&region, &cnt); err != nil {
-			return fmt.Errorf("scan region row: %w", err)
+			return coreerr.E("ml.NormalizeSeeds", "scan region row", err)
 		}
 		totalFromRegions += cnt
 		lines = append(lines, fmt.Sprintf("  %-10s %6d", region, cnt))
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate region rows: %w", err)
+		return coreerr.E("ml.NormalizeSeeds", "iterate region rows", err)
 	}
 
 	for _, line := range lines {

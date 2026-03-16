@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // OllamaBaseModelMap maps model tags to Ollama model names.
@@ -31,10 +34,11 @@ var HFBaseModelMap = map[string]string{
 // ollamaUploadBlob uploads a local file to Ollama's blob store.
 // Returns the sha256 digest string (e.g. "sha256:abc123...").
 func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
-	data, err := os.ReadFile(filePath)
+	raw, err := coreio.Local.Read(filePath)
 	if err != nil {
-		return "", fmt.Errorf("read %s: %w", filePath, err)
+		return "", coreerr.E("ml.ollamaUploadBlob", fmt.Sprintf("read %s", filePath), err)
 	}
+	data := []byte(raw)
 
 	hash := sha256.Sum256(data)
 	digest := "sha256:" + hex.EncodeToString(hash[:])
@@ -52,19 +56,19 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 
 	req, err := http.NewRequest(http.MethodPost, ollamaURL+"/api/blobs/"+digest, bytes.NewReader(data))
 	if err != nil {
-		return "", fmt.Errorf("blob request: %w", err)
+		return "", coreerr.E("ml.ollamaUploadBlob", "blob request", err)
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("blob upload: %w", err)
+		return "", coreerr.E("ml.ollamaUploadBlob", "blob upload", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("blob upload HTTP %d: %s", resp.StatusCode, string(body))
+		return "", coreerr.E("ml.ollamaUploadBlob", fmt.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 	return digest, nil
 }
@@ -77,12 +81,12 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 
 	sfDigest, err := ollamaUploadBlob(ollamaURL, sfPath)
 	if err != nil {
-		return fmt.Errorf("upload adapter safetensors: %w", err)
+		return coreerr.E("ml.OllamaCreateModel", "upload adapter safetensors", err)
 	}
 
 	cfgDigest, err := ollamaUploadBlob(ollamaURL, cfgPath)
 	if err != nil {
-		return fmt.Errorf("upload adapter config: %w", err)
+		return coreerr.E("ml.OllamaCreateModel", "upload adapter config", err)
 	}
 
 	reqBody, _ := json.Marshal(map[string]any{
@@ -97,7 +101,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	client := &http.Client{Timeout: 10 * time.Minute}
 	resp, err := client.Post(ollamaURL+"/api/create", "application/json", bytes.NewReader(reqBody))
 	if err != nil {
-		return fmt.Errorf("ollama create: %w", err)
+		return coreerr.E("ml.OllamaCreateModel", "ollama create", err)
 	}
 	defer resp.Body.Close()
 
@@ -111,10 +115,10 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 			if err == io.EOF {
 				break
 			}
-			return fmt.Errorf("ollama create decode: %w", err)
+			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", err)
 		}
 		if status.Error != "" {
-			return fmt.Errorf("ollama create: %s", status.Error)
+			return coreerr.E("ml.OllamaCreateModel", fmt.Sprintf("ollama create: %s", status.Error), nil)
 		}
 		if status.Status == "success" {
 			return nil
@@ -122,7 +126,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("ollama create: HTTP %d", resp.StatusCode)
+		return coreerr.E("ml.OllamaCreateModel", fmt.Sprintf("ollama create: HTTP %d", resp.StatusCode), nil)
 	}
 	return nil
 }
@@ -133,20 +137,20 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 
 	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("ollama delete request: %w", err)
+		return coreerr.E("ml.OllamaDeleteModel", "ollama delete request", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("ollama delete: %w", err)
+		return coreerr.E("ml.OllamaDeleteModel", "ollama delete", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ollama delete %d: %s", resp.StatusCode, string(respBody))
+		return coreerr.E("ml.OllamaDeleteModel", fmt.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 	return nil
 }

@@ -6,6 +6,8 @@ import (
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"forge.lthn.ai/core/go-ml"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var statusCmd = &cli.Command{
@@ -19,7 +21,7 @@ func runStatus(cmd *cli.Command, args []string) error {
 	influx := ml.NewInfluxClient(influxURL, influxDB)
 
 	if err := ml.PrintStatus(influx, os.Stdout); err != nil {
-		return fmt.Errorf("status: %w", err)
+		return coreerr.E("cmd.runStatus", "status", err)
 	}
 
 	path := dbPath
@@ -30,13 +32,13 @@ func runStatus(cmd *cli.Command, args []string) error {
 	if path != "" {
 		db, err := ml.OpenDB(path)
 		if err != nil {
-			return fmt.Errorf("open db: %w", err)
+			return coreerr.E("cmd.runStatus", "open db", err)
 		}
 		defer db.Close()
 
 		counts, err := db.TableCounts()
 		if err != nil {
-			return fmt.Errorf("table counts: %w", err)
+			return coreerr.E("cmd.runStatus", "table counts", err)
 		}
 
 		fmt.Println()

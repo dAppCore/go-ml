@@ -11,6 +11,10 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ConsolidateConfig holds options for the consolidate operation.
@@ -28,8 +32,8 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = "responses"
 	}
-	if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
-		return fmt.Errorf("create output dir: %w", err)
+	if err := coreio.Local.EnsureDir(cfg.OutputDir); err != nil {
+		return coreerr.E("ml.Consolidate", "create output dir", err)
 	}
 
 	// List remote files via SSH.
@@ -37,7 +41,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	listCmd := exec.Command("ssh", cfg.M3Host, fmt.Sprintf("ls %s/%s", cfg.RemoteDir, cfg.Pattern))
 	listOutput, err := listCmd.Output()
 	if err != nil {
-		return fmt.Errorf("list remote files: %w", err)
+		return coreerr.E("ml.Consolidate", "list remote files", err)
 	}
 
 	remoteFiles := strings.Split(strings.TrimSpace(string(listOutput)), "\n")
@@ -113,7 +117,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 
 	out, err := os.Create(mergedPath)
 	if err != nil {
-		return fmt.Errorf("create merged file: %w", err)
+		return coreerr.E("ml.Consolidate", "create merged file", err)
 	}
 	defer out.Close()
 
@@ -123,7 +127,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 		bw.WriteString("\n")
 	}
 	if err := bw.Flush(); err != nil {
-		return fmt.Errorf("flush merged file: %w", err)
+		return coreerr.E("ml.Consolidate", "flush merged file", err)
 	}
 
 	fmt.Fprintf(w, "\nMerged: %d unique examples -> %s\n", len(seen), mergedPath)

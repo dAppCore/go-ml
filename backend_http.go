@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"forge.lthn.ai/core/go-log"
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // HTTPBackend talks to an OpenAI-compatible chat completions API.
@@ -100,7 +100,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 
 	body, err := json.Marshal(req)
 	if err != nil {
-		return Result{}, log.E("ml.HTTPBackend.Chat", "marshal request", err)
+		return Result{}, coreerr.E("ml.HTTPBackend.Chat", "marshal request", err)
 	}
 
 	const maxAttempts = 3
@@ -124,7 +124,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 		}
 	}
 
-	return Result{}, log.E("ml.HTTPBackend.Chat", fmt.Sprintf("exhausted %d retries", maxAttempts), lastErr)
+	return Result{}, coreerr.E("ml.HTTPBackend.Chat", fmt.Sprintf("exhausted %d retries", maxAttempts), lastErr)
 }
 
 // doRequest sends a single HTTP request and parses the response.
@@ -133,35 +133,35 @@ func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) (string, error
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("create request: %w", err)
+		return "", coreerr.E("ml.HTTPBackend.doRequest", "create request", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := b.httpClient.Do(httpReq)
 	if err != nil {
-		return "", &retryableError{fmt.Errorf("http request: %w", err)}
+		return "", &retryableError{coreerr.E("ml.HTTPBackend.doRequest", "http request", err)}
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", &retryableError{fmt.Errorf("read response: %w", err)}
+		return "", &retryableError{coreerr.E("ml.HTTPBackend.doRequest", "read response", err)}
 	}
 
 	if resp.StatusCode >= 500 {
-		return "", &retryableError{fmt.Errorf("server error %d: %s", resp.StatusCode, string(respBody))}
+		return "", &retryableError{coreerr.E("ml.HTTPBackend.doRequest", fmt.Sprintf("server error %d: %s", resp.StatusCode, string(respBody)), nil)}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
+		return "", coreerr.E("ml.HTTPBackend.doRequest", fmt.Sprintf("unexpected status %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	var chatResp chatResponse
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", fmt.Errorf("unmarshal response: %w", err)
+		return "", coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", err)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", errors.New("no choices in response")
+		return "", coreerr.E("ml.HTTPBackend.doRequest", "no choices in response", nil)
 	}
 
 	return chatResp.Choices[0].Message.Content, nil

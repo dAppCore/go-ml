@@ -5,11 +5,12 @@
 package ml
 
 import (
-	"fmt"
 	"log/slog"
 
 	"forge.lthn.ai/core/go-inference"
 	_ "forge.lthn.ai/core/go-mlx" // registers "metal" backend via init()
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // NewMLXBackend loads a model via go-inference's Metal backend and wraps it
@@ -24,7 +25,7 @@ func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*Inferen
 
 	m, err := inference.LoadModel(modelPath, loadOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("mlx: %w", err)
+		return nil, coreerr.E("ml.NewMLXBackend", "mlx", err)
 	}
 
 	info := m.Info()
