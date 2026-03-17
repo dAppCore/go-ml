@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -557,7 +556,7 @@ func escapeFieldStr(s string, max int) string {
 // --- Data loading ---
 
 func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int) ([]trainSample, error) {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return nil, err
 	}

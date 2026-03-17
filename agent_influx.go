@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -225,7 +224,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 // BufferInfluxResult saves results to a local JSONL file when InfluxDB is down.
 func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 	bufPath := filepath.Join(workDir, InfluxBufferFile)
-	f, err := os.OpenFile(bufPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := coreio.Local.Append(bufPath)
 	if err != nil {
 		log.Printf("Cannot open buffer file: %v", err)
 		return

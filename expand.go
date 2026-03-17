@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"time"
+
+	coreio "forge.lthn.ai/core/go-io"
 
 	coreerr "forge.lthn.ai/core/go-log"
 )
@@ -91,7 +92,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	}
 
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("expand-%s.jsonl", worker))
-	f, err := os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
 		return coreerr.E("ml.ExpandPrompts", "open output file", err)
 	}

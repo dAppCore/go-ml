@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
+
+	coreio "forge.lthn.ai/core/go-io"
 
 	coreerr "forge.lthn.ai/core/go-log"
 )
@@ -80,7 +81,7 @@ func SplitData(responses []Response, trainPct, validPct, testPct int, seed int64
 // WriteTrainingJSONL writes responses in chat JSONL format suitable for
 // MLX LoRA fine-tuning.
 func WriteTrainingJSONL(path string, responses []Response) error {
-	f, err := os.Create(path)
+	f, err := coreio.Local.Create(path)
 	if err != nil {
 		return coreerr.E("ml.WriteTrainingJSONL", fmt.Sprintf("create %s", path), err)
 	}

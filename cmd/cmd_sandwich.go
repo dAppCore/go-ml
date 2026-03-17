@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime"
 	"time"
 
@@ -114,7 +113,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	}
 
 	// Open output file
-	outFile, err := os.Create(sandwichOutput)
+	outFile, err := coreio.Local.Create(sandwichOutput)
 	if err != nil {
 		return coreerr.E("cmd.runSandwich", "create output", err)
 	}

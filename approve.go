@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
+
+	coreio "forge.lthn.ai/core/go-io"
 
 	coreerr "forge.lthn.ai/core/go-log"
 )
@@ -37,7 +38,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 	}
 	defer rows.Close()
 
-	f, err := os.Create(cfg.Output)
+	f, err := coreio.Local.Create(cfg.Output)
 	if err != nil {
 		return coreerr.E("ml.ApproveExpansions", fmt.Sprintf("create output %s", cfg.Output), err)
 	}

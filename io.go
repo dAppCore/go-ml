@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	coreio "forge.lthn.ai/core/go-io"
@@ -16,7 +15,7 @@ import (
 // Each line must be a valid JSON object. Empty lines are skipped.
 // The scanner buffer is set to 1MB to handle long responses.
 func ReadResponses(path string) ([]Response, error) {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("open %s", path), err)
 	}
