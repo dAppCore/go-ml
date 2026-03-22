@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"forge.lthn.ai/core/go-log"
-	"forge.lthn.ai/core/go-process"
+	"dappco.re/go/core/log"
+	"dappco.re/go/core/process"
 )
 
 // LlamaBackend manages a llama-server process and delegates HTTP calls to it.

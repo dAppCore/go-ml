@@ -6,9 +6,8 @@ import (
 	"context"
 	"iter"
 
+	coreerr "dappco.re/go/core/log"
 	"forge.lthn.ai/core/go-inference"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // HTTPTextModel wraps an HTTPBackend to satisfy the inference.TextModel interface.

@@ -2,7 +2,7 @@
 
 package cmd
 
-import "forge.lthn.ai/core/go-ml"
+import "dappco.re/go/core/ml"
 
 func createServeBackend() (ml.Backend, error) {
 	return ml.NewHTTPBackend(apiURL, modelName), nil

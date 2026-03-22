@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // ApproveConfig holds options for the approve operation.

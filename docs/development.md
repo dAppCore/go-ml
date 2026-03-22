@@ -11,9 +11,9 @@
 
 | Module | Local path | Notes |
 |--------|-----------|-------|
-| `forge.lthn.ai/core/go` | `../go` | Framework, process management, logging |
+| `dappco.re/go/core` | `../go` | Framework, process management, logging |
 | `forge.lthn.ai/core/go-inference` | `../go-inference` | Shared TextModel/Token interfaces |
-| `forge.lthn.ai/core/go-mlx` | `../go-mlx` | Metal GPU backend |
+| `dappco.re/go/core/mlx` | `../go-mlx` | Metal GPU backend |
 
 All three must be checked out as siblings of `go-ml` (i.e. all four directories share the same parent).
 
@@ -241,9 +241,11 @@ import (
     "context"           // stdlib
     "fmt"
 
-    "forge.lthn.ai/core/go-inference"  // forge.lthn.ai modules
+    "dappco.re/go/core/log"               // dappco.re modules
 
-    "github.com/stretchr/testify/assert"  // third-party
+    "forge.lthn.ai/core/go-inference"      // forge.lthn.ai (not yet migrated)
+
+    "github.com/stretchr/testify/assert"   // third-party
 )
 ```
 
@@ -298,7 +300,7 @@ The licence is **EUPL-1.2**. All source files carry the SPDX identifier in the h
 
 ## Forge Remote
 
-The authoritative remote is `forge.lthn.ai/core/go-ml`:
+The authoritative remote is `dappco.re/go/core/ml`:
 
 ```bash
 git push forge main

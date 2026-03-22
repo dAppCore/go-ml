@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-ml"
 )
 
 var serveCmd = &cli.Command{

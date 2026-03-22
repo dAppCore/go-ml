@@ -2,7 +2,7 @@
 
 ## Overview
 
-`forge.lthn.ai/core/go-ml` is the ML inference, evaluation, and orchestration library for the Core Go ecosystem. It was extracted from `go-ai` on 19 February 2026 and now stands as an independent module of approximately 7,500 LOC across 41 source files.
+`dappco.re/go/core/ml` is the ML inference, evaluation, and orchestration library for the Core Go ecosystem. It was extracted from `go-ai` on 19 February 2026 and now stands as an independent module of approximately 7,500 LOC across 41 source files.
 
 The package provides three distinct subsystems:
 
@@ -15,12 +15,12 @@ The package provides three distinct subsystems:
 ## Dependency Graph
 
 ```
-forge.lthn.ai/core/go-ml
+dappco.re/go/core/ml
     ├── forge.lthn.ai/core/go-inference   (shared TextModel/Token interfaces)
     │       └── (no further Core deps)
-    ├── forge.lthn.ai/core/go-mlx         (Metal GPU inference, darwin/arm64 only)
+    ├── dappco.re/go/core/mlx         (Metal GPU inference, darwin/arm64 only)
     │       └── forge.lthn.ai/core/go-inference
-    ├── forge.lthn.ai/core/go             (ServiceRuntime, process, log)
+    ├── dappco.re/go/core                  (ServiceRuntime, process, log)
     ├── github.com/marcboeker/go-duckdb   (analytics storage)
     └── github.com/parquet-go/parquet-go  (columnar data I/O)
 ```
@@ -146,7 +146,7 @@ func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*Inferen
 }
 ```
 
-The blank import `_ "forge.lthn.ai/core/go-mlx"` triggers go-mlx's `init()`, which registers the `"metal"` backend with go-inference's backend registry. Subsequent calls to `inference.LoadModel()` automatically use Metal GPU acceleration on Apple Silicon.
+The blank import `_ "dappco.re/go/core/mlx"` triggers go-mlx's `init()`, which registers the `"metal"` backend with go-inference's backend registry. Subsequent calls to `inference.LoadModel()` automatically use Metal GPU acceleration on Apple Silicon.
 
 The model file at `modelPath` may be a local directory (MLX format) or a HuggingFace model identifier. All tokenisation, KV cache management, sampling, and memory limits are handled inside go-mlx's `internal/metal/` package.
 

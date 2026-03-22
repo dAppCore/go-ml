@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"strings"
 
+	"dappco.re/go/core/log"
+	ml "dappco.re/go/core/ml"
+
 	"forge.lthn.ai/core/go-inference"
-	ml "forge.lthn.ai/core/go-ml"
-	"forge.lthn.ai/core/go-log"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

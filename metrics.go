@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // PushMetrics queries golden_set stats from DuckDB and writes them to InfluxDB

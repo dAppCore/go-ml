@@ -7,10 +7,9 @@ package ml
 import (
 	"log/slog"
 
+	coreerr "dappco.re/go/core/log"
 	"forge.lthn.ai/core/go-inference"
 	_ "forge.lthn.ai/core/go-mlx" // registers "metal" backend via init()
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // NewMLXBackend loads a model via go-inference's Metal backend and wraps it

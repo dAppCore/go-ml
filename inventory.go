@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // TargetTotal is the golden set target size used for progress reporting.
