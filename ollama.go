@@ -10,9 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
 )
 
 // OllamaBaseModelMap maps model tags to Ollama model names.

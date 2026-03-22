@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // regionRow holds a single row from the region distribution query.

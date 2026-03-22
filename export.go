@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // ChatMessage is a single message in the chat training format.

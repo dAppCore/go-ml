@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // HTTPBackend talks to an OpenAI-compatible chat completions API.

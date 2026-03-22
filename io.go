@@ -7,9 +7,8 @@ import (
 	"os"
 	"strings"
 
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
 )
 
 // ReadResponses reads a JSONL file and returns a slice of Response structs.

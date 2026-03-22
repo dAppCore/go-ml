@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // NormalizeConfig configures the seed normalization process.

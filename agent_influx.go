@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/core/io"
 )
 
 // bufferEntry is a JSONL-buffered result for when InfluxDB is down.
