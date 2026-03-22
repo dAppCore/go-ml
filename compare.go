@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // RunCompare reads two score files and prints a comparison table for each

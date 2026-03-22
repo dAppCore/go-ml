@@ -3,10 +3,9 @@ package cmd
 import (
 	"os"
 
+	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-ml"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var inventoryCmd = &cli.Command{

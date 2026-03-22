@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/marcboeker/go-duckdb"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // DB wraps a DuckDB connection.

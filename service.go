@@ -7,9 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"forge.lthn.ai/core/go/pkg/core"
-
-	coreerr "forge.lthn.ai/core/go-log"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/core/log"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.
@@ -79,7 +78,7 @@ func NewService(opts Options) func(*core.Core) (any, error) {
 
 // OnStartup initializes backends and scoring engine.
 func (s *Service) OnStartup(ctx context.Context) error {
-	opts := s.Opts()
+	opts := s.Options()
 
 	// Register Ollama backend if URL provided.
 	if opts.OllamaURL != "" {
@@ -117,7 +116,7 @@ func (s *Service) Backend(name string) Backend {
 
 // DefaultBackend returns the configured default backend.
 func (s *Service) DefaultBackend() Backend {
-	name := s.Opts().DefaultBackend
+	name := s.Options().DefaultBackend
 	if name == "" {
 		name = "ollama"
 	}

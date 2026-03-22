@@ -1,17 +1,17 @@
-module forge.lthn.ai/core/go-ml
+module dappco.re/go/core/ml
 
 go 1.26.0
 
 require (
-	forge.lthn.ai/core/api v0.1.6
+	dappco.re/go/core v0.5.0
+	dappco.re/go/core/api v0.2.0
+	dappco.re/go/core/i18n v0.2.0
+	dappco.re/go/core/io v0.2.0
+	dappco.re/go/core/log v0.1.0
+	dappco.re/go/core/process v0.3.0
 	forge.lthn.ai/core/cli v0.3.7
-	forge.lthn.ai/core/go v0.3.3
-	forge.lthn.ai/core/go-i18n v0.1.7
 	forge.lthn.ai/core/go-inference v0.1.7
-	forge.lthn.ai/core/go-io v0.1.7
-	forge.lthn.ai/core/go-log v0.0.4
-	forge.lthn.ai/core/go-mlx v0.1.5
-	forge.lthn.ai/core/go-process v0.2.9
+	forge.lthn.ai/core/go-mlx v0.1.6
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/marcboeker/go-duckdb v1.8.5
@@ -22,6 +22,10 @@ require (
 )
 
 require (
+	forge.lthn.ai/core/go v0.3.3 // indirect
+	forge.lthn.ai/core/go-i18n v0.1.7 // indirect
+	forge.lthn.ai/core/go-io v0.1.7 // indirect
+	forge.lthn.ai/core/go-log v0.0.4 // indirect
 	github.com/99designs/gqlgen v0.17.88 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect

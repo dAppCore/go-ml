@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
 )
 
 // extractJSON extracts the first JSON object {...} from text.
