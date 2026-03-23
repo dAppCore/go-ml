@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -235,7 +234,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 
 	// Open JSONL output for streaming writes
-	outFile, err := os.Create(abOutput)
+	outFile, err := coreio.Local.Create(abOutput)
 	if err != nil {
 		return coreerr.E("cmd.runAB", "create output", err)
 	}
@@ -308,7 +307,6 @@ func runAB(cmd *cli.Command, args []string) error {
 		if err := enc.Encode(line); err != nil {
 			slog.Error("ab: write jsonl", "error", err)
 		}
-		outFile.Sync()
 
 		// Track for summary
 		results = append(results, abProbeResult{
@@ -413,7 +411,6 @@ func runAB(cmd *cli.Command, args []string) error {
 	if err := enc.Encode(summaryLine); err != nil {
 		slog.Error("ab: write summary", "error", err)
 	}
-	outFile.Sync()
 
 	// Print summary table
 	summary := abSummary{

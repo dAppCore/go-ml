@@ -62,7 +62,7 @@ func Publish(cfg PublishConfig, w io.Writer) error {
 			fmt.Fprintln(w, "  Visibility: private")
 		}
 		for _, f := range files {
-			info, err := os.Stat(f.local)
+			info, err := coreio.Local.Stat(f.local)
 			if err != nil {
 				return coreerr.E("ml.Publish", fmt.Sprintf("stat %s", f.local), err)
 			}
@@ -112,17 +112,15 @@ func collectUploadFiles(inputDir string) ([]uploadEntry, error) {
 
 	for _, split := range splits {
 		path := filepath.Join(inputDir, split+".parquet")
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if !coreio.Local.IsFile(path) {
 			continue
-		} else if err != nil {
-			return nil, coreerr.E("ml.collectUploadFiles", fmt.Sprintf("stat %s", path), err)
 		}
 		files = append(files, uploadEntry{path, fmt.Sprintf("data/%s.parquet", split)})
 	}
 
 	// Check for dataset card in parent directory.
 	cardPath := filepath.Join(inputDir, "..", "dataset_card.md")
-	if _, err := os.Stat(cardPath); err == nil {
+	if coreio.Local.IsFile(cardPath) {
 		files = append(files, uploadEntry{cardPath, "README.md"})
 	}
 

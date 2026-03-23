@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -143,7 +142,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	}
 
 	// Open output file
-	outFile, err := os.OpenFile(sequenceOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	outFile, err := coreio.Local.Append(sequenceOutput)
 	if err != nil {
 		return coreerr.E("cmd.runSequence", "create output", err)
 	}

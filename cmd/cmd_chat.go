@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -264,7 +263,7 @@ done:
 // writeChatJSONL writes conversations to JSONL file.
 // If sandwich is true, wraps user messages with KB + kernel signing.
 func writeChatJSONL(path string, conversations [][]ml.Message, sandwich bool, kb, kernel string) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := coreio.Local.Append(path)
 	if err != nil {
 		return err
 	}

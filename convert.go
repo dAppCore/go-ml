@@ -7,7 +7,6 @@ import (
 	"log"
 	"maps"
 	"math"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -154,7 +153,7 @@ func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, ten
 		return coreerr.E("ml.WriteSafetensors", "marshal header", err)
 	}
 
-	f, err := os.Create(path)
+	f, err := coreio.Local.Create(path)
 	if err != nil {
 		return coreerr.E("ml.WriteSafetensors", fmt.Sprintf("create %s", path), err)
 	}
