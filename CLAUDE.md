@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Package Does
 
-ML inference backends, scoring engine, and agent orchestrator for the Lethean AI stack (`forge.lthn.ai/core/go-ml`). Provides:
+ML inference backends, scoring engine, and agent orchestrator for the Lethean AI stack (`dappco.re/go/core/ml`). Provides:
 
 - **Pluggable inference backends** — MLX/Metal (darwin/arm64), llama.cpp (subprocess), HTTP/Ollama (OpenAI-compatible)
 - **Multi-suite scoring engine** — heuristic (regex), semantic (LLM judge), content (sovereignty probes), standard benchmarks (TruthfulQA, DoNotAnswer, Toxigen, GSM8K), exact match
@@ -69,9 +69,10 @@ Sibling modules in the Core Go ecosystem (must be checked out as siblings for lo
 
 | Module | Purpose |
 |--------|---------|
-| `forge.lthn.ai/core/go` | Framework (ServiceRuntime, process, log) |
-| `forge.lthn.ai/core/go-mlx` | Metal GPU backend (darwin/arm64 only) |
-| `forge.lthn.ai/core/go-inference` | Shared TextModel/Backend interfaces |
+| `dappco.re/go/core` | Framework (ServiceRuntime, process, log) |
+| `forge.lthn.ai/core/go-mlx` | Metal GPU backend (darwin/arm64 only) — not yet migrated |
+| `forge.lthn.ai/core/go-inference` | Shared TextModel/Backend interfaces — not yet migrated |
+| `forge.lthn.ai/core/cli` | CLI framework — not yet migrated |
 
 Platform-specific: `backend_mlx.go` has `//go:build darwin && arm64 && !nomlx`. Use `-tags nomlx` to exclude the Metal backend when `libmlxc` is not installed. DuckDB requires CGo (C compiler).
 
@@ -80,7 +81,7 @@ Platform-specific: `backend_mlx.go` has `//go:build darwin && arm64 && !nomlx`. 
 - **UK English**: colour, organisation, centre, licence (noun)
 - **SPDX header**: `// SPDX-Licence-Identifier: EUPL-1.2` in every new source file
 - **Tests**: testify assert/require; `_Good`/`_Bad`/`_Ugly` suffix pattern
-- **Imports**: stdlib → forge.lthn.ai → third-party, each group separated by blank line
+- **Imports**: stdlib → dappco.re → forge.lthn.ai → third-party, each group separated by blank line. Within a group, sort alphabetically.
 - **Concurrency**: semaphore channels (`chan struct{}`) for bounding goroutines; always check `model.Err()` after exhausting a token iterator
 - **Licence**: EUPL-1.2
 
@@ -94,7 +95,7 @@ Format: `type(scope): description`
 Co-Authored-By: Virgil <virgil@lethean.io>
 ```
 
-## Forge
+## Repository
 
-- **Repo**: `forge.lthn.ai/core/go-ml`
+- **Module**: `dappco.re/go/core/ml`
 - **Push via SSH**: `git push forge main` (remote: `ssh://git@forge.lthn.ai:2223/core/go-ml.git`)

@@ -7,16 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"runtime"
 	"strings"
 	"time"
 
-	"forge.lthn.ai/core/go-ml"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
-
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var chatCmd = &cli.Command{

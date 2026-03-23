@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
 
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.

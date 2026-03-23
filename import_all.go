@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/core/io"
 )
 
 // ImportConfig holds options for the import-all operation.

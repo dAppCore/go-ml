@@ -5,9 +5,9 @@ description: ML inference backends, scoring engine, and agent orchestrator for G
 
 # go-ml
 
-`forge.lthn.ai/core/go-ml` provides pluggable inference backends, a multi-suite scoring engine with ethics-aware probes, GGUF model management, and a concurrent worker pipeline for batch evaluation.
+`dappco.re/go/core/ml` provides pluggable inference backends, a multi-suite scoring engine with ethics-aware probes, GGUF model management, and a concurrent worker pipeline for batch evaluation.
 
-**Module**: `forge.lthn.ai/core/go-ml`
+**Module**: `dappco.re/go/core/ml`
 **Size**: ~7,500 LOC across 41 Go files, 6 test files
 **Licence**: EUPL-1.2
 
@@ -57,7 +57,7 @@ Data Layer        — db.go, influx.go, parquet.go, export.go, io.go
 `go-ml` integrates with the Core DI framework via `Service`:
 
 ```go
-import "forge.lthn.ai/core/go-ml"
+import "dappco.re/go/core/ml"
 
 c, _ := core.New(
     core.WithName("ml", ml.NewService(ml.Options{

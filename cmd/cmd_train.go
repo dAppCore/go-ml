@@ -14,15 +14,12 @@ import (
 	"strings"
 	"time"
 
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
+	ml "dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
-	ml "forge.lthn.ai/core/go-ml"
-
 	"forge.lthn.ai/core/go-inference"
 	"forge.lthn.ai/core/go-mlx"
-
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 var trainCmd = &cli.Command{

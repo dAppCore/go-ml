@@ -5,9 +5,8 @@ package cmd
 import (
 	"log/slog"
 
-	"forge.lthn.ai/core/go-ml"
-
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/ml"
 )
 
 func createServeBackend() (ml.Backend, error) {

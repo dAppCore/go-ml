@@ -7,11 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
+
 	"github.com/parquet-go/parquet-go"
-
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ParquetRow is the schema for exported Parquet files.

@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
 
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // ExpandOutput is the JSONL output structure for expansion generation.

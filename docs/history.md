@@ -13,7 +13,7 @@ go-ml began as the `ai/ml/` subpackage inside `forge.lthn.ai/core/go-ai`. The mo
 **After extraction:**
 
 - go-ai dropped from ~14,000 to ~3,400 LOC (the `ai/` facade and `mcp/` hub remain there)
-- go-ml became an independent module at `forge.lthn.ai/core/go-ml`
+- go-ml became an independent module at `dappco.re/go/core/ml`
 
 ---
 
@@ -37,7 +37,7 @@ Key design decision: after exhausting the iterator, `model.Err()` is checked sep
 
 ### Step 1.3 — Rewrite `backend_mlx.go`
 
-Replaced 253 LOC with approximately 35 LOC. The blank import `_ "forge.lthn.ai/core/go-mlx"` registers the Metal backend via go-mlx's `init()`. `inference.LoadModel()` then handles model loading, and `InferenceAdapter` handles the rest.
+Replaced 253 LOC with approximately 35 LOC. The blank import `_ "dappco.re/go/core/mlx"` registers the Metal backend via go-mlx's `init()`. `inference.LoadModel()` then handles model loading, and `InferenceAdapter` handles the rest.
 
 Memory controls (cache limits, memory limits) were deferred: go-mlx handles them internally, and callers that need explicit control can call `mlx.SetCacheLimit()` directly.
 

@@ -13,13 +13,11 @@ import (
 	"slices"
 	"time"
 
+	"dappco.re/go/core/i18n/reversal"
+	coreio "dappco.re/go/core/io"
+	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-i18n/reversal"
-	"forge.lthn.ai/core/go-ml"
-
-	coreio "forge.lthn.ai/core/go-io"
-
-	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.

@@ -1,3 +1,4 @@
-bin/
-.core/
 .idea/
+.vscode/
+*.log
+.core/
