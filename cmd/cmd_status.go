@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -19,13 +18,13 @@ var statusCmd = &cli.Command{
 func runStatus(cmd *cli.Command, args []string) error {
 	influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	if err := ml.PrintStatus(influx, os.Stdout); err != nil {
+	if err := ml.PrintStatus(influx, cmd.OutOrStdout()); err != nil {
 		return coreerr.E("cmd.runStatus", "status", err)
 	}
 
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 
 	if path != "" {
@@ -40,13 +39,13 @@ func runStatus(cmd *cli.Command, args []string) error {
 			return coreerr.E("cmd.runStatus", "table counts", err)
 		}
 
-		fmt.Println()
-		fmt.Println("DuckDB:")
+		core.Print(cmd.OutOrStdout(), "")
+		core.Print(cmd.OutOrStdout(), "DuckDB:")
 		order := []string{"golden_set", "expansion_prompts", "seeds", "training_examples",
 			"prompts", "gemini_responses", "benchmark_questions", "benchmark_results", "validations"}
 		for _, table := range order {
 			if count, ok := counts[table]; ok {
-				fmt.Fprintf(os.Stdout, "  %-22s %6d rows\n", table, count)
+				core.Print(cmd.OutOrStdout(), "  %-22s %6d rows", table, count)
 			}
 		}
 	}

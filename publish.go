@@ -2,14 +2,11 @@ package ml
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -50,37 +47,38 @@ func Publish(cfg PublishConfig, w io.Writer) error {
 		return err
 	}
 	if len(files) == 0 {
-		return coreerr.E("ml.Publish", fmt.Sprintf("no Parquet files found in %s", cfg.InputDir), nil)
+		return coreerr.E("ml.Publish", core.Sprintf("no Parquet files found in %s", cfg.InputDir), nil)
 	}
 
 	if cfg.DryRun {
-		fmt.Fprintf(w, "Dry run: would publish to %s\n", cfg.Repo)
+		core.Print(w, "Dry run: would publish to %s", cfg.Repo)
 		if cfg.Public {
-			fmt.Fprintln(w, "  Visibility: public")
+			core.Print(w, "  Visibility: public")
 		} else {
-			fmt.Fprintln(w, "  Visibility: private")
+			core.Print(w, "  Visibility: private")
 		}
 		for _, f := range files {
 			info, err := coreio.Local.Stat(f.local)
 			if err != nil {
-				return coreerr.E("ml.Publish", fmt.Sprintf("stat %s", f.local), err)
+				return coreerr.E("ml.Publish", core.Sprintf("stat %s", f.local), err)
 			}
 			sizeMB := float64(info.Size()) / 1024 / 1024
-			fmt.Fprintf(w, "  %s -> %s (%.1f MB)\n", filepath.Base(f.local), f.remote, sizeMB)
+			core.Print(w, "  %s -> %s (%.1f MB)", core.PathBase(f.local), f.remote, sizeMB)
 		}
 		return nil
 	}
 
-	fmt.Fprintf(w, "Publishing to https://huggingface.co/datasets/%s\n", cfg.Repo)
+	core.Print(w, "Publishing to https://huggingface.co/datasets/%s", cfg.Repo)
 
 	for _, f := range files {
 		if err := uploadFileToHF(token, cfg.Repo, f.local, f.remote); err != nil {
-			return coreerr.E("ml.Publish", fmt.Sprintf("upload %s", filepath.Base(f.local)), err)
+			return coreerr.E("ml.Publish", core.Sprintf("upload %s", core.PathBase(f.local)), err)
 		}
-		fmt.Fprintf(w, "  Uploaded %s -> %s\n", filepath.Base(f.local), f.remote)
+		core.Print(w, "  Uploaded %s -> %s", core.PathBase(f.local), f.remote)
 	}
 
-	fmt.Fprintf(w, "\nPublished to https://huggingface.co/datasets/%s\n", cfg.Repo)
+	core.Print(w, "")
+	core.Print(w, "Published to https://huggingface.co/datasets/%s", cfg.Repo)
 	return nil
 }
 
@@ -90,18 +88,18 @@ func resolveHFToken(explicit string) string {
 	if explicit != "" {
 		return explicit
 	}
-	if env := os.Getenv("HF_TOKEN"); env != "" {
+	if env := core.Env("HF_TOKEN"); env != "" {
 		return env
 	}
-	home, err := os.UserHomeDir()
+	home := core.Env("DIR_HOME")
+	if home == "" {
+		return ""
+	}
+	data, err := coreio.Local.Read(core.JoinPath(home, ".huggingface", "token"))
 	if err != nil {
 		return ""
 	}
-	data, err := coreio.Local.Read(filepath.Join(home, ".huggingface", "token"))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(data))
+	return core.Trim(data)
 }
 
 // collectUploadFiles finds Parquet split files and an optional dataset card.
@@ -110,15 +108,15 @@ func collectUploadFiles(inputDir string) ([]uploadEntry, error) {
 	var files []uploadEntry
 
 	for _, split := range splits {
-		path := filepath.Join(inputDir, split+".parquet")
+		path := core.JoinPath(inputDir, core.Concat(split, ".parquet"))
 		if !coreio.Local.IsFile(path) {
 			continue
 		}
-		files = append(files, uploadEntry{path, fmt.Sprintf("data/%s.parquet", split)})
+		files = append(files, uploadEntry{path, core.Sprintf("data/%s.parquet", split)})
 	}
 
 	// Check for dataset card in parent directory.
-	cardPath := filepath.Join(inputDir, "..", "dataset_card.md")
+	cardPath := core.JoinPath(inputDir, "..", "dataset_card.md")
 	if coreio.Local.IsFile(cardPath) {
 		files = append(files, uploadEntry{cardPath, "README.md"})
 	}
@@ -130,10 +128,10 @@ func collectUploadFiles(inputDir string) ([]uploadEntry, error) {
 func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 	raw, err := coreio.Local.Read(localPath)
 	if err != nil {
-		return coreerr.E("ml.uploadFileToHF", fmt.Sprintf("read %s", localPath), err)
+		return coreerr.E("ml.uploadFileToHF", core.Sprintf("read %s", localPath), err)
 	}
 
-	url := fmt.Sprintf("https://huggingface.co/api/datasets/%s/upload/main/%s", repoID, remotePath)
+	url := core.Sprintf("https://huggingface.co/api/datasets/%s/upload/main/%s", repoID, remotePath)
 
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader([]byte(raw)))
 	if err != nil {
@@ -151,7 +149,7 @@ func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return coreerr.E("ml.uploadFileToHF", fmt.Sprintf("upload failed: HTTP %d: %s", resp.StatusCode, string(body)), nil)
+		return coreerr.E("ml.uploadFileToHF", core.Sprintf("upload failed: HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 
 	return nil

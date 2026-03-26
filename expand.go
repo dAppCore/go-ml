@@ -2,15 +2,12 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
-
 )
 
 // ExpandOutput is the JSONL output structure for expansion generation.
@@ -91,7 +88,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 		return nil
 	}
 
-	outputPath := filepath.Join(outputDir, fmt.Sprintf("expand-%s.jsonl", worker))
+	outputPath := core.JoinPath(outputDir, core.Sprintf("expand-%s.jsonl", worker))
 	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
 		return coreerr.E("ml.ExpandPrompts", "open output file", err)
@@ -125,23 +122,18 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			Chars:          chars,
 		}
 
-		line, err := json.Marshal(out)
-		if err != nil {
-			log.Printf("[%d/%d] id=%s marshal error: %v", idx+1, total, p.ID, err)
-			continue
-		}
-
-		if _, err := f.Write(append(line, '\n')); err != nil {
+		line := core.JSONMarshalString(out)
+		if _, err := f.Write([]byte(core.Concat(line, "\n"))); err != nil {
 			log.Printf("[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
 			continue
 		}
 
-		genLine := fmt.Sprintf("expansion_gen,i=%d,w=%s,d=%s seed_id=\"%s\",gen_time=%f,chars=%di,model=\"%s\"",
+		genLine := core.Sprintf("expansion_gen,i=%d,w=%s,d=%s seed_id=\"%s\",gen_time=%f,chars=%di,model=\"%s\"",
 			idx, EscapeLp(worker), EscapeLp(p.Domain),
 			p.ID, elapsed, chars, modelName)
 
 		pct := float64(completedCount) / float64(total) * 100.0
-		progressLine := fmt.Sprintf("expansion_progress,worker=%s completed=%di,target=%di,pct=%f",
+		progressLine := core.Sprintf("expansion_progress,worker=%s completed=%di,target=%di,pct=%f",
 			EscapeLp(worker), completedCount, total, pct)
 
 		if writeErr := influx.WriteLp([]string{genLine, progressLine}); writeErr != nil {

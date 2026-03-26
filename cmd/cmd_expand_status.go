@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -19,7 +17,7 @@ var expandStatusCmd = &cli.Command{
 func runExpandStatus(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runExpandStatus", "--db or LEM_DB required", nil)
@@ -31,50 +29,52 @@ func runExpandStatus(cmd *cli.Command, args []string) error {
 	}
 	defer db.Close()
 
-	fmt.Fprintln(os.Stdout, "LEM Expansion Pipeline Status")
-	fmt.Fprintln(os.Stdout, "==================================================")
+	core.Print(cmd.OutOrStdout(), "LEM Expansion Pipeline Status")
+	core.Print(cmd.OutOrStdout(), "==================================================")
 
 	// Expansion prompts
 	total, pending, err := db.CountExpansionPrompts()
 	if err != nil {
-		fmt.Fprintln(os.Stdout, "  Expansion prompts:  not created (run: normalize)")
+		core.Print(cmd.OutOrStdout(), "  Expansion prompts:  not created (run: normalize)")
 		return nil
 	}
-	fmt.Fprintf(os.Stdout, "  Expansion prompts:  %d total, %d pending\n", total, pending)
+	core.Print(cmd.OutOrStdout(), "  Expansion prompts:  %d total, %d pending", total, pending)
 
 	// Generated responses — query raw counts via SQL
 	generated := 0
 	rows, err := db.QueryRows("SELECT count(*) AS n FROM expansion_raw")
 	if err != nil || len(rows) == 0 {
-		fmt.Fprintln(os.Stdout, "  Generated:          0 (run: core ml expand)")
+		core.Print(cmd.OutOrStdout(), "  Generated:          0 (run: core ml expand)")
 	} else {
 		if n, ok := rows[0]["n"]; ok {
 			generated = toInt(n)
 		}
-		fmt.Fprintf(os.Stdout, "  Generated:          %d\n", generated)
+		core.Print(cmd.OutOrStdout(), "  Generated:          %d", generated)
 	}
 
 	// Scored — query scoring counts via SQL
 	sRows, err := db.QueryRows("SELECT count(*) AS n FROM scoring_results WHERE suite = 'heuristic'")
 	if err != nil || len(sRows) == 0 {
-		fmt.Fprintln(os.Stdout, "  Scored:             0 (run: score --tier 1)")
+		core.Print(cmd.OutOrStdout(), "  Scored:             0 (run: score --tier 1)")
 	} else {
 		scored := toInt(sRows[0]["n"])
-		fmt.Fprintf(os.Stdout, "  Heuristic scored:   %d\n", scored)
+		core.Print(cmd.OutOrStdout(), "  Heuristic scored:   %d", scored)
 	}
 
 	// Pipeline progress
 	if total > 0 && generated > 0 {
 		genPct := float64(generated) / float64(total) * 100
-		fmt.Fprintf(os.Stdout, "\n  Progress:           %.1f%% generated\n", genPct)
+		core.Print(cmd.OutOrStdout(), "")
+		core.Print(cmd.OutOrStdout(), "  Progress:           %.1f%% generated", genPct)
 	}
 
 	// Golden set context
 	golden, err := db.CountGoldenSet()
 	if err == nil && golden > 0 {
-		fmt.Fprintf(os.Stdout, "\n  Golden set:         %d / %d\n", golden, targetTotal)
+		core.Print(cmd.OutOrStdout(), "")
+		core.Print(cmd.OutOrStdout(), "  Golden set:         %d / %d", golden, targetTotal)
 		if generated > 0 {
-			fmt.Fprintf(os.Stdout, "  Combined:           %d total examples\n", golden+generated)
+			core.Print(cmd.OutOrStdout(), "  Combined:           %d total examples", golden+generated)
 		}
 	}
 

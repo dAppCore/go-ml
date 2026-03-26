@@ -2,15 +2,12 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"maps"
-	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 )
 
@@ -37,7 +34,7 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 			cr.ProbeID, scores.Reasoning, scores.Correctness, scores.Clarity, avg)
 
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i)) * 1_000_000_000
-		line := fmt.Sprintf(
+		line := core.Sprintf(
 			MeasurementCapabilityJudge+",model=%s,run_id=%s,label=%s,probe_id=%s,category=%s reasoning=%.2f,correctness=%.2f,clarity=%.2f,avg=%.2f,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 			EscapeLp(cr.ProbeID), EscapeLp(cr.Category),
@@ -84,7 +81,7 @@ func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient
 		for j, dim := range dims {
 			val := scoreMap[dim]
 			ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i*10+j)) * 1_000_000_000
-			line := fmt.Sprintf(
+			line := core.Sprintf(
 				MeasurementContentScore+",model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=true score=%d,iteration=%di %d",
 				EscapeLp(cp.ModelTag), EscapeLp(runID), EscapeLp(cp.Label), EscapeLp(dim),
 				val, cp.Iteration, ts,
@@ -105,7 +102,7 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 	var lines []string
 
 	ts := (EpochBase + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
-	lines = append(lines, fmt.Sprintf(
+	lines = append(lines, core.Sprintf(
 		MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 		EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
@@ -120,7 +117,7 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 			catAcc = float64(data.Correct) / float64(data.Total) * 100
 		}
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
-		lines = append(lines, fmt.Sprintf(
+		lines = append(lines, core.Sprintf(
 			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(cat),
 			catAcc, data.Correct, data.Total, cp.Iteration, ts,
@@ -139,7 +136,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 	var lines []string
 
 	ts := (EpochBase + int64(cp.Iteration)*1000 + 0) * 1_000_000_000
-	lines = append(lines, fmt.Sprintf(
+	lines = append(lines, core.Sprintf(
 		MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 		EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label),
 		results.Accuracy, results.Correct, results.Total, cp.Iteration, ts,
@@ -154,7 +151,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 			catAcc = float64(data.Correct) / float64(data.Total) * 100
 		}
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i+1)) * 1_000_000_000
-		lines = append(lines, fmt.Sprintf(
+		lines = append(lines, core.Sprintf(
 			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.1f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(cat),
 			catAcc, data.Correct, data.Total, cp.Iteration, ts,
@@ -170,7 +167,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 			passedInt = 1
 		}
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(j+100)) * 1_000_000_000
-		lines = append(lines, fmt.Sprintf(
+		lines = append(lines, core.Sprintf(
 			MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
@@ -200,7 +197,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 	db.EnsureScoringTables()
 
 	_, err = db.conn.Exec(
-		fmt.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, iteration, correct, total, accuracy)
+		core.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, iteration, correct, total, accuracy)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableCheckpointScores),
 		cp.ModelTag, cp.RunID, cp.Label, cp.Iteration,
 		results.Correct, results.Total, results.Accuracy,
@@ -211,7 +208,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 	for probeID, probeRes := range results.Probes {
 		db.conn.Exec(
-			fmt.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, probe_id, passed, response, iteration)
+			core.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, probe_id, passed, response, iteration)
 			 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableProbeResults),
 			cp.ModelTag, cp.RunID, cp.Label, probeID,
 			probeRes.Passed, probeRes.Response, cp.Iteration,
@@ -223,7 +220,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 // BufferInfluxResult saves results to a local JSONL file when InfluxDB is down.
 func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
-	bufPath := filepath.Join(workDir, InfluxBufferFile)
+	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	f, err := coreio.Local.Append(bufPath)
 	if err != nil {
 		log.Printf("Cannot open buffer file: %v", err)
@@ -236,26 +233,25 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 		Results:    results,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 	}
-	data, _ := json.Marshal(entry)
-	f.Write(append(data, '\n'))
+	f.Write([]byte(core.Concat(core.JSONMarshalString(entry), "\n")))
 	log.Printf("Buffered results to %s", bufPath)
 }
 
 // ReplayInfluxBuffer retries pushing buffered results to InfluxDB.
 func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
-	bufPath := filepath.Join(workDir, InfluxBufferFile)
+	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	data, err := coreio.Local.Read(bufPath)
 	if err != nil {
 		return
 	}
 
 	var remaining []string
-	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+	for _, line := range core.Split(core.Trim(data), "\n") {
 		if line == "" {
 			continue
 		}
 		var entry bufferEntry
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		if r := core.JSONUnmarshalString(line, &entry); !r.OK {
 			remaining = append(remaining, line)
 			continue
 		}
@@ -267,7 +263,7 @@ func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 	}
 
 	if len(remaining) > 0 {
-		coreio.Local.Write(bufPath, strings.Join(remaining, "\n")+"\n")
+		coreio.Local.Write(bufPath, core.Concat(core.Join("\n", remaining...), "\n"))
 	} else {
 		coreio.Local.Delete(bufPath)
 		log.Println("Buffer fully replayed and cleared")

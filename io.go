@@ -2,10 +2,8 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -16,7 +14,7 @@ import (
 func ReadResponses(path string) ([]Response, error) {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("open %s", path), err)
+		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("open %s", path), err)
 	}
 	defer f.Close()
 
@@ -27,20 +25,20 @@ func ReadResponses(path string) ([]Response, error) {
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
-		line := strings.TrimSpace(scanner.Text())
+		line := core.Trim(scanner.Text())
 		if line == "" {
 			continue
 		}
 
 		var r Response
-		if err := json.Unmarshal([]byte(line), &r); err != nil {
-			return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("line %d", lineNum), err)
+		if rj := core.JSONUnmarshalString(line, &r); !rj.OK {
+			return nil, coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error))
 		}
 		responses = append(responses, r)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("scan %s", path), err)
+		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("scan %s", path), err)
 	}
 
 	return responses, nil
@@ -48,13 +46,8 @@ func ReadResponses(path string) ([]Response, error) {
 
 // WriteScores writes a ScorerOutput to a JSON file with 2-space indentation.
 func WriteScores(path string, output *ScorerOutput) error {
-	data, err := json.MarshalIndent(output, "", "  ")
-	if err != nil {
-		return coreerr.E("ml.WriteScores", "marshal scores", err)
-	}
-
-	if err := coreio.Local.Write(path, string(data)); err != nil {
-		return coreerr.E("ml.WriteScores", fmt.Sprintf("write %s", path), err)
+	if err := coreio.Local.Write(path, core.JSONMarshalString(output)); err != nil {
+		return coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err)
 	}
 
 	return nil
@@ -64,12 +57,12 @@ func WriteScores(path string, output *ScorerOutput) error {
 func ReadScorerOutput(path string) (*ScorerOutput, error) {
 	data, err := coreio.Local.Read(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("read %s", path), err)
+		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err)
 	}
 
 	var output ScorerOutput
-	if err := json.Unmarshal([]byte(data), &output); err != nil {
-		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("unmarshal %s", path), err)
+	if r := core.JSONUnmarshalString(data, &output); !r.OK {
+		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error))
 	}
 
 	return &output, nil

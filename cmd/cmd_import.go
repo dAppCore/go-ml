@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -31,7 +30,7 @@ func init() {
 func runImportAll(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runImportAll", "--db or LEM_DB required", nil)
@@ -39,7 +38,7 @@ func runImportAll(cmd *cli.Command, args []string) error {
 
 	dataDir := importDataDir
 	if dataDir == "" {
-		dataDir = filepath.Dir(path)
+		dataDir = core.PathDir(path)
 	}
 
 	db, err := ml.OpenDBReadWrite(path)

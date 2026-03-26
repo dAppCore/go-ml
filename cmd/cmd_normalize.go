@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -24,7 +24,7 @@ func init() {
 func runNormalize(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runNormalize", "--db or LEM_DB env is required", nil)
@@ -40,5 +40,5 @@ func runNormalize(cmd *cli.Command, args []string) error {
 		MinLength: normalizeMinLen,
 	}
 
-	return ml.NormalizeSeeds(db, cfg, os.Stdout)
+	return ml.NormalizeSeeds(db, cfg, cmd.OutOrStdout())
 }

@@ -1,10 +1,10 @@
 package ml
 
 import (
-	"fmt"
 	"io"
 	"time"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -15,7 +15,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 	var total, domains, voices int
 	var avgGenTime, avgChars float64
 	err := db.conn.QueryRow(
-		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), " +
+		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), "+
 			"coalesce(avg(gen_time), 0), coalesce(avg(char_count), 0) FROM golden_set",
 	).Scan(&total, &domains, &voices, &avgGenTime, &avgChars)
 	if err != nil {
@@ -23,7 +23,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 	}
 
 	if total == 0 {
-		fmt.Fprintln(w, "golden_set is empty, nothing to push")
+		core.Print(w, "golden_set is empty, nothing to push")
 		return nil
 	}
 
@@ -33,7 +33,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 	var lines []string
 
 	// Overall stats point.
-	lines = append(lines, fmt.Sprintf(
+	lines = append(lines, core.Sprintf(
 		"golden_set_stats total_examples=%di,domains=%di,voices=%di,avg_gen_time=%.2f,avg_response_chars=%.0f,completion_pct=%.1f %d",
 		total, domains, voices, avgGenTime, avgChars, completionPct, ts,
 	))
@@ -54,7 +54,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		if err := domainRows.Scan(&domain, &count, &avgGT); err != nil {
 			return coreerr.E("ml.PushMetrics", "scan domain row", err)
 		}
-		lines = append(lines, fmt.Sprintf(
+		lines = append(lines, core.Sprintf(
 			"golden_set_domain,domain=%s count=%di,avg_gen_time=%.2f %d",
 			EscapeLp(domain), count, avgGT, ts,
 		))
@@ -79,7 +79,7 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		if err := voiceRows.Scan(&voice, &count, &avgCC, &avgGT); err != nil {
 			return coreerr.E("ml.PushMetrics", "scan voice row", err)
 		}
-		lines = append(lines, fmt.Sprintf(
+		lines = append(lines, core.Sprintf(
 			"golden_set_voice,voice=%s count=%di,avg_chars=%.0f,avg_gen_time=%.2f %d",
 			EscapeLp(voice), count, avgCC, avgGT, ts,
 		))
@@ -93,10 +93,10 @@ func PushMetrics(db *DB, influx *InfluxClient, w io.Writer) error {
 		return coreerr.E("ml.PushMetrics", "write metrics to influxdb", err)
 	}
 
-	fmt.Fprintf(w, "Pushed %d points to InfluxDB\n", len(lines))
-	fmt.Fprintf(w, "  total=%d  domains=%d  voices=%d  completion=%.1f%%\n",
+	core.Print(w, "Pushed %d points to InfluxDB", len(lines))
+	core.Print(w, "  total=%d  domains=%d  voices=%d  completion=%.1f%%",
 		total, domains, voices, completionPct)
-	fmt.Fprintf(w, "  avg_gen_time=%.2fs  avg_chars=%.0f\n", avgGenTime, avgChars)
+	core.Print(w, "  avg_gen_time=%.2fs  avg_chars=%.0f", avgGenTime, avgChars)
 
 	return nil
 }

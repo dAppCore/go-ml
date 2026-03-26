@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -18,7 +18,7 @@ var inventoryCmd = &cli.Command{
 func runInventory(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runInventory", "--db or LEM_DB required", nil)
@@ -30,5 +30,5 @@ func runInventory(cmd *cli.Command, args []string) error {
 	}
 	defer db.Close()
 
-	return ml.PrintInventory(db, os.Stdout)
+	return ml.PrintInventory(db, cmd.OutOrStdout())
 }

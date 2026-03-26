@@ -4,7 +4,8 @@ import (
 	"math"
 	"regexp"
 	"strconv"
-	"strings"
+
+	"dappco.re/go/core"
 )
 
 // Pre-compiled regex patterns for GSM8K answer extraction.
@@ -22,7 +23,7 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	correct := false
 
 	// Empty or error response.
-	if response == "" || strings.HasPrefix(response, "ERROR") {
+	if response == "" || core.HasPrefix(response, "ERROR") {
 		return &StandardScores{
 			Correct:   &correct,
 			Extracted: "",
@@ -52,8 +53,8 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	}
 
 	// Clean commas and parse both numbers.
-	cleanExtracted := strings.ReplaceAll(extracted, ",", "")
-	cleanExpected := strings.ReplaceAll(correctAnswer, ",", "")
+	cleanExtracted := core.Replace(extracted, ",", "")
+	cleanExpected := core.Replace(correctAnswer, ",", "")
 
 	extVal, errExt := strconv.ParseFloat(cleanExtracted, 64)
 	expVal, errExp := strconv.ParseFloat(cleanExpected, 64)

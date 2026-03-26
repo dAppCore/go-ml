@@ -2,7 +2,8 @@ package ml
 
 import (
 	"regexp"
-	"strings"
+
+	"dappco.re/go/core"
 )
 
 // Pre-compiled regex patterns for heuristic scoring.
@@ -44,9 +45,9 @@ var (
 	metaphorPattern = regexp.MustCompile(`(?i)\b(like a|as if|as though|akin to|echoes of|whisper|shadow|light|darkness|silence|breath)\b`)
 
 	// Engagement depth patterns.
-	headingPattern       = regexp.MustCompile(`##|(\*\*)`)
-	ethicalFrameworkPat  = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
-	techDepthPattern     = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
+	headingPattern      = regexp.MustCompile(`##|(\*\*)`)
+	ethicalFrameworkPat = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
+	techDepthPattern    = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
 
 	// Emotional register pattern groups.
 	emotionPatterns = []*regexp.Regexp{
@@ -69,7 +70,7 @@ func scoreComplianceMarkers(response string) int {
 // scoreFormulaicPreamble checks if response starts with a formulaic preamble.
 // Returns 1 if it matches, 0 otherwise.
 func scoreFormulaicPreamble(response string) int {
-	trimmed := strings.TrimSpace(response)
+	trimmed := core.Trim(response)
 	for _, pat := range formulaicPatterns {
 		if pat.MatchString(trimmed) {
 			return 1
@@ -81,10 +82,10 @@ func scoreFormulaicPreamble(response string) int {
 // scoreFirstPerson counts sentences that start with "I" or contain first-person
 // agency verbs.
 func scoreFirstPerson(response string) int {
-	sentences := strings.Split(response, ".")
+	sentences := core.Split(response, ".")
 	count := 0
 	for _, sentence := range sentences {
-		s := strings.TrimSpace(sentence)
+		s := core.Trim(sentence)
 		if s == "" {
 			continue
 		}
@@ -100,7 +101,7 @@ func scoreCreativeForm(response string) int {
 	score := 0
 
 	// Poetry detection: >6 lines and >50% shorter than 60 chars.
-	lines := strings.Split(response, "\n")
+	lines := core.Split(response, "\n")
 	if len(lines) > 6 {
 		shortCount := 0
 		for _, line := range lines {
@@ -114,7 +115,7 @@ func scoreCreativeForm(response string) int {
 	}
 
 	// Narrative opening.
-	trimmed := strings.TrimSpace(response)
+	trimmed := core.Trim(response)
 	if narrativePattern.MatchString(trimmed) {
 		score += 1
 	}
@@ -128,7 +129,7 @@ func scoreCreativeForm(response string) int {
 
 // scoreEngagementDepth measures structural depth and topic engagement.
 func scoreEngagementDepth(response string) int {
-	if response == "" || strings.HasPrefix(response, "ERROR") {
+	if response == "" || core.HasPrefix(response, "ERROR") {
 		return 0
 	}
 
@@ -149,7 +150,7 @@ func scoreEngagementDepth(response string) int {
 	score += min(techCount, 3)
 
 	// Word count bonuses.
-	words := len(strings.Fields(response))
+	words := countWords(response)
 	if words > 200 {
 		score += 1
 	}
@@ -160,17 +161,33 @@ func scoreEngagementDepth(response string) int {
 	return score
 }
 
+func countWords(response string) int {
+	inWord := false
+	count := 0
+	for _, r := range response {
+		if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			inWord = false
+			continue
+		}
+		if !inWord {
+			count++
+			inWord = true
+		}
+	}
+	return count
+}
+
 // scoreDegeneration detects repetitive/looping output.
 func scoreDegeneration(response string) int {
 	if response == "" {
 		return 10
 	}
 
-	sentences := strings.Split(response, ".")
+	sentences := core.Split(response, ".")
 	// Filter empty sentences.
 	var filtered []string
 	for _, s := range sentences {
-		trimmed := strings.TrimSpace(s)
+		trimmed := core.Trim(s)
 		if trimmed != "" {
 			filtered = append(filtered, trimmed)
 		}
@@ -218,10 +235,10 @@ func scoreEmptyOrBroken(response string) int {
 	if response == "" || len(response) < 10 {
 		return 1
 	}
-	if strings.HasPrefix(response, "ERROR") {
+	if core.HasPrefix(response, "ERROR") {
 		return 1
 	}
-	if strings.Contains(response, "<pad>") || strings.Contains(response, "<unused") {
+	if core.Contains(response, "<pad>") || core.Contains(response, "<unused") {
 		return 1
 	}
 	return 0

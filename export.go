@@ -2,14 +2,11 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
 	"math/rand"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
-
 )
 
 // ChatMessage is a single message in the chat training format.
@@ -27,11 +24,11 @@ type TrainingExample struct {
 // and that none are negative.
 func ValidatePercentages(trainPct, validPct, testPct int) error {
 	if trainPct < 0 || validPct < 0 || testPct < 0 {
-		return coreerr.E("ml.ValidatePercentages", fmt.Sprintf("percentages must be non-negative: train=%d, valid=%d, test=%d", trainPct, validPct, testPct), nil)
+		return coreerr.E("ml.ValidatePercentages", core.Sprintf("percentages must be non-negative: train=%d, valid=%d, test=%d", trainPct, validPct, testPct), nil)
 	}
 	sum := trainPct + validPct + testPct
 	if sum != 100 {
-		return coreerr.E("ml.ValidatePercentages", fmt.Sprintf("percentages must sum to 100, got %d (train=%d + valid=%d + test=%d)", sum, trainPct, validPct, testPct), nil)
+		return coreerr.E("ml.ValidatePercentages", core.Sprintf("percentages must sum to 100, got %d (train=%d + valid=%d + test=%d)", sum, trainPct, validPct, testPct), nil)
 	}
 	return nil
 }
@@ -44,7 +41,7 @@ func FilterResponses(responses []Response) []Response {
 		if r.Response == "" {
 			continue
 		}
-		if strings.HasPrefix(r.Response, "ERROR:") {
+		if core.HasPrefix(r.Response, "ERROR:") {
 			continue
 		}
 		if len(r.Response) < 50 {
@@ -83,7 +80,7 @@ func SplitData(responses []Response, trainPct, validPct, testPct int, seed int64
 func WriteTrainingJSONL(path string, responses []Response) error {
 	f, err := coreio.Local.Create(path)
 	if err != nil {
-		return coreerr.E("ml.WriteTrainingJSONL", fmt.Sprintf("create %s", path), err)
+		return coreerr.E("ml.WriteTrainingJSONL", core.Sprintf("create %s", path), err)
 	}
 	defer f.Close()
 
@@ -98,12 +95,7 @@ func WriteTrainingJSONL(path string, responses []Response) error {
 			},
 		}
 
-		data, err := json.Marshal(example)
-		if err != nil {
-			return coreerr.E("ml.WriteTrainingJSONL", "marshal example", err)
-		}
-
-		if _, err := w.Write(data); err != nil {
+		if _, err := w.WriteString(core.JSONMarshalString(example)); err != nil {
 			return coreerr.E("ml.WriteTrainingJSONL", "write line", err)
 		}
 		if _, err := w.WriteString("\n"); err != nil {

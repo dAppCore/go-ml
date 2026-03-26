@@ -2,21 +2,21 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"iter"
 	"log"
 	"regexp"
 	"slices"
-	"strings"
+	"strconv"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
 
 // RunAgentLoop is the main scoring agent loop.
 func RunAgentLoop(cfg *AgentConfig) {
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	log.Println(repeatString("=", LogSeparatorWidth))
 	log.Println("ROCm Scoring Agent — Go Edition")
 	log.Printf("M3: %s@%s", cfg.M3User, cfg.M3Host)
 	log.Printf("Inference API: %s", cfg.APIURL)
@@ -26,7 +26,7 @@ func RunAgentLoop(cfg *AgentConfig) {
 		log.Printf("DuckDB: %s", cfg.DBPath)
 	}
 	log.Printf("Poll interval: %ds", cfg.PollInterval)
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	log.Println(repeatString("=", LogSeparatorWidth))
 
 	influx := NewInfluxClient(cfg.InfluxURL, cfg.InfluxDB)
 	coreio.Local.EnsureDir(cfg.WorkDir)
@@ -115,7 +115,7 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 		t := cfg.transport()
 		ctx := context.Background()
-		out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
+		out, err := t.Run(ctx, core.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
 		if err != nil {
 			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", err))
 			return
@@ -124,13 +124,13 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		iterRe := regexp.MustCompile(`(\d+)`)
 
 		var adapterDirs []string
-		for dirpath := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		for _, dirpath := range core.Split(core.Trim(out), "\n") {
 			if dirpath == "" {
 				continue
 			}
-			subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
-			if subErr == nil && strings.TrimSpace(subOut) != "" {
-				for sub := range strings.SplitSeq(strings.TrimSpace(subOut), "\n") {
+			subOut, subErr := t.Run(ctx, core.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
+			if subErr == nil && core.Trim(subOut) != "" {
+				for _, sub := range core.Split(core.Trim(subOut), "\n") {
 					if sub != "" {
 						adapterDirs = append(adapterDirs, sub)
 					}
@@ -141,14 +141,14 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 
 		for _, dirpath := range adapterDirs {
-			dirname := strings.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
+			dirname := core.TrimPrefix(dirpath, core.Concat(cfg.M3AdapterBase, "/"))
 
-			filesOut, err := t.Run(ctx, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
+			filesOut, err := t.Run(ctx, core.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
 			if err != nil {
 				continue
 			}
 
-			for fp := range strings.SplitSeq(strings.TrimSpace(filesOut), "\n") {
+			for _, fp := range core.Split(core.Trim(filesOut), "\n") {
 				if fp == "" {
 					continue
 				}
@@ -158,12 +158,11 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 				if len(match) < 2 {
 					continue
 				}
-				iteration := 0
-				fmt.Sscanf(match[1], "%d", &iteration)
+				iteration, _ := strconv.Atoi(match[1])
 
 				modelTag, labelPrefix, stem := AdapterMeta(dirname)
-				label := fmt.Sprintf("%s @%s", labelPrefix, match[1])
-				runID := fmt.Sprintf("%s-capability-auto", stem)
+				label := core.Sprintf("%s @%s", labelPrefix, match[1])
+				runID := core.Sprintf("%s-capability-auto", stem)
 
 				if !yield(Checkpoint{
 					RemoteDir: dirpath,
@@ -207,7 +206,10 @@ func FindUnscored(checkpoints []Checkpoint, scored map[[2]string]bool) []Checkpo
 	}
 	slices.SortFunc(unscored, func(a, b Checkpoint) int {
 		if a.Dirname != b.Dirname {
-			return strings.Compare(a.Dirname, b.Dirname)
+			if a.Dirname < b.Dirname {
+				return -1
+			}
+			return 1
 		}
 		return a.Iteration - b.Iteration
 	})
@@ -230,14 +232,14 @@ func FindUnscoredIter(checkpoints []Checkpoint, scored map[[2]string]bool) iter.
 // isMLXNative returns true if this model can be served directly on M3 via
 // mlx_lm.server with --adapter, avoiding the MLX→PEFT conversion step.
 func isMLXNative(modelTag string) bool {
-	return strings.HasPrefix(modelTag, "gemma-3-") || strings.HasPrefix(modelTag, "gpt-oss")
+	return core.HasPrefix(modelTag, "gemma-3-") || core.HasPrefix(modelTag, "gpt-oss")
 }
 
 // ProcessOne fetches, converts, scores, and pushes one checkpoint.
 func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	log.Println(repeatString("=", LogSeparatorWidth))
 	log.Printf("Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	log.Println(repeatString("=", LogSeparatorWidth))
 
 	if isMLXNative(cp.ModelTag) {
 		return processMLXNative(cfg, influx, cp)

@@ -2,10 +2,7 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
-	"path/filepath"
-	"strings"
+	"dappco.re/go/core"
 
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
@@ -26,7 +23,7 @@ type ParquetRow struct {
 // Returns total rows exported.
 func ExportParquet(trainingDir, outputDir string) (int, error) {
 	if outputDir == "" {
-		outputDir = filepath.Join(trainingDir, "parquet")
+		outputDir = core.JoinPath(trainingDir, "parquet")
 	}
 	if err := coreio.Local.EnsureDir(outputDir); err != nil {
 		return 0, coreerr.E("ml.ExportParquet", "create output dir", err)
@@ -34,14 +31,14 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 
 	total := 0
 	for _, split := range []string{"train", "valid", "test"} {
-		jsonlPath := filepath.Join(trainingDir, split+".jsonl")
+		jsonlPath := core.JoinPath(trainingDir, core.Concat(split, ".jsonl"))
 		if !coreio.Local.IsFile(jsonlPath) {
 			continue
 		}
 
 		n, err := ExportSplitParquet(jsonlPath, outputDir, split)
 		if err != nil {
-			return total, coreerr.E("ml.ExportParquet", fmt.Sprintf("export %s", split), err)
+			return total, coreerr.E("ml.ExportParquet", core.Sprintf("export %s", split), err)
 		}
 		total += n
 	}
@@ -54,7 +51,7 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 	f, err := coreio.Local.Open(jsonlPath)
 	if err != nil {
-		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("open %s", jsonlPath), err)
+		return 0, coreerr.E("ml.ExportSplitParquet", core.Sprintf("open %s", jsonlPath), err)
 	}
 	defer f.Close()
 
@@ -63,7 +60,7 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
+		text := core.Trim(scanner.Text())
 		if text == "" {
 			continue
 		}
@@ -71,7 +68,7 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 		var data struct {
 			Messages []ChatMessage `json:"messages"`
 		}
-		if err := json.Unmarshal([]byte(text), &data); err != nil {
+		if r := core.JSONUnmarshalString(text, &data); !r.OK {
 			continue
 		}
 
@@ -93,28 +90,28 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 			}
 		}
 
-		msgsJSON, _ := json.Marshal(data.Messages)
+		msgsJSON := core.JSONMarshalString(data.Messages)
 		rows = append(rows, ParquetRow{
 			Prompt:   prompt,
 			Response: response,
 			System:   system,
-			Messages: string(msgsJSON),
+			Messages: msgsJSON,
 		})
 	}
 
 	if err := scanner.Err(); err != nil {
-		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("scan %s", jsonlPath), err)
+		return 0, coreerr.E("ml.ExportSplitParquet", core.Sprintf("scan %s", jsonlPath), err)
 	}
 
 	if len(rows) == 0 {
 		return 0, nil
 	}
 
-	outPath := filepath.Join(outputDir, split+".parquet")
+	outPath := core.JoinPath(outputDir, core.Concat(split, ".parquet"))
 
 	out, err := coreio.Local.Create(outPath)
 	if err != nil {
-		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("create %s", outPath), err)
+		return 0, coreerr.E("ml.ExportSplitParquet", core.Sprintf("create %s", outPath), err)
 	}
 
 	writer := parquet.NewGenericWriter[ParquetRow](out,

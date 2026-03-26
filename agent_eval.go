@@ -3,13 +3,10 @@ package ml
 import (
 	"bufio"
 	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
-	"path/filepath"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -65,16 +62,16 @@ type probeRunnerResponse struct {
 func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
 	ollamaBase, ok := OllamaBaseModelMap[cp.ModelTag]
 	if !ok {
-		return coreerr.E("ml.processMLXNative", fmt.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
+		return coreerr.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
 	}
 	hfBase := HFBaseModelMap[cp.ModelTag]
 	if hfBase == "" {
 		hfBase = ollamaBase
 	}
 
-	tempModel := fmt.Sprintf("lem-%s-%d", cp.ModelTag, cp.Iteration)
-	localAdapterDir := filepath.Join(cfg.WorkDir, "adapter-"+cp.Dirname)
-	peftDir := filepath.Join(cfg.WorkDir, "peft-"+cp.Dirname)
+	tempModel := core.Sprintf("lem-%s-%d", cp.ModelTag, cp.Iteration)
+	localAdapterDir := core.JoinPath(cfg.WorkDir, core.Concat("adapter-", cp.Dirname))
+	peftDir := core.JoinPath(cfg.WorkDir, core.Concat("peft-", cp.Dirname))
 
 	coreio.Local.EnsureDir(localAdapterDir)
 
@@ -85,10 +82,10 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	}()
 
 	log.Printf("Fetching adapter from M3 (%s)...", cp.Filename)
-	remoteSF := fmt.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
-	remoteCfg := fmt.Sprintf("%s/adapter_config.json", cp.RemoteDir)
-	localSF := filepath.Join(localAdapterDir, cp.Filename)
-	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
+	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
+	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
+	localSF := core.JoinPath(localAdapterDir, cp.Filename)
+	localCfg := core.JoinPath(localAdapterDir, "adapter_config.json")
 
 	ctx := context.Background()
 	t := cfg.transport()
@@ -117,7 +114,7 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 			passedInt = 1
 		}
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(total+100)) * 1_000_000_000
-		line := fmt.Sprintf(
+		line := core.Sprintf(
 			MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
@@ -145,7 +142,7 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	log.Printf("Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
 	contentResponses := RunContentProbesViaAPI(ctx, probeBackend)
 	if len(contentResponses) > 0 {
-		contentRunID := strings.Replace(cp.RunID, "-capability-", "-content-", 1)
+		contentRunID := core.Replace(cp.RunID, "-capability-", "-content-")
 		ScoreContentAndPush(ctx, judge, influx, cp, contentRunID, contentResponses)
 	}
 
@@ -154,22 +151,22 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 
 // processWithConversion fetches adapter locally, converts MLX→PEFT, and scores.
 func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-	localAdapterDir := filepath.Join(cfg.WorkDir, cp.Dirname)
+	localAdapterDir := core.JoinPath(cfg.WorkDir, cp.Dirname)
 	coreio.Local.EnsureDir(localAdapterDir)
 
-	localSF := filepath.Join(localAdapterDir, cp.Filename)
-	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
+	localSF := core.JoinPath(localAdapterDir, cp.Filename)
+	localCfg := core.JoinPath(localAdapterDir, "adapter_config.json")
 
 	defer func() {
 		coreio.Local.Delete(localSF)
 		coreio.Local.Delete(localCfg)
-		peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
+		peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 		coreio.Local.DeleteAll(peftDir)
 	}()
 
 	log.Println("Fetching adapter from M3...")
-	remoteSF := fmt.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
-	remoteCfg := fmt.Sprintf("%s/adapter_config.json", cp.RemoteDir)
+	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
+	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 
 	ctx := context.Background()
 	t := cfg.transport()
@@ -181,7 +178,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	}
 
 	log.Println("Converting MLX to PEFT format...")
-	peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
+	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
 		return coreerr.E("ml.processWithConversion", "convert adapter", err)
 	}
@@ -282,7 +279,7 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		response := res.Text
 		if err != nil {
 			log.Printf("  [%s] ERROR: %v", probe.ID, err)
-			response = fmt.Sprintf("ERROR: %v", err)
+			response = core.Sprintf("ERROR: %v", err)
 		}
 
 		clean := StripThinkBlocks(response)
@@ -367,14 +364,14 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 			"max_tokens": ContentMaxTokens,
 			"temp":       ContentTemperature,
 		}
-		reqJSON, _ := json.Marshal(req)
-		fmt.Fprintf(stdin, "%s\n", reqJSON)
+		reqJSON := core.JSONMarshalString(req)
+		io.WriteString(stdin, core.Sprintf("%s\n", reqJSON))
 
 		var response string
 		if scanner.Scan() {
 			var resp probeRunnerResponse
-			if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
-				log.Printf("  [content:%s] parse error: %v", probe.ID, err)
+			if r := core.JSONUnmarshalString(string(scanner.Bytes()), &resp); !r.OK {
+				log.Printf("  [content:%s] parse error: %v", probe.ID, r.Value.(error))
 				continue
 			} else if resp.Error != "" {
 				log.Printf("  [content:%s] ERROR: %s", probe.ID, resp.Error)

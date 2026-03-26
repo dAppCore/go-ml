@@ -2,15 +2,11 @@ package ml
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -34,13 +30,13 @@ func NewInfluxClient(url, db string) *InfluxClient {
 		db = "training"
 	}
 
-	token := os.Getenv("INFLUX_TOKEN")
+	token := core.Env("INFLUX_TOKEN")
 	if token == "" {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			data, err := coreio.Local.Read(filepath.Join(home, ".influx_token"))
+		home := core.Env("DIR_HOME")
+		if home != "" {
+			data, err := coreio.Local.Read(core.JoinPath(home, ".influx_token"))
 			if err == nil {
-				token = strings.TrimSpace(string(data))
+				token = core.Trim(data)
 			}
 		}
 	}
@@ -54,11 +50,11 @@ func NewInfluxClient(url, db string) *InfluxClient {
 
 // WriteLp writes line protocol data to InfluxDB.
 func (c *InfluxClient) WriteLp(lines []string) error {
-	body := strings.Join(lines, "\n")
+	body := core.Join("\n", lines...)
 
-	url := fmt.Sprintf("%s/api/v3/write_lp?db=%s", c.url, c.db)
+	url := core.Sprintf("%s/api/v3/write_lp?db=%s", c.url, c.db)
 
-	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, url, core.NewReader(body))
 	if err != nil {
 		return coreerr.E("ml.InfluxClient.WriteLp", "create write request", err)
 	}
@@ -74,7 +70,7 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		respBody, _ := io.ReadAll(resp.Body)
-		return coreerr.E("ml.InfluxClient.WriteLp", fmt.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
+		return coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	return nil
@@ -87,10 +83,7 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 		"q":  sql,
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "marshal query request", err)
-	}
+	jsonBody := []byte(core.JSONMarshalString(reqBody))
 
 	url := c.url + "/api/v3/query_sql"
 
@@ -114,12 +107,12 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", fmt.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil)
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", core.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	var rows []map[string]any
-	if err := json.Unmarshal(respBody, &rows); err != nil {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", err)
+	if r := core.JSONUnmarshal(respBody, &rows); !r.OK {
+		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", r.Value.(error))
 	}
 
 	return rows, nil
@@ -128,8 +121,8 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 // EscapeLp escapes spaces, commas, and equals signs for InfluxDB line protocol
 // tag values.
 func EscapeLp(s string) string {
-	s = strings.ReplaceAll(s, `,`, `\,`)
-	s = strings.ReplaceAll(s, `=`, `\=`)
-	s = strings.ReplaceAll(s, ` `, `\ `)
+	s = core.Replace(s, `,`, `\,`)
+	s = core.Replace(s, `=`, `\=`)
+	s = core.Replace(s, ` `, `\ `)
 	return s
 }

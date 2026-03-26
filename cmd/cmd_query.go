@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
+	"io"
 	"maps"
-	"os"
 	"slices"
-	"strings"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -33,7 +31,7 @@ func init() {
 func runQuery(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runQuery", "--db or LEM_DB env is required", nil)
@@ -45,12 +43,12 @@ func runQuery(cmd *cli.Command, args []string) error {
 	}
 	defer db.Close()
 
-	sql := strings.Join(args, " ")
+	sql := core.Join(" ", args...)
 
 	// Auto-wrap non-SELECT queries as golden_set WHERE clauses.
-	trimmed := strings.TrimSpace(strings.ToUpper(sql))
-	if !strings.HasPrefix(trimmed, "SELECT") && !strings.HasPrefix(trimmed, "SHOW") &&
-		!strings.HasPrefix(trimmed, "DESCRIBE") && !strings.HasPrefix(trimmed, "EXPLAIN") {
+	trimmed := core.Upper(core.Trim(sql))
+	if !core.HasPrefix(trimmed, "SELECT") && !core.HasPrefix(trimmed, "SHOW") &&
+		!core.HasPrefix(trimmed, "DESCRIBE") && !core.HasPrefix(trimmed, "EXPLAIN") {
 		sql = "SELECT * FROM golden_set WHERE " + sql + " LIMIT 20"
 	}
 
@@ -60,17 +58,16 @@ func runQuery(cmd *cli.Command, args []string) error {
 	}
 
 	if queryJSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(rows); err != nil {
+		if _, err := io.WriteString(cmd.OutOrStdout(), core.Concat(core.JSONMarshalString(rows), "\n")); err != nil {
 			return coreerr.E("cmd.runQuery", "encode json", err)
 		}
-		fmt.Fprintf(os.Stderr, "\n(%d rows)\n", len(rows))
+		core.Print(cmd.OutOrStdout(), "")
+		core.Print(cmd.OutOrStdout(), "(%d rows)", len(rows))
 		return nil
 	}
 
 	if len(rows) == 0 {
-		fmt.Println("(0 rows)")
+		core.Print(cmd.OutOrStdout(), "(0 rows)")
 		return nil
 	}
 
@@ -98,35 +95,37 @@ func runQuery(cmd *cli.Command, args []string) error {
 	}
 
 	// Print header.
+	w := cmd.OutOrStdout()
 	for i, col := range cols {
 		if i > 0 {
-			fmt.Print(" | ")
+			io.WriteString(w, " | ")
 		}
-		fmt.Printf("%-*s", widths[i], truncate(col, widths[i]))
+		io.WriteString(w, core.Sprintf("%-*s", widths[i], truncate(col, widths[i])))
 	}
-	fmt.Println()
+	io.WriteString(w, "\n")
 
 	// Print separator.
 	for i := range cols {
 		if i > 0 {
-			fmt.Print("-+-")
+			io.WriteString(w, "-+-")
 		}
-		fmt.Print(strings.Repeat("-", widths[i]))
+		io.WriteString(w, repeatString("-", widths[i]))
 	}
-	fmt.Println()
+	io.WriteString(w, "\n")
 
 	// Print rows.
 	for _, row := range rows {
 		for i, col := range cols {
 			if i > 0 {
-				fmt.Print(" | ")
+				io.WriteString(w, " | ")
 			}
-			fmt.Printf("%-*s", widths[i], truncate(formatValue(row[col]), widths[i]))
+			io.WriteString(w, core.Sprintf("%-*s", widths[i], truncate(formatValue(row[col]), widths[i])))
 		}
-		fmt.Println()
+		io.WriteString(w, "\n")
 	}
 
-	fmt.Printf("\n(%d rows)\n", len(rows))
+	core.Print(w, "")
+	core.Print(w, "(%d rows)", len(rows))
 	return nil
 }
 
@@ -134,7 +133,7 @@ func formatValue(v any) string {
 	if v == nil {
 		return "NULL"
 	}
-	return fmt.Sprintf("%v", v)
+	return core.Sprint(v)
 }
 
 func truncate(s string, max int) string {
@@ -145,4 +144,15 @@ func truncate(s string, max int) string {
 		return s[:max]
 	}
 	return s[:max-3] + "..."
+}
+
+func repeatString(part string, count int) string {
+	if count <= 0 {
+		return ""
+	}
+	b := core.NewBuilder()
+	for range count {
+		b.WriteString(part)
+	}
+	return b.String()
 }

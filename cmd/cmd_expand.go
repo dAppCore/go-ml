@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"os"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
@@ -38,15 +37,14 @@ func runExpand(cmd *cli.Command, args []string) error {
 
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runExpand", "--db or LEM_DB env is required", nil)
 	}
 
 	if expandWorker == "" {
-		h, _ := os.Hostname()
-		expandWorker = h
+		expandWorker = core.Env("HOSTNAME")
 	}
 
 	db, err := ml.OpenDBReadWrite(path)
@@ -59,7 +57,7 @@ func runExpand(cmd *cli.Command, args []string) error {
 	if err != nil {
 		return coreerr.E("cmd.runExpand", "query expansion_prompts", err)
 	}
-	fmt.Printf("Loaded %d pending prompts from %s\n", len(rows), path)
+	core.Print(cmd.OutOrStdout(), "Loaded %d pending prompts from %s", len(rows), path)
 
 	var prompts []ml.Response
 	for _, r := range rows {

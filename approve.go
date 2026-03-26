@@ -1,12 +1,10 @@
 package ml
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 
-	coreio "forge.lthn.ai/core/go-io"
-
+	"dappco.re/go/core"
+	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -40,11 +38,10 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 
 	f, err := coreio.Local.Create(cfg.Output)
 	if err != nil {
-		return coreerr.E("ml.ApproveExpansions", fmt.Sprintf("create output %s", cfg.Output), err)
+		return coreerr.E("ml.ApproveExpansions", core.Sprintf("create output %s", cfg.Output), err)
 	}
 	defer f.Close()
 
-	enc := json.NewEncoder(f)
 	count := 0
 	regionSet := make(map[string]bool)
 	domainSet := make(map[string]bool)
@@ -64,7 +61,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 			},
 		}
 
-		if err := enc.Encode(example); err != nil {
+		if _, err := f.Write([]byte(core.Concat(core.JSONMarshalString(example), "\n"))); err != nil {
 			return coreerr.E("ml.ApproveExpansions", "encode example", err)
 		}
 
@@ -77,9 +74,9 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 		return coreerr.E("ml.ApproveExpansions", "iterate approved rows", err)
 	}
 
-	fmt.Fprintf(w, "Approved: %d responses (threshold: heuristic > 0)\n", count)
-	fmt.Fprintf(w, "Exported: %s\n", cfg.Output)
-	fmt.Fprintf(w, "  Regions: %d, Domains: %d\n", len(regionSet), len(domainSet))
+	core.Print(w, "Approved: %d responses (threshold: heuristic > 0)", count)
+	core.Print(w, "Exported: %s", cfg.Output)
+	core.Print(w, "  Regions: %d, Domains: %d", len(regionSet), len(domainSet))
 
 	return nil
 }

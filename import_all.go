@@ -2,15 +2,13 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
+	"context"
 	"io"
 	"io/fs"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
+	goexec "dappco.re/go/core/process/exec"
 )
 
 // ImportConfig holds options for the import-all operation.
@@ -30,17 +28,17 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	totals := make(map[string]int)
 
 	// ── 1. Golden set ──
-	goldenPath := filepath.Join(cfg.DataDir, "gold-15k.jsonl")
+	goldenPath := core.JoinPath(cfg.DataDir, "gold-15k.jsonl")
 	if !cfg.SkipM3 {
-		fmt.Fprintln(w, "  Pulling golden set from M3...")
-		scpCmd := exec.Command("scp", fmt.Sprintf("%s:/Volumes/Data/lem/responses/gold-15k.jsonl", m3Host), goldenPath)
+		core.Print(w, "  Pulling golden set from M3...")
+		scpCmd := goexec.Command(context.Background(), "scp", core.Sprintf("%s:/Volumes/Data/lem/responses/gold-15k.jsonl", m3Host), goldenPath)
 		if err := scpCmd.Run(); err != nil {
-			fmt.Fprintf(w, "  WARNING: could not pull golden set from M3: %v\n", err)
+			core.Print(w, "  WARNING: could not pull golden set from M3: %v", err)
 		}
 	}
 	if coreio.Local.IsFile(goldenPath) {
 		db.Exec("DROP TABLE IF EXISTS golden_set")
-		err := db.Exec(fmt.Sprintf(`
+		err := db.Exec(core.Sprintf(`
 			CREATE TABLE golden_set AS
 			SELECT
 				idx::INT AS idx,
@@ -55,12 +53,12 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 			FROM read_json_auto('%s', maximum_object_size=1048576)
 		`, escapeSQLPath(goldenPath)))
 		if err != nil {
-			fmt.Fprintf(w, "  WARNING: golden set import failed: %v\n", err)
+			core.Print(w, "  WARNING: golden set import failed: %v", err)
 		} else {
 			var n int
 			db.QueryRowScan("SELECT count(*) FROM golden_set", &n)
 			totals["golden_set"] = n
-			fmt.Fprintf(w, "  golden_set: %d rows\n", n)
+			core.Print(w, "  golden_set: %d rows", n)
 		}
 	}
 
@@ -85,16 +83,16 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 		{"russian-bridge", []string{"russian-bridge/train.jsonl", "russian-bridge/valid.jsonl"}},
 	}
 
-	trainingLocal := filepath.Join(cfg.DataDir, "training")
+	trainingLocal := core.JoinPath(cfg.DataDir, "training")
 	coreio.Local.EnsureDir(trainingLocal)
 
 	if !cfg.SkipM3 {
-		fmt.Fprintln(w, "  Pulling training sets from M3...")
+		core.Print(w, "  Pulling training sets from M3...")
 		for _, td := range trainingDirs {
 			for _, rel := range td.files {
-				local := filepath.Join(trainingLocal, rel)
-				coreio.Local.EnsureDir(filepath.Dir(local))
-				scpCmd := exec.Command("scp", fmt.Sprintf("%s:/Volumes/Data/lem/%s", m3Host, rel), local)
+				local := core.JoinPath(trainingLocal, rel)
+				coreio.Local.EnsureDir(core.PathDir(local))
+				scpCmd := goexec.Command(context.Background(), "scp", core.Sprintf("%s:/Volumes/Data/lem/%s", m3Host, rel), local)
 				scpCmd.Run() // ignore errors, file might not exist
 			}
 		}
@@ -116,15 +114,15 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	trainingTotal := 0
 	for _, td := range trainingDirs {
 		for _, rel := range td.files {
-			local := filepath.Join(trainingLocal, rel)
+			local := core.JoinPath(trainingLocal, rel)
 			if !coreio.Local.IsFile(local) {
 				continue
 			}
 
 			split := "train"
-			if strings.Contains(rel, "valid") {
+			if core.Contains(rel, "valid") {
 				split = "valid"
-			} else if strings.Contains(rel, "test") {
+			} else if core.Contains(rel, "test") {
 				split = "test"
 			}
 
@@ -133,26 +131,26 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 		}
 	}
 	totals["training_examples"] = trainingTotal
-	fmt.Fprintf(w, "  training_examples: %d rows\n", trainingTotal)
+	core.Print(w, "  training_examples: %d rows", trainingTotal)
 
 	// ── 3. Benchmark results ──
-	benchLocal := filepath.Join(cfg.DataDir, "benchmarks")
+	benchLocal := core.JoinPath(cfg.DataDir, "benchmarks")
 	coreio.Local.EnsureDir(benchLocal)
 
 	if !cfg.SkipM3 {
-		fmt.Fprintln(w, "  Pulling benchmarks from M3...")
+		core.Print(w, "  Pulling benchmarks from M3...")
 		for _, bname := range []string{"truthfulqa", "gsm8k", "do_not_answer", "toxigen"} {
-			scpCmd := exec.Command("scp",
-				fmt.Sprintf("%s:/Volumes/Data/lem/benchmarks/%s.jsonl", m3Host, bname),
-				filepath.Join(benchLocal, bname+".jsonl"))
+			scpCmd := goexec.Command(context.Background(), "scp",
+				core.Sprintf("%s:/Volumes/Data/lem/benchmarks/%s.jsonl", m3Host, bname),
+				core.JoinPath(benchLocal, core.Concat(bname, ".jsonl")))
 			scpCmd.Run()
 		}
 		for _, subdir := range []string{"results", "scale_results", "cross_arch_results", "deepseek-r1-7b"} {
-			localSub := filepath.Join(benchLocal, subdir)
+			localSub := core.JoinPath(benchLocal, subdir)
 			coreio.Local.EnsureDir(localSub)
-			scpCmd := exec.Command("scp", "-r",
-				fmt.Sprintf("%s:/Volumes/Data/lem/benchmarks/%s/", m3Host, subdir),
-				filepath.Join(benchLocal)+"/")
+			scpCmd := goexec.Command(context.Background(), "scp", "-r",
+				core.Sprintf("%s:/Volumes/Data/lem/benchmarks/%s/", m3Host, subdir),
+				core.Concat(benchLocal, "/"))
 			scpCmd.Run()
 		}
 	}
@@ -167,8 +165,8 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 
 	benchTotal := 0
 	for _, subdir := range []string{"results", "scale_results", "cross_arch_results", "deepseek-r1-7b"} {
-		resultDir := filepath.Join(benchLocal, subdir)
-		matches, _ := filepath.Glob(filepath.Join(resultDir, "*.jsonl"))
+		resultDir := core.JoinPath(benchLocal, subdir)
+		matches := core.PathGlob(core.JoinPath(resultDir, "*.jsonl"))
 		for _, jf := range matches {
 			n := importBenchmarkFile(db, jf, subdir)
 			benchTotal += n
@@ -177,11 +175,11 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 
 	// Also import standalone benchmark files.
 	for _, bfile := range []string{"lem_bench", "lem_ethics", "lem_ethics_allen", "instruction_tuned", "abliterated", "base_pt"} {
-		local := filepath.Join(benchLocal, bfile+".jsonl")
+		local := core.JoinPath(benchLocal, core.Concat(bfile, ".jsonl"))
 		if !coreio.Local.IsFile(local) {
 			if !cfg.SkipM3 {
-				scpCmd := exec.Command("scp",
-					fmt.Sprintf("%s:/Volumes/Data/lem/benchmark/%s.jsonl", m3Host, bfile), local)
+				scpCmd := goexec.Command(context.Background(), "scp",
+					core.Sprintf("%s:/Volumes/Data/lem/benchmark/%s.jsonl", m3Host, bfile), local)
 				scpCmd.Run()
 			}
 		}
@@ -191,7 +189,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 		}
 	}
 	totals["benchmark_results"] = benchTotal
-	fmt.Fprintf(w, "  benchmark_results: %d rows\n", benchTotal)
+	core.Print(w, "  benchmark_results: %d rows", benchTotal)
 
 	// ── 4. Benchmark questions ──
 	db.Exec("DROP TABLE IF EXISTS benchmark_questions")
@@ -204,14 +202,14 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 
 	benchQTotal := 0
 	for _, bname := range []string{"truthfulqa", "gsm8k", "do_not_answer", "toxigen"} {
-		local := filepath.Join(benchLocal, bname+".jsonl")
+		local := core.JoinPath(benchLocal, core.Concat(bname, ".jsonl"))
 		if coreio.Local.IsFile(local) {
 			n := importBenchmarkQuestions(db, local, bname)
 			benchQTotal += n
 		}
 	}
 	totals["benchmark_questions"] = benchQTotal
-	fmt.Fprintf(w, "  benchmark_questions: %d rows\n", benchQTotal)
+	core.Print(w, "  benchmark_questions: %d rows", benchQTotal)
 
 	// ── 5. Seeds ──
 	db.Exec("DROP TABLE IF EXISTS seeds")
@@ -222,7 +220,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	`)
 
 	seedTotal := 0
-	seedDirs := []string{filepath.Join(cfg.DataDir, "seeds"), "/tmp/lem-data/seeds", "/tmp/lem-repo/seeds"}
+	seedDirs := []string{core.JoinPath(cfg.DataDir, "seeds"), "/tmp/lem-data/seeds", "/tmp/lem-repo/seeds"}
 	for _, seedDir := range seedDirs {
 		if !coreio.Local.IsDir(seedDir) {
 			continue
@@ -231,20 +229,22 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 		seedTotal += n
 	}
 	totals["seeds"] = seedTotal
-	fmt.Fprintf(w, "  seeds: %d rows\n", seedTotal)
+	core.Print(w, "  seeds: %d rows", seedTotal)
 
 	// ── Summary ──
 	grandTotal := 0
-	fmt.Fprintf(w, "\n%s\n", strings.Repeat("=", 50))
-	fmt.Fprintln(w, "LEM Database Import Complete")
-	fmt.Fprintln(w, strings.Repeat("=", 50))
+	core.Print(w, "")
+	core.Print(w, "%s", repeatString("=", 50))
+	core.Print(w, "LEM Database Import Complete")
+	core.Print(w, "%s", repeatString("=", 50))
 	for table, count := range totals {
-		fmt.Fprintf(w, "  %-25s %8d\n", table, count)
+		core.Print(w, "  %-25s %8d", table, count)
 		grandTotal += count
 	}
-	fmt.Fprintf(w, "  %s\n", strings.Repeat("-", 35))
-	fmt.Fprintf(w, "  %-25s %8d\n", "TOTAL", grandTotal)
-	fmt.Fprintf(w, "\nDatabase: %s\n", db.Path())
+	core.Print(w, "  %s", repeatString("-", 35))
+	core.Print(w, "  %-25s %8d", "TOTAL", grandTotal)
+	core.Print(w, "")
+	core.Print(w, "Database: %s", db.Path())
 
 	return nil
 }
@@ -264,7 +264,7 @@ func importTrainingFile(db *DB, path, source, split string) int {
 		var rec struct {
 			Messages []ChatMessage `json:"messages"`
 		}
-		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+		if r := core.JSONUnmarshalString(string(scanner.Bytes()), &rec); !r.OK {
 			continue
 		}
 
@@ -283,9 +283,9 @@ func importTrainingFile(db *DB, path, source, split string) int {
 			}
 		}
 
-		msgsJSON, _ := json.Marshal(rec.Messages)
+		msgsJSON := core.JSONMarshalString(rec.Messages)
 		db.Exec(`INSERT INTO training_examples VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			source, split, prompt, response, assistantCount, string(msgsJSON), len(response))
+			source, split, prompt, response, assistantCount, msgsJSON, len(response))
 		count++
 	}
 	return count
@@ -304,13 +304,13 @@ func importBenchmarkFile(db *DB, path, source string) int {
 
 	for scanner.Scan() {
 		var rec map[string]any
-		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+		if r := core.JSONUnmarshalString(string(scanner.Bytes()), &rec); !r.OK {
 			continue
 		}
 
 		db.Exec(`INSERT INTO benchmark_results VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			source,
-			fmt.Sprintf("%v", rec["id"]),
+			core.Sprint(rec["id"]),
 			strOrEmpty(rec, "benchmark"),
 			strOrEmpty(rec, "model"),
 			strOrEmpty(rec, "prompt"),
@@ -336,20 +336,20 @@ func importBenchmarkQuestions(db *DB, path, benchmark string) int {
 
 	for scanner.Scan() {
 		var rec map[string]any
-		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+		if r := core.JSONUnmarshalString(string(scanner.Bytes()), &rec); !r.OK {
 			continue
 		}
 
-		correctJSON, _ := json.Marshal(rec["correct_answers"])
-		incorrectJSON, _ := json.Marshal(rec["incorrect_answers"])
+		correctJSON := core.JSONMarshalString(rec["correct_answers"])
+		incorrectJSON := core.JSONMarshalString(rec["incorrect_answers"])
 
 		db.Exec(`INSERT INTO benchmark_questions VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			benchmark,
-			fmt.Sprintf("%v", rec["id"]),
+			core.Sprint(rec["id"]),
 			strOrEmpty(rec, "question"),
 			strOrEmpty(rec, "best_answer"),
-			string(correctJSON),
-			string(incorrectJSON),
+			correctJSON,
+			incorrectJSON,
 			strOrEmpty(rec, "category"),
 		)
 		count++
@@ -359,23 +359,24 @@ func importBenchmarkQuestions(db *DB, path, benchmark string) int {
 
 func importSeeds(db *DB, seedDir string) int {
 	count := 0
-	filepath.Walk(seedDir, func(path string, info fs.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".json") {
+	fs.WalkDir(core.DirFS(seedDir), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !core.HasSuffix(path, ".json") {
 			return nil
 		}
 
-		data, err := coreio.Local.Read(path)
+		fullPath := core.JoinPath(seedDir, path)
+		data, err := coreio.Local.Read(fullPath)
 		if err != nil {
 			return nil
 		}
 
-		rel, _ := filepath.Rel(seedDir, path)
-		region := strings.TrimSuffix(filepath.Base(path), ".json")
+		rel := path
+		region := core.TrimSuffix(core.PathBase(path), ".json")
 
 		// Try parsing as array or object with prompts/seeds field.
 		var seedsList []any
 		var raw any
-		if err := json.Unmarshal([]byte(data), &raw); err != nil {
+		if r := core.JSONUnmarshalString(data, &raw); !r.OK {
 			return nil
 		}
 
@@ -420,7 +421,7 @@ func importSeeds(db *DB, seedDir string) int {
 
 func strOrEmpty(m map[string]any, key string) string {
 	if v, ok := m[key]; ok {
-		return fmt.Sprintf("%v", v)
+		return core.Sprint(v)
 	}
 	return ""
 }
@@ -435,5 +436,5 @@ func floatOrZero(m map[string]any, key string) float64 {
 }
 
 func escapeSQLPath(p string) string {
-	return strings.ReplaceAll(p, "'", "''")
+	return core.Replace(p, "'", "''")
 }

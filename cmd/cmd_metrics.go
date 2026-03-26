@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -18,7 +18,7 @@ var metricsCmd = &cli.Command{
 func runMetrics(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runMetrics", "--db or LEM_DB required", nil)
@@ -32,5 +32,5 @@ func runMetrics(cmd *cli.Command, args []string) error {
 
 	influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	return ml.PushMetrics(db, influx, os.Stdout)
+	return ml.PushMetrics(db, influx, cmd.OutOrStdout())
 }

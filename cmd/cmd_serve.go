@@ -2,18 +2,16 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/signal"
 	"runtime"
 	"sync/atomic"
 	"syscall"
 	"time"
 
+	"dappco.re/go/core"
 	"dappco.re/go/core/ml"
 	"forge.lthn.ai/core/cli/pkg/cli"
 )
@@ -26,13 +24,13 @@ var serveCmd = &cli.Command{
 }
 
 var (
-	serveBind         string
-	serveModelPath    string
-	serveThreads      int
-	serveMaxTokens    int
-	serveTimeout      int
-	serveMaxRequests  int
-	serveMaxContext   int
+	serveBind        string
+	serveModelPath   string
+	serveThreads     int
+	serveMaxTokens   int
+	serveTimeout     int
+	serveMaxRequests int
+	serveMaxContext  int
 )
 
 func init() {
@@ -154,7 +152,7 @@ func runServe(cmd *cli.Command, args []string) error {
 	// Health endpoint
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"status":          "ok",
 			"model":           backend.Name(),
 			"uptime_seconds":  int(time.Since(startTime).Seconds()),
@@ -181,8 +179,8 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		body, _ := io.ReadAll(r.Body)
 		var req completionRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, err.Error(), 400)
+		if r := core.JSONUnmarshalString(string(body), &req); !r.OK {
+			http.Error(w, r.Value.(error).Error(), 400)
 			return
 		}
 
@@ -199,7 +197,7 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		// Streaming path
 		if req.Stream && canStream {
-			id := fmt.Sprintf("cmpl-%d", time.Now().UnixNano())
+			id := core.Sprintf("cmpl-%d", time.Now().UnixNano())
 			created := time.Now().Unix()
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -220,8 +218,7 @@ func runServe(cmd *cli.Command, args []string) error {
 					Model:   backend.Name(),
 					Choices: []completionChunkChoice{{Text: token}},
 				}
-				data, _ := json.Marshal(chunk)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				writeSSE(w, chunk)
 				flusher.Flush()
 				return nil
 			})
@@ -239,9 +236,8 @@ func runServe(cmd *cli.Command, args []string) error {
 				Model:   backend.Name(),
 				Choices: []completionChunkChoice{{FinishReason: &stop}},
 			}
-			data, _ := json.Marshal(final)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			fmt.Fprintf(w, "data: [DONE]\n\n")
+			writeSSE(w, final)
+			io.WriteString(w, "data: [DONE]\n\n")
 			flusher.Flush()
 			return
 		}
@@ -254,7 +250,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		resp := completionResponse{
-			ID:      fmt.Sprintf("cmpl-%d", time.Now().UnixNano()),
+			ID:      core.Sprintf("cmpl-%d", time.Now().UnixNano()),
 			Object:  "text_completion",
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
@@ -262,7 +258,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		writeJSON(w, resp)
 	})
 
 	mux.HandleFunc("POST /v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
@@ -281,8 +277,8 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		body, _ := io.ReadAll(r.Body)
 		var req chatRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, err.Error(), 400)
+		if r := core.JSONUnmarshalString(string(body), &req); !r.OK {
+			http.Error(w, r.Value.(error).Error(), 400)
 			return
 		}
 
@@ -317,7 +313,7 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		// Streaming path
 		if req.Stream && canStream {
-			id := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+			id := core.Sprintf("chatcmpl-%d", time.Now().UnixNano())
 			created := time.Now().Unix()
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -338,8 +334,7 @@ func runServe(cmd *cli.Command, args []string) error {
 				Model:   backend.Name(),
 				Choices: []chatChunkChoice{{Delta: chatChunkDelta{Role: "assistant"}}},
 			}
-			data, _ := json.Marshal(roleChunk)
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			writeSSE(w, roleChunk)
 			flusher.Flush()
 
 			err := streamer.ChatStream(r.Context(), req.Messages, opts, func(token string) error {
@@ -350,8 +345,7 @@ func runServe(cmd *cli.Command, args []string) error {
 					Model:   backend.Name(),
 					Choices: []chatChunkChoice{{Delta: chatChunkDelta{Content: token}}},
 				}
-				data, _ := json.Marshal(chunk)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				writeSSE(w, chunk)
 				flusher.Flush()
 				return nil
 			})
@@ -369,9 +363,8 @@ func runServe(cmd *cli.Command, args []string) error {
 				Model:   backend.Name(),
 				Choices: []chatChunkChoice{{Delta: chatChunkDelta{}, FinishReason: &stop}},
 			}
-			data, _ = json.Marshal(final)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			fmt.Fprintf(w, "data: [DONE]\n\n")
+			writeSSE(w, final)
+			io.WriteString(w, "data: [DONE]\n\n")
 			flusher.Flush()
 			return
 		}
@@ -384,7 +377,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		resp := chatResponse{
-			ID:      fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
+			ID:      core.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
 			Object:  "chat.completion",
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
@@ -395,7 +388,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		writeJSON(w, resp)
 	})
 
 	mux.HandleFunc("GET /v1/models", func(w http.ResponseWriter, r *http.Request) {
@@ -411,7 +404,7 @@ func runServe(cmd *cli.Command, args []string) error {
 			}{{ID: backend.Name()}},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		writeJSON(w, resp)
 	})
 
 	// Serve the lem-chat UI at root — same origin, no CORS needed
@@ -426,7 +419,7 @@ func runServe(cmd *cli.Command, args []string) error {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, chatHTML, backend.Name(), serveMaxTokens)
+		io.WriteString(w, core.Sprintf(chatHTML, backend.Name(), serveMaxTokens))
 	})
 
 	slog.Info("ml serve: starting",
@@ -439,7 +432,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		"timeout_s", serveTimeout,
 		"max_requests", serveMaxRequests,
 	)
-	fmt.Printf("Serving on http://%s\n", serveBind)
+	core.Print(cmd.OutOrStdout(), "Serving on http://%s", serveBind)
 
 	// Graceful shutdown on SIGINT/SIGTERM
 	srv := &http.Server{
@@ -452,12 +445,12 @@ func runServe(cmd *cli.Command, args []string) error {
 		errCh <- srv.ListenAndServe()
 	}()
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	select {
-	case sig := <-sigCh:
-		slog.Info("ml serve: shutting down", "signal", sig)
+	case <-shutdownCtx.Done():
+		slog.Info("ml serve: shutting down", "reason", "signal")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
@@ -469,4 +462,12 @@ func runServe(cmd *cli.Command, args []string) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+func writeJSON(w io.Writer, v any) {
+	io.WriteString(w, core.JSONMarshalString(v))
+}
+
+func writeSSE(w io.Writer, v any) {
+	io.WriteString(w, core.Sprintf("data: %s\n\n", core.JSONMarshalString(v)))
 }

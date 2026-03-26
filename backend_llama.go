@@ -2,10 +2,10 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
+	"dappco.re/go/core"
 	"dappco.re/go/core/log"
 	"dappco.re/go/core/process"
 )
@@ -43,7 +43,7 @@ func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend 
 		opts.LlamaPath = "llama-server"
 	}
 
-	baseURL := fmt.Sprintf("http://127.0.0.1:%d", opts.Port)
+	baseURL := core.Sprintf("http://127.0.0.1:%d", opts.Port)
 	return &LlamaBackend{
 		processSvc: processSvc,
 		port:       opts.Port,
@@ -62,7 +62,7 @@ func (b *LlamaBackend) Available() bool {
 	if b.procID == "" {
 		return false
 	}
-	url := fmt.Sprintf("http://127.0.0.1:%d/health", b.port)
+	url := core.Sprintf("http://127.0.0.1:%d/health", b.port)
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -76,7 +76,7 @@ func (b *LlamaBackend) Available() bool {
 func (b *LlamaBackend) Start(ctx context.Context) error {
 	args := []string{
 		"-m", b.modelPath,
-		"--port", fmt.Sprintf("%d", b.port),
+		"--port", core.Sprintf("%d", b.port),
 		"--host", "127.0.0.1",
 	}
 	if b.loraPath != "" {

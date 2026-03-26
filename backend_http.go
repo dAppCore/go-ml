@@ -3,13 +3,11 @@ package ml
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -98,10 +96,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 		MaxTokens:   maxTokens,
 	}
 
-	body, err := json.Marshal(req)
-	if err != nil {
-		return Result{}, coreerr.E("ml.HTTPBackend.Chat", "marshal request", err)
-	}
+	body := []byte(core.JSONMarshalString(req))
 
 	const maxAttempts = 3
 	var lastErr error
@@ -119,12 +114,12 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 		lastErr = err
 
 		var re *retryableError
-		if !errors.As(err, &re) {
+		if !core.As(err, &re) {
 			return Result{}, err
 		}
 	}
 
-	return Result{}, coreerr.E("ml.HTTPBackend.Chat", fmt.Sprintf("exhausted %d retries", maxAttempts), lastErr)
+	return Result{}, coreerr.E("ml.HTTPBackend.Chat", core.Sprintf("exhausted %d retries", maxAttempts), lastErr)
 }
 
 // doRequest sends a single HTTP request and parses the response.
@@ -149,15 +144,15 @@ func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) (string, error
 	}
 
 	if resp.StatusCode >= 500 {
-		return "", &retryableError{coreerr.E("ml.HTTPBackend.doRequest", fmt.Sprintf("server error %d: %s", resp.StatusCode, string(respBody)), nil)}
+		return "", &retryableError{coreerr.E("ml.HTTPBackend.doRequest", core.Sprintf("server error %d: %s", resp.StatusCode, string(respBody)), nil)}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", coreerr.E("ml.HTTPBackend.doRequest", fmt.Sprintf("unexpected status %d: %s", resp.StatusCode, string(respBody)), nil)
+		return "", coreerr.E("ml.HTTPBackend.doRequest", core.Sprintf("unexpected status %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
 	var chatResp chatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", err)
+	if r := core.JSONUnmarshal(respBody, &chatResp); !r.OK {
+		return "", coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", r.Value.(error))
 	}
 
 	if len(chatResp.Choices) == 0 {

@@ -2,17 +2,15 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
+	"context"
 	"io"
 	"maps"
-	"os/exec"
-	"path/filepath"
 	"slices"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
+	goexec "dappco.re/go/core/process/exec"
 )
 
 // ConsolidateConfig holds options for the consolidate operation.
@@ -35,43 +33,43 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	}
 
 	// List remote files via SSH.
-	fmt.Fprintln(w, "Pulling responses from remote...")
-	listCmd := exec.Command("ssh", cfg.M3Host, fmt.Sprintf("ls %s/%s", cfg.RemoteDir, cfg.Pattern))
+	core.Print(w, "Pulling responses from remote...")
+	listCmd := goexec.Command(context.Background(), "ssh", cfg.M3Host, core.Sprintf("ls %s/%s", cfg.RemoteDir, cfg.Pattern))
 	listOutput, err := listCmd.Output()
 	if err != nil {
 		return coreerr.E("ml.Consolidate", "list remote files", err)
 	}
 
-	remoteFiles := strings.Split(strings.TrimSpace(string(listOutput)), "\n")
+	remoteFiles := core.Split(core.Trim(string(listOutput)), "\n")
 	var validFiles []string
 	for _, f := range remoteFiles {
-		f = strings.TrimSpace(f)
+		f = core.Trim(f)
 		if f != "" {
 			validFiles = append(validFiles, f)
 		}
 	}
-	fmt.Fprintf(w, "  Found %d JSONL files on %s\n", len(validFiles), cfg.M3Host)
+	core.Print(w, "  Found %d JSONL files on %s", len(validFiles), cfg.M3Host)
 
 	// Pull each file via SCP.
 	for _, rf := range validFiles {
-		local := filepath.Join(cfg.OutputDir, filepath.Base(rf))
-		scpCmd := exec.Command("scp", fmt.Sprintf("%s:%s", cfg.M3Host, rf), local)
+		local := core.JoinPath(cfg.OutputDir, core.PathBase(rf))
+		scpCmd := goexec.Command(context.Background(), "scp", core.Sprintf("%s:%s", cfg.M3Host, rf), local)
 		if err := scpCmd.Run(); err != nil {
-			fmt.Fprintf(w, "  warning: failed to pull %s: %v\n", rf, err)
+			core.Print(w, "  warning: failed to pull %s: %v", rf, err)
 			continue
 		}
 
 		lines, err := countLines(local)
 		if err == nil {
-			fmt.Fprintf(w, "  %s: %d records\n", filepath.Base(rf), lines)
+			core.Print(w, "  %s: %d records", core.PathBase(rf), lines)
 		}
 	}
 
 	// Merge and deduplicate on idx (first occurrence wins).
-	seen := make(map[int]json.RawMessage)
+	seen := make(map[int]string)
 	skipped := 0
 
-	matches, _ := filepath.Glob(filepath.Join(cfg.OutputDir, cfg.Pattern))
+	matches := core.PathGlob(core.JoinPath(cfg.OutputDir, cfg.Pattern))
 	slices.Sort(matches)
 
 	for _, local := range matches {
@@ -86,7 +84,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 			var rec struct {
 				Idx *int `json:"idx"`
 			}
-			if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			if r := core.JSONUnmarshalString(line, &rec); !r.OK {
 				skipped++
 				continue
 			}
@@ -95,20 +93,20 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 				continue
 			}
 			if _, exists := seen[*rec.Idx]; !exists {
-				seen[*rec.Idx] = json.RawMessage(line)
+				seen[*rec.Idx] = line
 			}
 		}
 		f.Close()
 	}
 
 	if skipped > 0 {
-		fmt.Fprintf(w, "  Skipped %d records without idx\n", skipped)
+		core.Print(w, "  Skipped %d records without idx", skipped)
 	}
 
 	// Sort by idx and write merged file.
 	mergedPath := cfg.MergedOut
 	if mergedPath == "" {
-		mergedPath = filepath.Join(cfg.OutputDir, "..", "gold-merged.jsonl")
+		mergedPath = core.JoinPath(cfg.OutputDir, "..", "gold-merged.jsonl")
 	}
 
 	idxs := slices.Sorted(maps.Keys(seen))
@@ -121,14 +119,15 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 
 	bw := bufio.NewWriter(out)
 	for _, idx := range idxs {
-		bw.Write(seen[idx])
+		bw.WriteString(seen[idx])
 		bw.WriteString("\n")
 	}
 	if err := bw.Flush(); err != nil {
 		return coreerr.E("ml.Consolidate", "flush merged file", err)
 	}
 
-	fmt.Fprintf(w, "\nMerged: %d unique examples -> %s\n", len(seen), mergedPath)
+	core.Print(w, "")
+	core.Print(w, "Merged: %d unique examples -> %s", len(seen), mergedPath)
 	return nil
 }
 
