@@ -4,7 +4,6 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,9 +21,7 @@ func newTestServer(t *testing.T, content string) *httptest.Server {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: content}}},
 		}
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("encode response: %v", err)
-		}
+		mustWriteJSONResponse(t, w, resp)
 	}))
 }
 
@@ -33,9 +30,7 @@ func newTestServerMulti(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req chatRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
+		mustReadJSONRequest(t, r, &req)
 		// Echo back the last message content with a prefix.
 		lastContent := ""
 		if len(req.Messages) > 0 {
@@ -44,7 +39,7 @@ func newTestServerMulti(t *testing.T) *httptest.Server {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "reply:" + lastContent}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 }
 
@@ -68,9 +63,7 @@ func TestHTTPTextModel_Generate_Good(t *testing.T) {
 func TestHTTPTextModel_Generate_WithOpts_Good(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req chatRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode: %v", err)
-		}
+		mustReadJSONRequest(t, r, &req)
 
 		// Verify that options are passed through.
 		assert.InDelta(t, 0.8, req.Temperature, 0.01)
@@ -79,7 +72,7 @@ func TestHTTPTextModel_Generate_WithOpts_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "configured"}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -203,7 +196,7 @@ func TestHTTPTextModel_BatchGenerate_PartialError_Bad(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "ok"}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -263,7 +256,7 @@ func TestHTTPTextModel_Err_ClearedOnSuccess_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "ok"}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 

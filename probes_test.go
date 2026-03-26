@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-func TestProbeCount(t *testing.T) {
+func TestProbes_Count_Good(t *testing.T) {
 	if got := len(CapabilityProbes); got != 23 {
 		t.Errorf("expected 23 probes, got %d", got)
 	}
 }
 
-func TestProbeCategories(t *testing.T) {
+func TestProbes_Categories_Good(t *testing.T) {
 	cats := ProbeCategories()
 	if len(cats) == 0 {
 		t.Fatal("no categories")
@@ -31,7 +31,7 @@ func TestProbeCategories(t *testing.T) {
 	}
 }
 
-func TestProbeChecks(t *testing.T) {
+func TestProbes_Checks_Good(t *testing.T) {
 	// Verify each probe's check function works with its expected answer.
 	tests := []struct {
 		id       string
@@ -109,7 +109,7 @@ func TestProbeChecks(t *testing.T) {
 	}
 }
 
-func TestStripThinkBlocks(t *testing.T) {
+func TestProbes_StripThinkBlocks_Good(t *testing.T) {
 	tests := []struct {
 		input string
 		want  string

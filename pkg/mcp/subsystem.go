@@ -15,12 +15,14 @@ import (
 )
 
 // MLSubsystem exposes ML inference and scoring tools via MCP.
+// Usage example: subsystem := mcp.NewMLSubsystem(service)
 type MLSubsystem struct {
 	service *ml.Service
 	logger  *log.Logger
 }
 
 // NewMLSubsystem creates an MCP subsystem for ML tools.
+// Usage example: server.AddSubsystem(mcp.NewMLSubsystem(service))
 func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	return &MLSubsystem{
 		service: svc,
@@ -28,9 +30,11 @@ func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	}
 }
 
+// Name returns the subsystem identifier exposed to the MCP server.
 func (m *MLSubsystem) Name() string { return "ml" }
 
 // RegisterTools adds ML tools to the MCP server.
+// Usage example: subsystem.RegisterTools(server)
 func (m *MLSubsystem) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_generate",
