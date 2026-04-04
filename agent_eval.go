@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -80,8 +79,8 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	coreio.Local.EnsureDir(localAdapterDir)
 
 	defer func() {
-		os.RemoveAll(localAdapterDir)
-		os.RemoveAll(peftDir)
+		coreio.Local.DeleteAll(localAdapterDir)
+		coreio.Local.DeleteAll(peftDir)
 		OllamaDeleteModel(cfg.JudgeURL, tempModel)
 	}()
 
@@ -165,7 +164,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		coreio.Local.Delete(localSF)
 		coreio.Local.Delete(localCfg)
 		peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
-		os.RemoveAll(peftDir)
+		coreio.Local.DeleteAll(peftDir)
 	}()
 
 	log.Println("Fetching adapter from M3...")

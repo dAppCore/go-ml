@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
+
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.
@@ -106,7 +107,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 // ingestContentScores reads a content scores JSONL file and writes content_score
 // and probe_score measurements to InfluxDB.
 func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
-	f, err := os.Open(cfg.ContentFile)
+	f, err := coreio.Local.Open(cfg.ContentFile)
 	if err != nil {
 		return 0, coreerr.E("ml.ingestContentScores", fmt.Sprintf("open %s", cfg.ContentFile), err)
 	}
@@ -198,7 +199,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 // ingestCapabilityScores reads a capability scores JSONL file and writes
 // capability_score measurements to InfluxDB.
 func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
-	f, err := os.Open(cfg.CapabilityFile)
+	f, err := coreio.Local.Open(cfg.CapabilityFile)
 	if err != nil {
 		return 0, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("open %s", cfg.CapabilityFile), err)
 	}
@@ -278,7 +279,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 // ingestTrainingLog reads an MLX LoRA training log and writes training_loss
 // measurements to InfluxDB for both training and validation loss entries.
 func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
-	f, err := os.Open(cfg.TrainingLog)
+	f, err := coreio.Local.Open(cfg.TrainingLog)
 	if err != nil {
 		return 0, coreerr.E("ml.ingestTrainingLog", fmt.Sprintf("open %s", cfg.TrainingLog), err)
 	}

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -36,7 +35,7 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 	total := 0
 	for _, split := range []string{"train", "valid", "test"} {
 		jsonlPath := filepath.Join(trainingDir, split+".jsonl")
-		if _, err := os.Stat(jsonlPath); os.IsNotExist(err) {
+		if !coreio.Local.IsFile(jsonlPath) {
 			continue
 		}
 
@@ -53,7 +52,7 @@ func ExportParquet(trainingDir, outputDir string) (int, error) {
 // ExportSplitParquet reads a chat JSONL file and writes a Parquet file for the
 // given split name. Returns the number of rows written.
 func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
-	f, err := os.Open(jsonlPath)
+	f, err := coreio.Local.Open(jsonlPath)
 	if err != nil {
 		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("open %s", jsonlPath), err)
 	}
@@ -113,7 +112,7 @@ func ExportSplitParquet(jsonlPath, outputDir, split string) (int, error) {
 
 	outPath := filepath.Join(outputDir, split+".parquet")
 
-	out, err := os.Create(outPath)
+	out, err := coreio.Local.Create(outPath)
 	if err != nil {
 		return 0, coreerr.E("ml.ExportSplitParquet", fmt.Sprintf("create %s", outPath), err)
 	}

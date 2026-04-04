@@ -27,9 +27,9 @@ go test -bench=. ./...           # Benchmarks
 go test -race ./...              # Race detector
 go vet ./...                     # Static analysis
 
-# Linux / CI (exclude Metal backend)
-GOFLAGS='-tags nomlx' go build ./...
-GOFLAGS='-tags nomlx' go test ./...
+# Without native MLX library (Linux, CI, or macOS without libmlxc)
+go build -tags nomlx ./...
+go test -tags nomlx ./...
 ```
 
 ## Architecture
@@ -74,7 +74,7 @@ Sibling modules in the Core Go ecosystem (must be checked out as siblings for lo
 | `forge.lthn.ai/core/go-inference` | Shared TextModel/Backend interfaces — not yet migrated |
 | `forge.lthn.ai/core/cli` | CLI framework — not yet migrated |
 
-Platform-specific: `backend_mlx.go` has `//go:build darwin && arm64`. DuckDB requires CGo (C compiler).
+Platform-specific: `backend_mlx.go` has `//go:build darwin && arm64 && !nomlx`. Use `-tags nomlx` to exclude the Metal backend when `libmlxc` is not installed. DuckDB requires CGo (C compiler).
 
 ## Coding Standards
 

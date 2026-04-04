@@ -6,9 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
+
+	coreio "forge.lthn.ai/core/go-io"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -275,7 +276,8 @@ func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
 
 	// Verify the buffer file exists and contains valid JSONL
 	bufPath := filepath.Join(workDir, InfluxBufferFile)
-	data, err := os.ReadFile(bufPath)
+	raw, err := coreio.Local.Read(bufPath)
+	data := []byte(raw)
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
 
@@ -313,7 +315,8 @@ func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
 	}
 
 	bufPath := filepath.Join(workDir, InfluxBufferFile)
-	data, err := os.ReadFile(bufPath)
+	raw, err := coreio.Local.Read(bufPath)
+	data := []byte(raw)
 	require.NoError(t, err)
 
 	// Count newlines — should be 3 JSONL lines
@@ -333,8 +336,7 @@ func TestReplayInfluxBuffer_EmptyFile_Good(t *testing.T) {
 	ReplayInfluxBuffer(workDir, nil)
 
 	// Buffer file still shouldn't exist
-	_, err := os.Stat(filepath.Join(workDir, InfluxBufferFile))
-	assert.True(t, os.IsNotExist(err))
+	assert.False(t, coreio.Local.IsFile(filepath.Join(workDir, InfluxBufferFile)))
 }
 
 func TestReplayInfluxBuffer_MissingFile_Good(t *testing.T) {

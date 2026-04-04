@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
+	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -38,7 +38,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 			fmt.Fprintf(w, "  WARNING: could not pull golden set from M3: %v\n", err)
 		}
 	}
-	if _, err := os.Stat(goldenPath); err == nil {
+	if coreio.Local.IsFile(goldenPath) {
 		db.Exec("DROP TABLE IF EXISTS golden_set")
 		err := db.Exec(fmt.Sprintf(`
 			CREATE TABLE golden_set AS
@@ -117,7 +117,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	for _, td := range trainingDirs {
 		for _, rel := range td.files {
 			local := filepath.Join(trainingLocal, rel)
-			if _, err := os.Stat(local); os.IsNotExist(err) {
+			if !coreio.Local.IsFile(local) {
 				continue
 			}
 
@@ -178,14 +178,14 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	// Also import standalone benchmark files.
 	for _, bfile := range []string{"lem_bench", "lem_ethics", "lem_ethics_allen", "instruction_tuned", "abliterated", "base_pt"} {
 		local := filepath.Join(benchLocal, bfile+".jsonl")
-		if _, err := os.Stat(local); os.IsNotExist(err) {
+		if !coreio.Local.IsFile(local) {
 			if !cfg.SkipM3 {
 				scpCmd := exec.Command("scp",
 					fmt.Sprintf("%s:/Volumes/Data/lem/benchmark/%s.jsonl", m3Host, bfile), local)
 				scpCmd.Run()
 			}
 		}
-		if _, err := os.Stat(local); err == nil {
+		if coreio.Local.IsFile(local) {
 			n := importBenchmarkFile(db, local, "benchmark")
 			benchTotal += n
 		}
@@ -205,7 +205,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	benchQTotal := 0
 	for _, bname := range []string{"truthfulqa", "gsm8k", "do_not_answer", "toxigen"} {
 		local := filepath.Join(benchLocal, bname+".jsonl")
-		if _, err := os.Stat(local); err == nil {
+		if coreio.Local.IsFile(local) {
 			n := importBenchmarkQuestions(db, local, bname)
 			benchQTotal += n
 		}
@@ -224,7 +224,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	seedTotal := 0
 	seedDirs := []string{filepath.Join(cfg.DataDir, "seeds"), "/tmp/lem-data/seeds", "/tmp/lem-repo/seeds"}
 	for _, seedDir := range seedDirs {
-		if _, err := os.Stat(seedDir); os.IsNotExist(err) {
+		if !coreio.Local.IsDir(seedDir) {
 			continue
 		}
 		n := importSeeds(db, seedDir)
@@ -250,7 +250,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 }
 
 func importTrainingFile(db *DB, path, source, split string) int {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return 0
 	}
@@ -292,7 +292,7 @@ func importTrainingFile(db *DB, path, source, split string) int {
 }
 
 func importBenchmarkFile(db *DB, path, source string) int {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return 0
 	}
@@ -324,7 +324,7 @@ func importBenchmarkFile(db *DB, path, source string) int {
 }
 
 func importBenchmarkQuestions(db *DB, path, benchmark string) int {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return 0
 	}
@@ -359,7 +359,7 @@ func importBenchmarkQuestions(db *DB, path, benchmark string) int {
 
 func importSeeds(db *DB, seedDir string) int {
 	count := 0
-	filepath.Walk(seedDir, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(seedDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".json") {
 			return nil
 		}

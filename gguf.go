@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
-	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -199,7 +199,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 
 // writeGGUF writes a GGUF v3 file.
 func writeGGUF(path string, metadata []ggufMetadata, tensors []ggufTensor) error {
-	f, err := os.Create(path)
+	f, err := coreio.Local.Create(path)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func writeGGUF(path string, metadata []ggufMetadata, tensors []ggufTensor) error
 
 // ggufWriter tracks position and accumulates errors.
 type ggufWriter struct {
-	f   *os.File
+	f   io.WriteCloser
 	pos uint64
 	err error
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -76,7 +75,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	slices.Sort(matches)
 
 	for _, local := range matches {
-		f, err := os.Open(local)
+		f, err := coreio.Local.Open(local)
 		if err != nil {
 			continue
 		}
@@ -114,7 +113,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 
 	idxs := slices.Sorted(maps.Keys(seen))
 
-	out, err := os.Create(mergedPath)
+	out, err := coreio.Local.Create(mergedPath)
 	if err != nil {
 		return coreerr.E("ml.Consolidate", "create merged file", err)
 	}
@@ -135,7 +134,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 
 // countLines returns the number of lines in a file.
 func countLines(path string) (int, error) {
-	f, err := os.Open(path)
+	f, err := coreio.Local.Open(path)
 	if err != nil {
 		return 0, err
 	}

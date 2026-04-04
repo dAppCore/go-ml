@@ -1,4 +1,4 @@
-//go:build darwin && arm64
+//go:build darwin && arm64 && !nomlx
 
 package cmd
 
@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -214,7 +213,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	}
 
 	// Open output file (append mode for resume)
-	outFile, err := os.OpenFile(lessonOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	outFile, err := coreio.Local.Append(lessonOutput)
 	if err != nil {
 		return coreerr.E("cmd.runLesson", "create output", err)
 	}
