@@ -14,7 +14,7 @@ package ml
 import (
 	"context"
 
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/core/inference"
 )
 
 // Result holds the response text and optional inference metrics.

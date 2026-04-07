@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	coreerr "dappco.re/go/core/log"
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/core/inference"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the

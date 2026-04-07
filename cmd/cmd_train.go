@@ -17,9 +17,9 @@ import (
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-inference"
-	"forge.lthn.ai/core/go-mlx"
+	"dappco.re/go/core/cli/pkg/cli"
+	"dappco.re/go/core/inference"
+	"dappco.re/go/core/mlx"
 )
 
 var trainCmd = &cli.Command{

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core/cli/pkg/cli"
 )
 
 // Compile-time checks.

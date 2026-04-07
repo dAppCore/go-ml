@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/core/inference"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

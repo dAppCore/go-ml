@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core/cli/pkg/cli"
 )
 
 var (

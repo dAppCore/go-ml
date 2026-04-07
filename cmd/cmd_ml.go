@@ -2,7 +2,7 @@
 package cmd
 
 import (
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core/cli/pkg/cli"
 )
 
 var mlCmd = cli.NewGroup("ml", "ML inference, scoring, and training pipeline",

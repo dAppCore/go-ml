@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/core/io"
 
 	coreerr "dappco.re/go/core/log"
 )

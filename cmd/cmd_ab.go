@@ -17,8 +17,8 @@ import (
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
-	"forge.lthn.ai/core/go-mlx"
+	"dappco.re/go/core/cli/pkg/cli"
+	"dappco.re/go/core/mlx"
 )
 
 var abCmd = &cli.Command{

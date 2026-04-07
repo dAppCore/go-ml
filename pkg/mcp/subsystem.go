@@ -10,7 +10,7 @@ import (
 	"dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
 
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/core/inference"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

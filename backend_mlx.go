@@ -8,8 +8,8 @@ import (
 	"log/slog"
 
 	coreerr "dappco.re/go/core/log"
-	"forge.lthn.ai/core/go-inference"
-	_ "forge.lthn.ai/core/go-mlx" // registers "metal" backend via init()
+	"dappco.re/go/core/inference"
+	_ "dappco.re/go/core/mlx" // registers "metal" backend via init()
 )
 
 // NewMLXBackend loads a model via go-inference's Metal backend and wraps it
