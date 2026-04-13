@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"time"
+
+	"dappco.re/go/core"
 
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
@@ -35,7 +35,7 @@ var HFBaseModelMap = map[string]string{
 func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	raw, err := coreio.Local.Read(filePath)
 	if err != nil {
-		return "", coreerr.E("ml.ollamaUploadBlob", fmt.Sprintf("read %s", filePath), err)
+		return "", coreerr.E("ml.ollamaUploadBlob", core.Sprintf("read %s", filePath), err)
 	}
 	data := []byte(raw)
 
@@ -66,8 +66,8 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", coreerr.E("ml.ollamaUploadBlob", fmt.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
+		body, _ := readAll(resp.Body)
+		return "", coreerr.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 	return digest, nil
 }
@@ -111,13 +111,13 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 			Error  string `json:"error"`
 		}
 		if err := decoder.Decode(&status); err != nil {
-			if err == io.EOF {
+			if err == ioEOF {
 				break
 			}
 			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", err)
 		}
 		if status.Error != "" {
-			return coreerr.E("ml.OllamaCreateModel", fmt.Sprintf("ollama create: %s", status.Error), nil)
+			return coreerr.E("ml.OllamaCreateModel", core.Sprintf("ollama create: %s", status.Error), nil)
 		}
 		if status.Status == "success" {
 			return nil
@@ -125,7 +125,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return coreerr.E("ml.OllamaCreateModel", fmt.Sprintf("ollama create: HTTP %d", resp.StatusCode), nil)
+		return coreerr.E("ml.OllamaCreateModel", core.Sprintf("ollama create: HTTP %d", resp.StatusCode), nil)
 	}
 	return nil
 }
@@ -148,8 +148,8 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return coreerr.E("ml.OllamaDeleteModel", fmt.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
+		respBody, _ := readAll(resp.Body)
+		return coreerr.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 	return nil
 }

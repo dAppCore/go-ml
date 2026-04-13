@@ -1,17 +1,14 @@
 package ml
 
 import (
+	"dappco.re/go/core"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
-	"log"
 	"maps"
 	"math"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
-	"strings"
 
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
@@ -60,7 +57,7 @@ func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, err
 
 	headerSize := int(binary.LittleEndian.Uint64(data[:8]))
 	if 8+headerSize > len(data) {
-		return nil, nil, coreerr.E("ml.ReadSafetensors", fmt.Sprintf("invalid header size %d", headerSize), nil)
+		return nil, nil, coreerr.E("ml.ReadSafetensors", core.Sprintf("invalid header size %d", headerSize), nil)
 	}
 
 	headerJSON := data[8 : 8+headerSize]
@@ -78,7 +75,7 @@ func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, err
 		}
 		var info SafetensorsTensorInfo
 		if err := json.Unmarshal(raw, &info); err != nil {
-			return nil, nil, coreerr.E("ml.ReadSafetensors", fmt.Sprintf("parse tensor %s", key), err)
+			return nil, nil, coreerr.E("ml.ReadSafetensors", core.Sprintf("parse tensor %s", key), err)
 		}
 		tensors[key] = info
 	}
@@ -154,7 +151,7 @@ func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, ten
 
 	f, err := coreio.Local.Create(path)
 	if err != nil {
-		return coreerr.E("ml.WriteSafetensors", fmt.Sprintf("create %s", path), err)
+		return coreerr.E("ml.WriteSafetensors", core.Sprintf("create %s", path), err)
 	}
 	defer f.Close()
 
@@ -187,7 +184,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 	if err != nil {
 		return coreerr.E("ml.ConvertMLXtoPEFT", "read safetensors", err)
 	}
-	log.Printf("loaded %d tensors from %s", len(tensors), safetensorsPath)
+	core.Print(nil,"loaded %d tensors from %s", len(tensors), safetensorsPath)
 
 	peftTensors := make(map[string]SafetensorsTensorInfo)
 	peftData := make(map[string][]byte)
@@ -213,7 +210,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		peftData[peftKey] = data
 	}
 
-	outSafetensors := filepath.Join(outputDir, "adapter_model.safetensors")
+	outSafetensors := core.Path(outputDir, "adapter_model.safetensors")
 	if err := WriteSafetensors(outSafetensors, peftTensors, peftData); err != nil {
 		return coreerr.E("ml.ConvertMLXtoPEFT", "write safetensors", err)
 	}
@@ -247,7 +244,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 	layers := make(map[int]bool)
 	for k := range tensors {
 		if m := moduleRe.FindStringSubmatch(k); m != nil {
-			parts := strings.Split(m[1], ".")
+			parts := core.Split(m[1], ".")
 			modules[parts[len(parts)-1]] = true
 		}
 		if m := layerRe.FindStringSubmatch(k); m != nil {
@@ -283,11 +280,11 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		return coreerr.E("ml.ConvertMLXtoPEFT", "marshal peft config", err)
 	}
 
-	if err := coreio.Local.Write(filepath.Join(outputDir, "adapter_config.json"), string(cfgJSON)); err != nil {
+	if err := coreio.Local.Write(core.Path(outputDir, "adapter_config.json"), string(cfgJSON)); err != nil {
 		return coreerr.E("ml.ConvertMLXtoPEFT", "write adapter_config.json", err)
 	}
 
-	log.Printf("converted %d tensors, %d layers, target modules: %v",
+	core.Print(nil,"converted %d tensors, %d layers, target modules: %v",
 		len(peftTensors), len(sortedLayers), sortedModules)
 
 	return nil

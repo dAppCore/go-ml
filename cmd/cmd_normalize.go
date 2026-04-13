@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
+	"dappco.re/go/core/store"
 	"dappco.re/go/core/cli/pkg/cli"
 )
 
@@ -24,13 +25,13 @@ func init() {
 func runNormalize(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runNormalize", "--db or LEM_DB env is required", nil)
 	}
 
-	db, err := ml.OpenDBReadWrite(path)
+	db, err := store.OpenDuckDBReadWrite(path)
 	if err != nil {
 		return coreerr.E("cmd.runNormalize", "open db", err)
 	}
@@ -40,5 +41,5 @@ func runNormalize(cmd *cli.Command, args []string) error {
 		MinLength: normalizeMinLen,
 	}
 
-	return ml.NormalizeSeeds(db, cfg, os.Stdout)
+	return ml.NormalizeSeeds(db, cfg, nil)
 }

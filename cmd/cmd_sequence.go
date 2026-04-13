@@ -3,11 +3,9 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"path/filepath"
-	"strings"
 	"time"
 
 	coreio "dappco.re/go/core/io"
@@ -93,7 +91,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	}
 
 	if seq.ID == "" {
-		seq.ID = strings.TrimSuffix(filepath.Base(sequenceFile), filepath.Ext(sequenceFile))
+		seq.ID = core.TrimSuffix(core.PathBase(sequenceFile), core.PathExt(sequenceFile))
 	}
 	if seq.Mode == "" {
 		seq.Mode = "vertical"
@@ -148,13 +146,13 @@ func runSequence(cmd *cli.Command, args []string) error {
 	defer outFile.Close()
 	encoder := json.NewEncoder(outFile)
 
-	baseDir := filepath.Dir(sequenceFile)
+	baseDir := core.PathDir(sequenceFile)
 	totalGenerated := 0
 
 	for i, lessonPath := range seq.Lessons {
 		// Resolve lesson path
-		if !filepath.IsAbs(lessonPath) {
-			lessonPath = filepath.Join(baseDir, lessonPath)
+		if !core.PathIsAbs(lessonPath) {
+			lessonPath = core.Path(baseDir, lessonPath)
 		}
 
 		// Load lesson
@@ -183,13 +181,13 @@ func runSequence(cmd *cli.Command, args []string) error {
 		}
 
 		if lesson.ID == "" {
-			lesson.ID = strings.TrimSuffix(filepath.Base(lessonPath), filepath.Ext(lessonPath))
+			lesson.ID = core.TrimSuffix(core.PathBase(lessonPath), core.PathExt(lessonPath))
 		}
 
 		// Skip completed lessons
 		if state.Completed[lesson.ID] {
 			slog.Info("sequence: skipping completed lesson",
-				"lesson", fmt.Sprintf("%d/%d", i+1, len(seq.Lessons)),
+				"lesson", core.Sprintf("%d/%d", i+1, len(seq.Lessons)),
 				"id", lesson.ID,
 			)
 			continue
@@ -198,7 +196,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		state.Current = lesson.ID
 
 		slog.Info("sequence: starting lesson",
-			"lesson", fmt.Sprintf("%d/%d", i+1, len(seq.Lessons)),
+			"lesson", core.Sprintf("%d/%d", i+1, len(seq.Lessons)),
 			"id", lesson.ID,
 			"title", lesson.Title,
 			"prompts", len(lesson.Prompts),
@@ -208,11 +206,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 		var kbText, kernelText string
 		hasSandwich := false
 		if lesson.Sandwich != nil {
-			lessonDir := filepath.Dir(lessonPath)
+			lessonDir := core.PathDir(lessonPath)
 			if lesson.Sandwich.KB != "" {
 				kbPath := lesson.Sandwich.KB
-				if !filepath.IsAbs(kbPath) {
-					kbPath = filepath.Join(lessonDir, kbPath)
+				if !core.PathIsAbs(kbPath) {
+					kbPath = core.Path(lessonDir, kbPath)
 				}
 				d, err := coreio.Local.Read(kbPath)
 				if err != nil {
@@ -223,8 +221,8 @@ func runSequence(cmd *cli.Command, args []string) error {
 			}
 			if lesson.Sandwich.Kernel != "" {
 				kernelPath := lesson.Sandwich.Kernel
-				if !filepath.IsAbs(kernelPath) {
-					kernelPath = filepath.Join(lessonDir, kernelPath)
+				if !core.PathIsAbs(kernelPath) {
+					kernelPath = core.Path(lessonDir, kernelPath)
 				}
 				d, err := coreio.Local.Read(kernelPath)
 				if err != nil {
@@ -252,7 +250,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 
 			slog.Info("sequence: generating",
 				"lesson", lesson.ID,
-				"prompt", fmt.Sprintf("%d/%d", j+1, len(lesson.Prompts)),
+				"prompt", core.Sprintf("%d/%d", j+1, len(lesson.Prompts)),
 				"id", prompt.ID,
 			)
 

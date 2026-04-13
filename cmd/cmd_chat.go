@@ -3,13 +3,11 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	coreio "dappco.re/go/core/io"
@@ -99,44 +97,44 @@ func runChat(cmd *cli.Command, args []string) error {
 	// Track saved conversations for JSONL output
 	var savedConversations [][]ml.Message
 
-	fmt.Println("Chat started. Type /quit to exit, /help for commands.")
+	core.Println("Chat started. Type /quit to exit, /help for commands.")
 	if sandwich {
-		fmt.Println("Sandwich signing enabled (KB + kernel)")
+		core.Println("Sandwich signing enabled (KB + kernel)")
 	}
 	if chatOutput != "" {
-		fmt.Printf("Capturing to: %s\n", chatOutput)
+		core.Print(nil,("Capturing to: %s\n", chatOutput)
 	}
-	fmt.Println()
+	core.Println()
 
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(stdinFile())
 	scanner.Buffer(make([]byte, 1<<20), 1<<20) // 1MB input buffer
 
 	for {
-		fmt.Print("you> ")
+		printf("you> ")
 		if !scanner.Scan() {
 			// EOF (Ctrl+D)
 			break
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input := core.Trim(scanner.Text())
 		if input == "" {
 			continue
 		}
 
 		// Handle commands
-		if strings.HasPrefix(input, "/") {
-			cmd := strings.Fields(input)
+		if core.HasPrefix(input, "/") {
+			cmd := fieldsStr(input)
 			switch cmd[0] {
 			case "/quit", "/exit":
 				goto done
 			case "/save":
 				if chatOutput == "" {
-					fmt.Println("No --output file specified. Use --output to enable saving.")
+					core.Println("No --output file specified. Use --output to enable saving.")
 					continue
 				}
 				if len(history) > 0 {
 					savedConversations = append(savedConversations, cloneMessages(history))
-					fmt.Printf("Saved conversation (%d messages)\n", len(history))
+					core.Print(nil,("Saved conversation (%d messages)\n", len(history))
 				}
 				continue
 			case "/clear":
@@ -151,14 +149,14 @@ func runChat(cmd *cli.Command, args []string) error {
 				if sysPrompt != "" {
 					history = append(history, ml.Message{Role: "system", Content: sysPrompt})
 				}
-				fmt.Println("Conversation cleared.")
+				core.Println("Conversation cleared.")
 				continue
 			case "/system":
 				if len(cmd) < 2 {
-					fmt.Println("Usage: /system <prompt text>")
+					core.Println("Usage: /system <prompt text>")
 					continue
 				}
-				sysText := strings.TrimPrefix(input, "/system ")
+				sysText := core.TrimPrefix(input, "/system ")
 				// Replace existing system prompt or add new one
 				found := false
 				for i, m := range history {
@@ -172,7 +170,7 @@ func runChat(cmd *cli.Command, args []string) error {
 					// Prepend system message
 					history = append([]ml.Message{{Role: "system", Content: sysText}}, history...)
 				}
-				fmt.Printf("System prompt set (%d chars)\n", len(sysText))
+				core.Print(nil,("System prompt set (%d chars)\n", len(sysText))
 				continue
 			case "/undo":
 				// Remove last user+assistant pair
@@ -181,25 +179,25 @@ func runChat(cmd *cli.Command, args []string) error {
 					secondLast := history[len(history)-2]
 					if secondLast.Role == "user" && last.Role == "assistant" {
 						history = history[:len(history)-2]
-						fmt.Println("Last exchange removed.")
+						core.Println("Last exchange removed.")
 					} else {
-						fmt.Println("Cannot undo: last messages are not a user/assistant pair.")
+						core.Println("Cannot undo: last messages are not a user/assistant pair.")
 					}
 				} else {
-					fmt.Println("Nothing to undo.")
+					core.Println("Nothing to undo.")
 				}
 				continue
 			case "/help":
-				fmt.Println("Commands:")
-				fmt.Println("  /quit, /exit    End session and save")
-				fmt.Println("  /save           Save conversation so far")
-				fmt.Println("  /clear          Clear conversation history")
-				fmt.Println("  /system <text>  Set system prompt")
-				fmt.Println("  /undo           Remove last exchange")
-				fmt.Println("  /help           Show this help")
+				core.Println("Commands:")
+				core.Println("  /quit, /exit    End session and save")
+				core.Println("  /save           Save conversation so far")
+				core.Println("  /clear          Clear conversation history")
+				core.Println("  /system <text>  Set system prompt")
+				core.Println("  /undo           Remove last exchange")
+				core.Println("  /help           Show this help")
 				continue
 			default:
-				fmt.Printf("Unknown command: %s (try /help)\n", cmd[0])
+				core.Print(nil,("Unknown command: %s (try /help)\n", cmd[0])
 				continue
 			}
 		}
@@ -209,15 +207,15 @@ func runChat(cmd *cli.Command, args []string) error {
 
 		// Generate response
 		genStart := time.Now()
-		fmt.Print("\nassistant> ")
+		printf("\nassistant> ")
 
-		var response strings.Builder
+		response := core.NewBuilder()
 		err := backend.ChatStream(cmd.Context(), history, opts, func(token string) error {
-			fmt.Print(token)
+			printf(token)
 			response.WriteString(token)
 			return nil
 		})
-		fmt.Println()
+		core.Println()
 
 		if err != nil {
 			slog.Error("chat: generation failed", "error", err)
@@ -240,11 +238,11 @@ func runChat(cmd *cli.Command, args []string) error {
 			runtime.GC()
 		}
 
-		fmt.Println()
+		core.Println()
 	}
 
 done:
-	fmt.Println()
+	core.Println()
 
 	// Save final conversation if output is specified
 	if chatOutput != "" && len(history) > 0 {

@@ -3,10 +3,10 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"cmp"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"math"
 	"runtime"
@@ -230,7 +230,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	baselineResponses := make(map[string]string)
 	for i, p := range prompts {
 		slog.Info("benchmark: baseline",
-			"prompt", fmt.Sprintf("%d/%d", i+1, len(prompts)),
+			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
 		res, err := baselineBackend.Generate(context.Background(), p.prompt, opts)
@@ -260,7 +260,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	trainedResponses := make(map[string]string)
 	for i, p := range prompts {
 		slog.Info("benchmark: trained",
-			"prompt", fmt.Sprintf("%d/%d", i+1, len(prompts)),
+			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
 		res, err := trainedBackend.Generate(context.Background(), p.prompt, opts)
@@ -386,30 +386,30 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	}
 
 	// Print summary
-	fmt.Println()
-	fmt.Println("=== Benchmark Results ===")
-	fmt.Printf("Baseline:  %s\n", benchmarkBaseline)
-	fmt.Printf("Trained:   %s\n", benchmarkTrained)
-	fmt.Printf("Prompts:   %d\n", len(results))
-	fmt.Println()
-	fmt.Println("--- LEK Heuristic ---")
-	fmt.Printf("Avg LEK (baseline): %+.2f\n", summary.AvgBaselineLEK)
-	fmt.Printf("Avg LEK (trained):  %+.2f\n", summary.AvgTrainedLEK)
-	fmt.Printf("Avg Delta:          %+.2f\n", summary.AvgDelta)
-	fmt.Println()
-	fmt.Println("--- Grammar v3 ---")
-	fmt.Printf("Avg Composite (baseline): %.2f\n", summary.AvgBaselineGrammar)
-	fmt.Printf("Avg Composite (trained):  %.2f\n", summary.AvgTrainedGrammar)
-	fmt.Printf("Avg Grammar Uplift:       %+.2f\n", summary.AvgGrammarUplift)
-	fmt.Printf("Avg Echo (baseline):      %.3f\n", summary.AvgBaselineEcho)
-	fmt.Printf("Avg Echo (trained):       %.3f\n", summary.AvgTrainedEcho)
-	fmt.Printf("Sycophancy detected:      %d (%.0f%%)\n", sycophancyCount, float64(sycophancyCount)/n*100)
-	fmt.Println()
-	fmt.Printf("Improved:   %d (%.0f%%)\n", improved, float64(improved)/n*100)
-	fmt.Printf("Regressed:  %d (%.0f%%)\n", regressed, float64(regressed)/n*100)
-	fmt.Printf("Unchanged:  %d (%.0f%%)\n", unchanged, float64(unchanged)/n*100)
-	fmt.Printf("Duration:   %s\n", summary.Duration)
-	fmt.Printf("Output:     %s\n", benchmarkOutput)
+	core.Println()
+	core.Println("=== Benchmark Results ===")
+	core.Print(nil,("Baseline:  %s\n", benchmarkBaseline)
+	core.Print(nil,("Trained:   %s\n", benchmarkTrained)
+	core.Print(nil,("Prompts:   %d\n", len(results))
+	core.Println()
+	core.Println("--- LEK Heuristic ---")
+	core.Print(nil,("Avg LEK (baseline): %+.2f\n", summary.AvgBaselineLEK)
+	core.Print(nil,("Avg LEK (trained):  %+.2f\n", summary.AvgTrainedLEK)
+	core.Print(nil,("Avg Delta:          %+.2f\n", summary.AvgDelta)
+	core.Println()
+	core.Println("--- Grammar v3 ---")
+	core.Print(nil,("Avg Composite (baseline): %.2f\n", summary.AvgBaselineGrammar)
+	core.Print(nil,("Avg Composite (trained):  %.2f\n", summary.AvgTrainedGrammar)
+	core.Print(nil,("Avg Grammar Uplift:       %+.2f\n", summary.AvgGrammarUplift)
+	core.Print(nil,("Avg Echo (baseline):      %.3f\n", summary.AvgBaselineEcho)
+	core.Print(nil,("Avg Echo (trained):       %.3f\n", summary.AvgTrainedEcho)
+	core.Print(nil,("Sycophancy detected:      %d (%.0f%%)\n", sycophancyCount, float64(sycophancyCount)/n*100)
+	core.Println()
+	core.Print(nil,("Improved:   %d (%.0f%%)\n", improved, float64(improved)/n*100)
+	core.Print(nil,("Regressed:  %d (%.0f%%)\n", regressed, float64(regressed)/n*100)
+	core.Print(nil,("Unchanged:  %d (%.0f%%)\n", unchanged, float64(unchanged)/n*100)
+	core.Print(nil,("Duration:   %s\n", summary.Duration)
+	core.Print(nil,("Output:     %s\n", benchmarkOutput)
 
 	return nil
 }
@@ -461,7 +461,7 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		seen[r.Prompt] = true
 		id := r.ID
 		if id == "" {
-			id = fmt.Sprintf("P%03d", len(prompts)+1)
+			id = core.Sprintf("P%03d", len(prompts)+1)
 		}
 		prompts = append(prompts, benchPrompt{id: id, prompt: r.Prompt})
 	}

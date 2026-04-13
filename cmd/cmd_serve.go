@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/signal"
 	"runtime"
 	"sync/atomic"
@@ -199,7 +198,7 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		// Streaming path
 		if req.Stream && canStream {
-			id := fmt.Sprintf("cmpl-%d", time.Now().UnixNano())
+			id := core.Sprintf("cmpl-%d", time.Now().UnixNano())
 			created := time.Now().Unix()
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -221,7 +220,7 @@ func runServe(cmd *cli.Command, args []string) error {
 					Choices: []completionChunkChoice{{Text: token}},
 				}
 				data, _ := json.Marshal(chunk)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				core.Print(w, "data: %s\n\n", data)
 				flusher.Flush()
 				return nil
 			})
@@ -240,8 +239,8 @@ func runServe(cmd *cli.Command, args []string) error {
 				Choices: []completionChunkChoice{{FinishReason: &stop}},
 			}
 			data, _ := json.Marshal(final)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			fmt.Fprintf(w, "data: [DONE]\n\n")
+			core.Print(w, "data: %s\n\n", data)
+			core.Print(w, "data: [DONE]\n\n")
 			flusher.Flush()
 			return
 		}
@@ -254,7 +253,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		resp := completionResponse{
-			ID:      fmt.Sprintf("cmpl-%d", time.Now().UnixNano()),
+			ID:      core.Sprintf("cmpl-%d", time.Now().UnixNano()),
 			Object:  "text_completion",
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
@@ -317,7 +316,7 @@ func runServe(cmd *cli.Command, args []string) error {
 
 		// Streaming path
 		if req.Stream && canStream {
-			id := fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano())
+			id := core.Sprintf("chatcmpl-%d", time.Now().UnixNano())
 			created := time.Now().Unix()
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -339,7 +338,7 @@ func runServe(cmd *cli.Command, args []string) error {
 				Choices: []chatChunkChoice{{Delta: chatChunkDelta{Role: "assistant"}}},
 			}
 			data, _ := json.Marshal(roleChunk)
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			core.Print(w, "data: %s\n\n", data)
 			flusher.Flush()
 
 			err := streamer.ChatStream(r.Context(), req.Messages, opts, func(token string) error {
@@ -351,7 +350,7 @@ func runServe(cmd *cli.Command, args []string) error {
 					Choices: []chatChunkChoice{{Delta: chatChunkDelta{Content: token}}},
 				}
 				data, _ := json.Marshal(chunk)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				core.Print(w, "data: %s\n\n", data)
 				flusher.Flush()
 				return nil
 			})
@@ -370,8 +369,8 @@ func runServe(cmd *cli.Command, args []string) error {
 				Choices: []chatChunkChoice{{Delta: chatChunkDelta{}, FinishReason: &stop}},
 			}
 			data, _ = json.Marshal(final)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			fmt.Fprintf(w, "data: [DONE]\n\n")
+			core.Print(w, "data: %s\n\n", data)
+			core.Print(w, "data: [DONE]\n\n")
 			flusher.Flush()
 			return
 		}
@@ -384,7 +383,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		}
 
 		resp := chatResponse{
-			ID:      fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
+			ID:      core.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
 			Object:  "chat.completion",
 			Created: time.Now().Unix(),
 			Model:   backend.Name(),
@@ -426,7 +425,7 @@ func runServe(cmd *cli.Command, args []string) error {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, chatHTML, backend.Name(), serveMaxTokens)
+		core.Print(w, chatHTML, backend.Name(), serveMaxTokens)
 	})
 
 	slog.Info("ml serve: starting",
@@ -439,7 +438,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		"timeout_s", serveTimeout,
 		"max_requests", serveMaxRequests,
 	)
-	fmt.Printf("Serving on http://%s\n", serveBind)
+	core.Print(nil,("Serving on http://%s\n", serveBind)
 
 	// Graceful shutdown on SIGINT/SIGTERM
 	srv := &http.Server{
@@ -452,7 +451,7 @@ func runServe(cmd *cli.Command, args []string) error {
 		errCh <- srv.ListenAndServe()
 	}()
 
-	sigCh := make(chan os.Signal, 1)
+	sigCh := make(chan osSignal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	select {

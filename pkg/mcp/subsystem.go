@@ -3,9 +3,8 @@
 package mcp
 
 import (
+	"dappco.re/go/core"
 	"context"
-	"fmt"
-	"strings"
 
 	"dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
@@ -182,8 +181,8 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	output := MLScoreOutput{}
 
-	for suite := range strings.SplitSeq(suites, ",") {
-		suite = strings.TrimSpace(suite)
+	for suite := range splitSeq(suites, ",") {
+		suite = core.Trim(suite)
 		switch suite {
 		case "heuristic":
 			output.Heuristic = ml.ScoreHeuristic(input.Response)
@@ -212,8 +211,8 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 	probes := ml.CapabilityProbes
 	if input.Categories != "" {
 		cats := make(map[string]bool)
-		for c := range strings.SplitSeq(input.Categories, ",") {
-			cats[strings.TrimSpace(c)] = true
+		for c := range splitSeq(input.Categories, ",") {
+			cats[core.Trim(c)] = true
 		}
 		var filtered []ml.Probe
 		for _, p := range probes {
@@ -229,7 +228,7 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 		result, err := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
 		respText := result.Text
 		if err != nil {
-			respText = fmt.Sprintf("error: %v", err)
+			respText = core.Sprintf("error: %v", err)
 		}
 		results = append(results, MLProbeResultItem{
 			ID:       probe.ID,
@@ -257,7 +256,7 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	}
 
 	influx := ml.NewInfluxClient(url, db)
-	var buf strings.Builder
+	var buf core.NewBuilder()
 	if err := ml.PrintStatus(influx, &buf); err != nil {
 		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
 	}

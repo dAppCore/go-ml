@@ -3,15 +3,11 @@ package ml
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
+
+	"dappco.re/go/core"
 
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
@@ -54,32 +50,32 @@ type APITask struct {
 
 // RunWorkerLoop is the main worker loop that polls for tasks and processes them.
 func RunWorkerLoop(cfg *WorkerConfig) {
-	log.Printf("LEM Worker starting")
-	log.Printf("  ID:       %s", cfg.WorkerID)
-	log.Printf("  Name:     %s", cfg.Name)
-	log.Printf("  API:      %s", cfg.APIBase)
-	log.Printf("  Infer:    %s", cfg.InferURL)
-	log.Printf("  GPU:      %s (%d GB)", cfg.GPUType, cfg.VRAMGb)
-	log.Printf("  Langs:    %v", cfg.Languages)
-	log.Printf("  Models:   %v", cfg.Models)
-	log.Printf("  Batch:    %d", cfg.BatchSize)
-	log.Printf("  Dry-run:  %v", cfg.DryRun)
+	core.Print(nil,"LEM Worker starting")
+	core.Print(nil,"  ID:       %s", cfg.WorkerID)
+	core.Print(nil,"  Name:     %s", cfg.Name)
+	core.Print(nil,"  API:      %s", cfg.APIBase)
+	core.Print(nil,"  Infer:    %s", cfg.InferURL)
+	core.Print(nil,"  GPU:      %s (%d GB)", cfg.GPUType, cfg.VRAMGb)
+	core.Print(nil,"  Langs:    %v", cfg.Languages)
+	core.Print(nil,"  Models:   %v", cfg.Models)
+	core.Print(nil,"  Batch:    %d", cfg.BatchSize)
+	core.Print(nil,"  Dry-run:  %v", cfg.DryRun)
 
 	if err := workerRegister(cfg); err != nil {
-		log.Fatalf("Registration failed: %v", err)
+		core.Print(nil,"Registration failed: %v", err)
 	}
-	log.Println("Registered with LEM API")
+	core.Print(nil,"Registered with LEM API")
 
 	for {
 		processed := workerPoll(cfg)
 
 		if cfg.OneShot {
-			log.Printf("One-shot mode: processed %d tasks, exiting", processed)
+			core.Print(nil,"One-shot mode: processed %d tasks, exiting", processed)
 			return
 		}
 
 		if processed == 0 {
-			log.Printf("No tasks available, sleeping %v", cfg.PollInterval)
+			core.Print(nil,"No tasks available, sleeping %v", cfg.PollInterval)
 			time.Sleep(cfg.PollInterval)
 		}
 
@@ -120,14 +116,14 @@ func workerHeartbeat(cfg *WorkerConfig) {
 }
 
 func workerPoll(cfg *WorkerConfig) int {
-	url := fmt.Sprintf("/api/lem/tasks/next?worker_id=%s&limit=%d", cfg.WorkerID, cfg.BatchSize)
+	url := core.Sprintf("/api/lem/tasks/next?worker_id=%s&limit=%d", cfg.WorkerID, cfg.BatchSize)
 	if cfg.TaskType != "" {
 		url += "&type=" + cfg.TaskType
 	}
 
 	resp, err := apiGet(cfg, url)
 	if err != nil {
-		log.Printf("Error fetching tasks: %v", err)
+		core.Print(nil,"Error fetching tasks: %v", err)
 		return 0
 	}
 
@@ -136,7 +132,7 @@ func workerPoll(cfg *WorkerConfig) int {
 		Count int       `json:"count"`
 	}
 	if err := json.Unmarshal(resp, &result); err != nil {
-		log.Printf("Error parsing tasks: %v", err)
+		core.Print(nil,"Error parsing tasks: %v", err)
 		return 0
 	}
 
@@ -144,13 +140,13 @@ func workerPoll(cfg *WorkerConfig) int {
 		return 0
 	}
 
-	log.Printf("Got %d tasks", result.Count)
+	core.Print(nil,"Got %d tasks", result.Count)
 	processed := 0
 
 	for _, task := range result.Tasks {
 		if err := workerProcessTask(cfg, task); err != nil {
-			log.Printf("Task %d failed: %v", task.ID, err)
-			apiDelete(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
+			core.Print(nil,"Task %d failed: %v", task.ID, err)
+			apiDelete(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 				"worker_id": cfg.WorkerID,
 			})
 			continue
@@ -162,23 +158,23 @@ func workerPoll(cfg *WorkerConfig) int {
 }
 
 func workerProcessTask(cfg *WorkerConfig, task APITask) error {
-	log.Printf("Processing task %d: %s [%s/%s] %d chars prompt",
+	core.Print(nil,"Processing task %d: %s [%s/%s] %d chars prompt",
 		task.ID, task.TaskType, task.Language, task.Domain, len(task.PromptText))
 
-	_, err := apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
+	_, err := apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 		"worker_id": cfg.WorkerID,
 	})
 	if err != nil {
 		return coreerr.E("ml.workerProcessTask", "claim", err)
 	}
 
-	apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
+	apiPatch(cfg, core.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
 		"worker_id": cfg.WorkerID,
 		"status":    "in_progress",
 	})
 
 	if cfg.DryRun {
-		log.Printf("  [DRY-RUN] Would generate response for: %.80s...", task.PromptText)
+		core.Print(nil,"  [DRY-RUN] Would generate response for: %.80s...", task.PromptText)
 		return nil
 	}
 
@@ -187,7 +183,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 	genTime := time.Since(start)
 
 	if err != nil {
-		apiPatch(cfg, fmt.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
+		apiPatch(cfg, core.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
 			"worker_id": cfg.WorkerID,
 			"status":    "abandoned",
 		})
@@ -199,7 +195,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		modelUsed = "default"
 	}
 
-	_, err = apiPost(cfg, fmt.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]any{
+	_, err = apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]any{
 		"worker_id":     cfg.WorkerID,
 		"response_text": response,
 		"model_used":    modelUsed,
@@ -209,7 +205,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		return coreerr.E("ml.workerProcessTask", "submit result", err)
 	}
 
-	log.Printf("  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
+	core.Print(nil,"  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
 	return nil
 }
 
@@ -254,13 +250,13 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readAll(resp.Body)
 	if err != nil {
 		return "", coreerr.E("ml.workerInfer", "read response", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return "", coreerr.E("ml.workerInfer", fmt.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return "", coreerr.E("ml.workerInfer", core.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	var chatResp struct {
@@ -280,7 +276,7 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 
 	content := chatResp.Choices[0].Message.Content
 	if len(content) < 10 {
-		return "", coreerr.E("ml.workerInfer", fmt.Sprintf("response too short: %d chars", len(content)), nil)
+		return "", coreerr.E("ml.workerInfer", core.Sprintf("response too short: %d chars", len(content)), nil)
 	}
 
 	return content, nil
@@ -302,13 +298,13 @@ func apiGet(cfg *WorkerConfig, path string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, coreerr.E("ml.apiGet", fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return nil, coreerr.E("ml.apiGet", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -346,13 +342,13 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, coreerr.E("ml.apiRequest", fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return nil, coreerr.E("ml.apiRequest", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -361,30 +357,30 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 // MachineID returns the machine ID from /etc/machine-id or hostname fallback.
 func MachineID() string {
 	if data, err := coreio.Local.Read("/etc/machine-id"); err == nil {
-		id := strings.TrimSpace(data)
+		id := core.Trim(data)
 		if len(id) > 0 {
 			return id
 		}
 	}
-	h, _ := os.Hostname()
+	h, _ := hostname()
 	return h
 }
 
 // Hostname returns the system hostname.
 func Hostname() string {
-	h, _ := os.Hostname()
+	h, _ := hostname()
 	return h
 }
 
 // ReadKeyFile reads the LEM API key from ~/.config/lem/api_key.
 func ReadKeyFile() string {
-	home, _ := os.UserHomeDir()
-	path := filepath.Join(home, ".config", "lem", "api_key")
+	home, _ := userHomeDir()
+	path := core.Path(home, ".config", "lem", "api_key")
 	data, err := coreio.Local.Read(path)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(data)
+	return core.Trim(data)
 }
 
 // SplitComma splits a comma-separated string into trimmed parts.

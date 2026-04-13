@@ -2,7 +2,6 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"iter"
 	"slices"
 	"sync"
@@ -158,7 +157,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return Result{}, coreerr.E("ml.Service.Generate", fmt.Sprintf("no backend available (requested: %q)", backendName), nil)
+		return Result{}, coreerr.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil)
 	}
 	return b.Generate(ctx, prompt, opts)
 }

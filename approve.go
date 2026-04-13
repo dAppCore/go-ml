@@ -1,13 +1,13 @@
 package ml
 
 import (
+	"dappco.re/go/core"
 	"encoding/json"
-	"fmt"
 	"io"
 
 	coreio "dappco.re/go/core/io"
-
 	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/store"
 )
 
 // ApproveConfig holds options for the approve operation.
@@ -23,8 +23,8 @@ type ApproveConfig struct {
 // the heuristic passed AND the judge either passed or has not yet scored.
 // Each approved row is written as a chat-format JSONL line with user/assistant
 // messages.
-func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
-	rows, err := db.conn.Query(`
+func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
+	rows, err := db.Conn().Query(`
 		SELECT r.idx, r.seed_id, r.region, r.domain, r.prompt, r.response,
 		       r.gen_time, r.model, s.heuristic_score
 		FROM expansion_raw r
@@ -40,7 +40,7 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 
 	f, err := coreio.Local.Create(cfg.Output)
 	if err != nil {
-		return coreerr.E("ml.ApproveExpansions", fmt.Sprintf("create output %s", cfg.Output), err)
+		return coreerr.E("ml.ApproveExpansions", core.Sprintf("create output %s", cfg.Output), err)
 	}
 	defer f.Close()
 
@@ -77,9 +77,9 @@ func ApproveExpansions(db *DB, cfg ApproveConfig, w io.Writer) error {
 		return coreerr.E("ml.ApproveExpansions", "iterate approved rows", err)
 	}
 
-	fmt.Fprintf(w, "Approved: %d responses (threshold: heuristic > 0)\n", count)
-	fmt.Fprintf(w, "Exported: %s\n", cfg.Output)
-	fmt.Fprintf(w, "  Regions: %d, Domains: %d\n", len(regionSet), len(domainSet))
+	fprintf(w, "Approved: %d responses (threshold: heuristic > 0)\n", count)
+	fprintf(w, "Exported: %s\n", cfg.Output)
+	fprintf(w, "  Regions: %d, Domains: %d\n", len(regionSet), len(domainSet))
 
 	return nil
 }

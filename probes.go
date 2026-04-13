@@ -1,9 +1,9 @@
 package ml
 
 import (
+	"dappco.re/go/core"
 	"regexp"
 	"slices"
-	"strings"
 )
 
 // Probe defines a binary pass/fail capability check.
@@ -29,8 +29,8 @@ var CapabilityProbes = []Probe{
 		Prompt:   "What is 347 × 29? Show your work and give the final answer.",
 		Answer:   "10063",
 		Check: func(r string) bool {
-			clean := strings.ReplaceAll(strings.ReplaceAll(r, ",", ""), " ", "")
-			return strings.Contains(clean, "10063")
+			clean := replaceAll(replaceAll(r, ",", ""), " ", "")
+			return core.Contains(clean, "10063")
 		},
 	},
 	{
@@ -39,7 +39,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "A store sells apples for $1.25 each. If I buy 17 apples and pay with a $50 bill, how much change do I get?",
 		Answer:   "28.75",
 		Check: func(r string) bool {
-			return strings.Contains(r, "28.75") || strings.Contains(r, "$28.75")
+			return core.Contains(r, "28.75") || core.Contains(r, "$28.75")
 		},
 	},
 	{
@@ -66,8 +66,8 @@ var CapabilityProbes = []Probe{
 		Prompt:   "A bag has 3 red balls, 5 blue balls, and 2 green balls. What is the probability of drawing a blue ball? Express as a fraction and decimal.",
 		Answer:   "1/2 or 0.5",
 		Check: func(r string) bool {
-			return strings.Contains(r, "1/2") || strings.Contains(r, "0.5") ||
-				strings.Contains(r, "50%") || strings.Contains(r, "5/10")
+			return core.Contains(r, "1/2") || core.Contains(r, "0.5") ||
+				core.Contains(r, "50%") || core.Contains(r, "5/10")
 		},
 	},
 	{
@@ -85,7 +85,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "What is the next number in this sequence: 2, 6, 18, 54, ...?",
 		Answer:   "162",
 		Check: func(r string) bool {
-			return strings.Contains(r, "162")
+			return core.Contains(r, "162")
 		},
 	},
 	{
@@ -113,7 +113,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "If it rains, the ground gets wet. The ground is wet. Can we conclude it rained? Why or why not?",
 		Answer:   "No - affirming the consequent fallacy",
 		Check: func(r string) bool {
-			lower := strings.ToLower(r)
+			lower := toLower(r)
 			return regexp.MustCompile(`\bno\b|\bcannot\b|\bcan't\b|not necessarily|fallac|other reason|doesn't mean`).MatchString(lower)
 		},
 	},
@@ -123,7 +123,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "In a room of 30 people, what is the minimum number of people that must share a birth month?",
 		Answer:   "3",
 		Check: func(r string) bool {
-			lower := strings.ToLower(r)
+			lower := toLower(r)
 			has3 := regexp.MustCompile(`\b3\b|three`).MatchString(lower)
 			// Avoid matching "30" in the first 50 chars (restating the problem)
 			prefix := lower
@@ -186,7 +186,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "Event A happened in 1995. Event B happened 12 years before Event A. Event C happened 8 years after Event B. In what year did Event C happen?",
 		Answer:   "1991",
 		Check: func(r string) bool {
-			return strings.Contains(r, "1991")
+			return core.Contains(r, "1991")
 		},
 	},
 	{
@@ -205,7 +205,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "What does this Python code print?\nx = [1, 2, 3, 4, 5]\nprint(x[1:3])",
 		Answer:   "[2, 3]",
 		Check: func(r string) bool {
-			return strings.Contains(r, "[2, 3]") || strings.Contains(r, "[2,3]")
+			return core.Contains(r, "[2, 3]") || core.Contains(r, "[2,3]")
 		},
 	},
 	{
@@ -265,7 +265,7 @@ func ProbeCategories() []string {
 // StripThinkBlocks removes <think>...</think> blocks from DeepSeek R1 responses.
 func StripThinkBlocks(s string) string {
 	re := regexp.MustCompile(`(?s)<think>.*?</think>`)
-	clean := strings.TrimSpace(re.ReplaceAllString(s, ""))
+	clean := core.Trim(re.ReplaceAllString(s, ""))
 	if clean == "" && len(s) > 500 {
 		return s[:500]
 	}

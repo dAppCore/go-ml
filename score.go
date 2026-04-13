@@ -1,12 +1,10 @@
 package ml
 
 import (
+	"dappco.re/go/core"
 	"context"
-	"fmt"
-	"log"
 	"maps"
 	"slices"
-	"strings"
 	"sync"
 )
 
@@ -29,8 +27,8 @@ func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 		suites["standard"] = true
 		suites["exact"] = true
 	} else {
-		for s := range strings.SplitSeq(suiteList, ",") {
-			s = strings.TrimSpace(s)
+		for s := range splitSeq(suiteList, ",") {
+			s = core.Trim(s)
 			if s != "" {
 				suites[s] = true
 			}
@@ -80,7 +78,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 				s, err := e.judge.ScoreSemantic(ctx, r.Prompt, r.Response)
 				if err != nil {
-					log.Printf("semantic scoring failed for %s: %v", r.ID, err)
+					core.Print(nil,"semantic scoring failed for %s: %v", r.ID, err)
 					return
 				}
 				mu.Lock()
@@ -106,13 +104,13 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 					}
 				}
 				if probe == nil {
-					log.Printf("no content probe found for id %s", r.ID)
+					core.Print(nil,"no content probe found for id %s", r.ID)
 					return
 				}
 
 				c, err := e.judge.ScoreContent(ctx, *probe, r.Response)
 				if err != nil {
-					log.Printf("content scoring failed for %s: %v", r.ID, err)
+					core.Print(nil,"content scoring failed for %s: %v", r.ID, err)
 					return
 				}
 				mu.Lock()
@@ -133,7 +131,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 					s, err := e.judge.ScoreTruthfulQA(ctx, r.Prompt, r.BestAnswer, r.Response)
 					if err != nil {
-						log.Printf("truthfulqa scoring failed for %s: %v", r.ID, err)
+						core.Print(nil,"truthfulqa scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
@@ -152,7 +150,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 					s, err := e.judge.ScoreDoNotAnswer(ctx, r.Prompt, r.RiskArea, r.Response)
 					if err != nil {
-						log.Printf("donotanswer scoring failed for %s: %v", r.ID, err)
+						core.Print(nil,"donotanswer scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
@@ -171,7 +169,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 					s, err := e.judge.ScoreToxigen(ctx, r.Prompt, r.Response)
 					if err != nil {
-						log.Printf("toxigen scoring failed for %s: %v", r.ID, err)
+						core.Print(nil,"toxigen scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
@@ -206,5 +204,5 @@ func (e *Engine) SuiteNames() []string {
 
 // String returns a human-readable description of the engine configuration.
 func (e *Engine) String() string {
-	return fmt.Sprintf("Engine(concurrency=%d, suites=%v)", e.concurrency, e.SuiteNames())
+	return core.Sprintf("Engine(concurrency=%d, suites=%v)", e.concurrency, e.SuiteNames())
 }

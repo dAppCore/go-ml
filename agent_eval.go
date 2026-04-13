@@ -4,12 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
-	"path/filepath"
-	"strings"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -65,16 +62,16 @@ type probeRunnerResponse struct {
 func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
 	ollamaBase, ok := OllamaBaseModelMap[cp.ModelTag]
 	if !ok {
-		return coreerr.E("ml.processMLXNative", fmt.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
+		return coreerr.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
 	}
 	hfBase := HFBaseModelMap[cp.ModelTag]
 	if hfBase == "" {
 		hfBase = ollamaBase
 	}
 
-	tempModel := fmt.Sprintf("lem-%s-%d", cp.ModelTag, cp.Iteration)
-	localAdapterDir := filepath.Join(cfg.WorkDir, "adapter-"+cp.Dirname)
-	peftDir := filepath.Join(cfg.WorkDir, "peft-"+cp.Dirname)
+	tempModel := core.Sprintf("lem-%s-%d", cp.ModelTag, cp.Iteration)
+	localAdapterDir := core.Path(cfg.WorkDir, "adapter-"+cp.Dirname)
+	peftDir := core.Path(cfg.WorkDir, "peft-"+cp.Dirname)
 
 	coreio.Local.EnsureDir(localAdapterDir)
 
@@ -84,11 +81,11 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		OllamaDeleteModel(cfg.JudgeURL, tempModel)
 	}()
 
-	log.Printf("Fetching adapter from M3 (%s)...", cp.Filename)
-	remoteSF := fmt.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
-	remoteCfg := fmt.Sprintf("%s/adapter_config.json", cp.RemoteDir)
-	localSF := filepath.Join(localAdapterDir, cp.Filename)
-	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
+	core.Print(nil,"Fetching adapter from M3 (%s)...", cp.Filename)
+	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
+	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
+	localSF := core.Path(localAdapterDir, cp.Filename)
+	localCfg := core.Path(localAdapterDir, "adapter_config.json")
 
 	ctx := context.Background()
 	t := cfg.transport()
@@ -99,16 +96,16 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		return coreerr.E("ml.processMLXNative", "scp config", err)
 	}
 
-	log.Println("Converting MLX → PEFT format...")
+	core.Print(nil,"Converting MLX → PEFT format...")
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
 		return coreerr.E("ml.processMLXNative", "convert adapter", err)
 	}
 
-	log.Printf("Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
+	core.Print(nil,"Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
 	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
 		return coreerr.E("ml.processMLXNative", "ollama create", err)
 	}
-	log.Printf("Ollama model %s ready", tempModel)
+	core.Print(nil,"Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
 
 	results, fullResponses := RunCapabilityProbesFull(ctx, probeBackend, func(probeID, category string, passed bool, response string, correct, total int) {
@@ -117,21 +114,21 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 			passedInt = 1
 		}
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(total+100)) * 1_000_000_000
-		line := fmt.Sprintf(
+		line := core.Sprintf(
 			MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s passed=%di,iteration=%di %d",
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
 		)
 		if err := influx.WriteLp([]string{line}); err != nil {
-			log.Printf("  [%s] InfluxDB stream failed: %v", probeID, err)
+			core.Print(nil,"  [%s] InfluxDB stream failed: %v", probeID, err)
 		}
 	})
 
-	log.Printf("Capability: %s -- %.1f%% (%d/%d)",
+	core.Print(nil,"Capability: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
 	if err := PushCapabilitySummary(influx, cp, results); err != nil {
-		log.Printf("InfluxDB summary push failed, buffering: %v", err)
+		core.Print(nil,"InfluxDB summary push failed, buffering: %v", err)
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
@@ -139,13 +136,13 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	judgeBackend := NewHTTPBackend(cfg.JudgeURL, cfg.JudgeModel)
 	judge := NewJudge(judgeBackend)
 
-	log.Printf("Judging %d capability responses (0-10 quality scoring)...", len(fullResponses))
+	core.Print(nil,"Judging %d capability responses (0-10 quality scoring)...", len(fullResponses))
 	ScoreCapabilityAndPush(ctx, judge, influx, cp, fullResponses)
 
-	log.Printf("Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
+	core.Print(nil,"Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
 	contentResponses := RunContentProbesViaAPI(ctx, probeBackend)
 	if len(contentResponses) > 0 {
-		contentRunID := strings.Replace(cp.RunID, "-capability-", "-content-", 1)
+		contentRunID := core.Replace(cp.RunID, "-capability-", "-content-")
 		ScoreContentAndPush(ctx, judge, influx, cp, contentRunID, contentResponses)
 	}
 
@@ -154,22 +151,22 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 
 // processWithConversion fetches adapter locally, converts MLX→PEFT, and scores.
 func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-	localAdapterDir := filepath.Join(cfg.WorkDir, cp.Dirname)
+	localAdapterDir := core.Path(cfg.WorkDir, cp.Dirname)
 	coreio.Local.EnsureDir(localAdapterDir)
 
-	localSF := filepath.Join(localAdapterDir, cp.Filename)
-	localCfg := filepath.Join(localAdapterDir, "adapter_config.json")
+	localSF := core.Path(localAdapterDir, cp.Filename)
+	localCfg := core.Path(localAdapterDir, "adapter_config.json")
 
 	defer func() {
 		coreio.Local.Delete(localSF)
 		coreio.Local.Delete(localCfg)
-		peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
+		peftDir := core.Path(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 		coreio.Local.DeleteAll(peftDir)
 	}()
 
-	log.Println("Fetching adapter from M3...")
-	remoteSF := fmt.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
-	remoteCfg := fmt.Sprintf("%s/adapter_config.json", cp.RemoteDir)
+	core.Print(nil,"Fetching adapter from M3...")
+	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
+	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 
 	ctx := context.Background()
 	t := cfg.transport()
@@ -180,13 +177,13 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		return coreerr.E("ml.processWithConversion", "scp config", err)
 	}
 
-	log.Println("Converting MLX to PEFT format...")
-	peftDir := filepath.Join(cfg.WorkDir, fmt.Sprintf("peft_%07d", cp.Iteration))
+	core.Print(nil,"Converting MLX to PEFT format...")
+	peftDir := core.Path(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
 		return coreerr.E("ml.processWithConversion", "convert adapter", err)
 	}
 
-	log.Printf("Running %d capability probes...", len(CapabilityProbes))
+	core.Print(nil,"Running %d capability probes...", len(CapabilityProbes))
 	modelName := cfg.Model
 	if modelName == "" {
 		modelName = cp.ModelTag
@@ -195,11 +192,11 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 
 	results := RunCapabilityProbes(ctx, backend)
 
-	log.Printf("Result: %s -- %.1f%% (%d/%d)",
+	core.Print(nil,"Result: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
 	if err := PushCapabilityResults(influx, cp, results); err != nil {
-		log.Printf("InfluxDB push failed, buffering: %v", err)
+		core.Print(nil,"InfluxDB push failed, buffering: %v", err)
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
@@ -220,7 +217,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	for _, probe := range CapabilityProbes {
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		if err != nil {
-			log.Printf("  [%s] ERROR: %v", probe.ID, err)
+			core.Print(nil,"  [%s] ERROR: %v", probe.ID, err)
 			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: err.Error()}
 			total++
 			cat := results.ByCategory[probe.Category]
@@ -253,7 +250,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 		if passed {
 			status = "PASS"
 		}
-		log.Printf("  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
+		core.Print(nil,"  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
 	}
 
 	if total > 0 {
@@ -281,8 +278,8 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		response := res.Text
 		if err != nil {
-			log.Printf("  [%s] ERROR: %v", probe.ID, err)
-			response = fmt.Sprintf("ERROR: %v", err)
+			core.Print(nil,"  [%s] ERROR: %v", probe.ID, err)
+			response = core.Sprintf("ERROR: %v", err)
 		}
 
 		clean := StripThinkBlocks(response)
@@ -318,7 +315,7 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		if passed {
 			status = "PASS"
 		}
-		log.Printf("  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
+		core.Print(nil,"  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
 
 		if onProbe != nil {
 			onProbe(probe.ID, probe.Category, passed, stored, correct, total)
@@ -341,12 +338,12 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	for _, probe := range ContentProbes {
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
 		if err != nil {
-			log.Printf("  [content:%s] ERROR: %v", probe.ID, err)
+			core.Print(nil,"  [content:%s] ERROR: %v", probe.ID, err)
 			continue
 		}
 
 		reply := StripThinkBlocks(res.Text)
-		log.Printf("  [content:%s] got %d chars", probe.ID, len(reply))
+		core.Print(nil,"  [content:%s] got %d chars", probe.ID, len(reply))
 
 		responses = append(responses, ContentResponse{
 			Probe:    probe,
@@ -368,27 +365,27 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 			"temp":       ContentTemperature,
 		}
 		reqJSON, _ := json.Marshal(req)
-		fmt.Fprintf(stdin, "%s\n", reqJSON)
+		core.Print(stdin, "%s", reqJSON)
 
 		var response string
 		if scanner.Scan() {
 			var resp probeRunnerResponse
 			if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
-				log.Printf("  [content:%s] parse error: %v", probe.ID, err)
+				core.Print(nil,"  [content:%s] parse error: %v", probe.ID, err)
 				continue
 			} else if resp.Error != "" {
-				log.Printf("  [content:%s] ERROR: %s", probe.ID, resp.Error)
+				core.Print(nil,"  [content:%s] ERROR: %s", probe.ID, resp.Error)
 				continue
 			} else {
 				response = resp.Response
 			}
 		} else {
-			log.Printf("  [content:%s] no response from runner", probe.ID)
+			core.Print(nil,"  [content:%s] no response from runner", probe.ID)
 			continue
 		}
 
 		response = StripThinkBlocks(response)
-		log.Printf("  [content:%s] got %d chars", probe.ID, len(response))
+		core.Print(nil,"  [content:%s] got %d chars", probe.ID, len(response))
 
 		responses = append(responses, ContentResponse{
 			Probe:    probe,

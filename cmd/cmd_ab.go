@@ -3,15 +3,13 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"maps"
-	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 	"time"
 
 	coreio "dappco.re/go/core/io"
@@ -247,7 +245,7 @@ func runAB(cmd *cli.Command, args []string) error {
 
 		// Baseline: no system message
 		slog.Info("ab: probe",
-			"n", fmt.Sprintf("%d/%d", i+1, len(probes)),
+			"n", core.Sprintf("%d/%d", i+1, len(probes)),
 			"id", p.ID,
 			"condition", "baseline",
 		)
@@ -271,7 +269,7 @@ func runAB(cmd *cli.Command, args []string) error {
 		// Each kernel condition
 		for _, k := range kernels {
 			slog.Info("ab: probe",
-				"n", fmt.Sprintf("%d/%d", i+1, len(probes)),
+				"n", core.Sprintf("%d/%d", i+1, len(probes)),
 				"id", p.ID,
 				"condition", k.Name,
 			)
@@ -428,33 +426,33 @@ func runAB(cmd *cli.Command, args []string) error {
 }
 
 func printABSummary(s abSummary, condNames []string) {
-	fmt.Println()
-	fmt.Println("=== A/B Test Results ===")
-	fmt.Printf("Model:   %s\n", s.Model)
-	fmt.Printf("Probes:  %d\n", s.TotalProbes)
-	fmt.Println()
+	core.Println()
+	core.Println("=== A/B Test Results ===")
+	core.Print(nil,("Model:   %s\n", s.Model)
+	core.Print(nil,("Probes:  %d\n", s.TotalProbes)
+	core.Println()
 
 	// Per-probe table
-	header := fmt.Sprintf("  %-30s", "PROBE")
-	divider := fmt.Sprintf("  %-30s", strings.Repeat("-", 30))
+	header := core.Sprintf("  %-30s", "PROBE")
+	divider := core.Sprintf("  %-30s", repeatStr("-", 30))
 	for _, c := range condNames {
-		header += fmt.Sprintf("  %8s", c)
-		divider += fmt.Sprintf("  %8s", "--------")
+		header += core.Sprintf("  %8s", c)
+		divider += core.Sprintf("  %8s", "--------")
 	}
-	fmt.Println(header)
-	fmt.Println(divider)
+	core.Println(header)
+	core.Println(divider)
 
 	for _, r := range s.Results {
-		line := fmt.Sprintf("  %-30s", r.ID)
+		line := core.Sprintf("  %-30s", r.ID)
 		baseScore := r.Conditions["baseline"].LEKScore
 		for _, c := range condNames {
 			cs, ok := r.Conditions[c]
 			if !ok {
-				line += fmt.Sprintf("  %8s", "n/a")
+				line += core.Sprintf("  %8s", "n/a")
 				continue
 			}
 			if c == "baseline" {
-				line += fmt.Sprintf("  %8.1f", cs.LEKScore)
+				line += core.Sprintf("  %8.1f", cs.LEKScore)
 			} else {
 				delta := cs.LEKScore - baseScore
 				indicator := " "
@@ -463,52 +461,52 @@ func printABSummary(s abSummary, condNames []string) {
 				} else if delta < -0.5 {
 					indicator = "-"
 				}
-				line += fmt.Sprintf("  %7.1f%s", cs.LEKScore, indicator)
+				line += core.Sprintf("  %7.1f%s", cs.LEKScore, indicator)
 			}
 		}
-		fmt.Println(line)
+		core.Println(line)
 	}
-	fmt.Println()
+	core.Println()
 
 	// Category averages
-	header = fmt.Sprintf("  %-30s", "CATEGORY")
-	divider = fmt.Sprintf("  %-30s", strings.Repeat("-", 30))
+	header = core.Sprintf("  %-30s", "CATEGORY")
+	divider = core.Sprintf("  %-30s", repeatStr("-", 30))
 	for _, c := range condNames {
-		header += fmt.Sprintf("  %8s", c)
-		divider += fmt.Sprintf("  %8s", "--------")
+		header += core.Sprintf("  %8s", c)
+		divider += core.Sprintf("  %8s", "--------")
 	}
-	fmt.Println(header)
-	fmt.Println(divider)
+	core.Println(header)
+	core.Println(divider)
 
 	cats := slices.Sorted(maps.Keys(s.Categories))
 
 	for _, cat := range cats {
-		line := fmt.Sprintf("  %-30s", cat)
+		line := core.Sprintf("  %-30s", cat)
 		for _, c := range condNames {
 			if val, ok := s.Categories[cat][c]; ok {
-				line += fmt.Sprintf("  %8.1f", val)
+				line += core.Sprintf("  %8.1f", val)
 			} else {
-				line += fmt.Sprintf("  %8s", "n/a")
+				line += core.Sprintf("  %8s", "n/a")
 			}
 		}
-		fmt.Println(line)
+		core.Println(line)
 	}
-	fmt.Println()
+	core.Println()
 
 	// Condition summaries
-	fmt.Println("  CONDITION SUMMARY:")
+	core.Println("  CONDITION SUMMARY:")
 	for _, cs := range s.Conditions {
 		if cs.Name == "baseline" {
-			fmt.Printf("    %-12s  avg=%.2f\n", cs.Name, cs.AvgLEK)
+			core.Print(nil,("    %-12s  avg=%.2f\n", cs.Name, cs.AvgLEK)
 		} else {
-			fmt.Printf("    %-12s  avg=%.2f  delta=%+.2f  improved=%d  regressed=%d  unchanged=%d\n",
+			core.Print(nil,("    %-12s  avg=%.2f  delta=%+.2f  improved=%d  regressed=%d  unchanged=%d\n",
 				cs.Name, cs.AvgLEK, cs.DeltaVsBase, cs.Improved, cs.Regressed, cs.Unchanged)
 		}
 	}
-	fmt.Println()
+	core.Println()
 
-	fmt.Printf("Duration: %s\n", s.Duration)
-	fmt.Printf("Output:   %s\n", abOutput)
+	core.Print(nil,("Duration: %s\n", s.Duration)
+	core.Print(nil,("Output:   %s\n", abOutput)
 }
 
 func loadABProbes() ([]abProbe, error) {
@@ -538,14 +536,14 @@ func loadABProbes() ([]abProbe, error) {
 		for i, s := range seeds {
 			probes[i] = abProbe{
 				ID:       s.ID,
-				Category: strings.ToLower(s.Domain),
+				Category: toLower(s.Domain),
 				Prompt:   s.Prompt,
 			}
 		}
 		return probes, nil
 	}
 
-	return nil, coreerr.E("cmd.loadABProbes", fmt.Sprintf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts), nil)
+	return nil, coreerr.E("cmd.loadABProbes", core.Sprintf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts), nil)
 }
 
 func loadABKernels() ([]abKernelDef, error) {
@@ -555,16 +553,16 @@ func loadABKernels() ([]abKernelDef, error) {
 
 	var defs []abKernelDef
 	for _, spec := range abKernels {
-		name, path, ok := strings.Cut(spec, "=")
+		name, path, ok := cutStr(spec, "=")
 		if !ok {
 			// No name given, derive from filename
 			path = spec
-			name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			name = core.TrimSuffix(core.PathBase(path), core.PathExt(path))
 		}
 
 		data, err := coreio.Local.Read(path)
 		if err != nil {
-			return nil, coreerr.E("cmd.loadABKernels", fmt.Sprintf("read kernel %q", path), err)
+			return nil, coreerr.E("cmd.loadABKernels", core.Sprintf("read kernel %q", path), err)
 		}
 
 		defs = append(defs, abKernelDef{
@@ -583,7 +581,7 @@ func category(p abProbe) string {
 		return p.Category
 	}
 	if p.Domain != "" {
-		return strings.ToLower(p.Domain)
+		return toLower(p.Domain)
 	}
 	return "uncategorised"
 }

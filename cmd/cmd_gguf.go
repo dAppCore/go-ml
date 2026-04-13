@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -36,6 +36,6 @@ func runGGUF(cmd *cli.Command, args []string) error {
 	if err := ml.ConvertMLXtoGGUFLoRA(ggufInput, ggufConfig, ggufOutput, ggufArch); err != nil {
 		return coreerr.E("cmd.runGGUF", "convert to GGUF", err)
 	}
-	fmt.Printf("GGUF LoRA adapter written to %s\n", ggufOutput)
+	core.Print(nil,("GGUF LoRA adapter written to %s\n", ggufOutput)
 	return nil
 }

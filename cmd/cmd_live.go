@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -50,14 +49,14 @@ func runLive(cmd *cli.Command, args []string) error {
 	pct := float64(total) / float64(targetTotal) * 100
 	remaining := targetTotal - total
 
-	fmt.Fprintln(os.Stdout, "Golden Set Live Status (from InfluxDB)")
-	fmt.Fprintln(os.Stdout, "─────────────────────────────────────────────")
-	fmt.Fprintf(os.Stdout, "  Total:     %d / %d (%.1f%%)\n", total, targetTotal, pct)
-	fmt.Fprintf(os.Stdout, "  Remaining: %d\n", remaining)
-	fmt.Fprintf(os.Stdout, "  Domains:   %d\n", domains)
-	fmt.Fprintf(os.Stdout, "  Voices:    %d\n", voices)
-	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, "  Workers:")
+	fprintln(nil, "Golden Set Live Status (from InfluxDB)")
+	fprintln(nil, "─────────────────────────────────────────────")
+	core.Print(nil, "  Total:     %d / %d (%.1f%%)\n", total, targetTotal, pct)
+	core.Print(nil, "  Remaining: %d\n", remaining)
+	core.Print(nil, "  Domains:   %d\n", domains)
+	core.Print(nil, "  Voices:    %d\n", voices)
+	fprintln(nil)
+	fprintln(nil, "  Workers:")
 	for _, w := range workers {
 		name := w["w"]
 		n := w["n"]
@@ -65,7 +64,7 @@ func runLive(cmd *cli.Command, args []string) error {
 		if name == "migration" {
 			marker = " (seed data)"
 		}
-		fmt.Fprintf(os.Stdout, "    %-20s %6s generations%s\n", name, n, marker)
+		core.Print(nil, "    %-20s %6s generations%s\n", name, n, marker)
 	}
 
 	return nil

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"os"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -50,5 +49,5 @@ func runIngest(cmd *cli.Command, args []string) error {
 		BatchSize:      ingestBatchSize,
 	}
 
-	return ml.Ingest(influx, cfg, os.Stdout)
+	return ml.Ingest(influx, cfg, nil)
 }

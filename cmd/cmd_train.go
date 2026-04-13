@@ -3,15 +3,13 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"math"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	coreio "dappco.re/go/core/io"
@@ -140,7 +138,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 	// --- Auto-generate run ID ---
 	if trainRunID == "" {
-		trainRunID = fmt.Sprintf("train-%s", time.Now().Format("20060102-150405"))
+		trainRunID = core.Sprintf("train-%s", time.Now().Format("20060102-150405"))
 	}
 
 	// --- Load model ---
@@ -160,7 +158,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	)
 
 	// --- Apply LoRA ---
-	targets := strings.Split(trainTargets, ",")
+	targets := core.Split(trainTargets, ",")
 	cfg := inference.LoRAConfig{
 		Rank:       trainRank,
 		Alpha:      float32(trainAlpha),
@@ -208,14 +206,14 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	if err := coreio.Local.EnsureDir(trainOutputDir); err != nil {
 		return coreerr.E("cmd.runTrainLoop", "create output dir", err)
 	}
-	adapterFile := filepath.Join(trainOutputDir, "adapters.safetensors")
+	adapterFile := core.Path(trainOutputDir, "adapters.safetensors")
 
 	// --- Telemetry ---
 	var influx *ml.InfluxClient
 	if !trainNoTelemetry {
 		influx = ml.NewInfluxClient("", "")
 	}
-	modelTag := ml.EscapeLp(filepath.Base(trainModelPath))
+	modelTag := ml.EscapeLp(core.PathBase(trainModelPath))
 
 	// --- Determine total iterations ---
 	totalIters := trainIters
@@ -300,7 +298,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 		values, grads, err := grad.Apply(params...)
 		grad.Free()
 		if err != nil {
-			return coreerr.E("cmd.runTrainLoop", fmt.Sprintf("iter %d: gradient failed", it), err)
+			return coreerr.E("cmd.runTrainLoop", core.Sprintf("iter %d: gradient failed", it), err)
 		}
 
 		mlx.Materialize(append(values, grads...)...)
@@ -335,12 +333,12 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 			if tui == nil {
 				slog.Info("train",
-					"iter", fmt.Sprintf("%d/%d", it, totalIters),
-					"loss", fmt.Sprintf("%.4f", avgLoss),
-					"ppl", fmt.Sprintf("%.2f", perplexity),
-					"lr", fmt.Sprintf("%.2e", lr),
-					"tok/s", fmt.Sprintf("%.0f", tps),
-					"peak", fmt.Sprintf("%.1fGB", peak),
+					"iter", core.Sprintf("%d/%d", it, totalIters),
+					"loss", core.Sprintf("%.4f", avgLoss),
+					"ppl", core.Sprintf("%.2f", perplexity),
+					"lr", core.Sprintf("%.2e", lr),
+					"tok/s", core.Sprintf("%.0f", tps),
+					"peak", core.Sprintf("%.1fGB", peak),
 					"tokens", trainedTokens,
 				)
 			} else {
@@ -349,11 +347,11 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 			// InfluxDB telemetry
 			if influx != nil {
-				fields := fmt.Sprintf(
+				fields := core.Sprintf(
 					"loss=%.6f,perplexity=%.4f,tokens_total=%di,tokens_per_sec=%.1f,peak_memory_gb=%.2f,iteration=%di,lr=%.8f",
 					avgLoss, perplexity, trainedTokens, tps, peak, it, lr,
 				)
-				lp := fmt.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=train %s",
+				lp := core.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=train %s",
 					modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase), fields)
 				_ = influx.WriteLp([]string{lp})
 			}
@@ -371,8 +369,8 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 			if tui == nil {
 				slog.Info("validation",
 					"iter", it,
-					"val_loss", fmt.Sprintf("%.4f", valLoss),
-					"val_ppl", fmt.Sprintf("%.2f", math.Exp(math.Min(valLoss, 20))),
+					"val_loss", core.Sprintf("%.4f", valLoss),
+					"val_ppl", core.Sprintf("%.2f", math.Exp(math.Min(valLoss, 20))),
 				)
 			} else {
 				peak := float64(mlx.GetPeakMemory()) / 1e9
@@ -380,7 +378,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 			}
 
 			if influx != nil {
-				lp := fmt.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=val loss=%.6f,iteration=%di",
+				lp := core.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=val loss=%.6f,iteration=%di",
 					modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase), valLoss, it)
 				_ = influx.WriteLp([]string{lp})
 			}
@@ -421,7 +419,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	slog.Info("training complete",
 		"output", adapterFile,
 		"total_iters", totalIters,
-		"final_loss", fmt.Sprintf("%.4f", avgLoss),
+		"final_loss", core.Sprintf("%.4f", avgLoss),
 		"total_tokens", trainedTokens,
 		"duration", elapsed.Round(time.Second),
 		"trainable_params", adapter.TotalParams(),
@@ -497,13 +495,13 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 	prompt := tm.Decode(sample.Tokens[:promptEnd])
 
 	// Generate a live response
-	var response strings.Builder
+	response := core.NewBuilder()
 	for tok := range tm.Generate(ctx, prompt, inference.WithMaxTokens(128), inference.WithTemperature(0.7)) {
 		response.WriteString(tok.Text)
 	}
 
 	// Queue to InfluxDB for scoring
-	lp := fmt.Sprintf(
+	lp := core.Sprintf(
 		`scoring_queue,model=%s,run_id=%s,phase=%s,status=pending iteration=%di,prompt="%s",response="%s"`,
 		modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase),
 		iter, escapeFieldStr(prompt, 2000), escapeFieldStr(response.String(), 2000),
@@ -515,12 +513,12 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 
 // saveCheckpoint saves adapter weights and config at a training iteration.
 func saveCheckpoint(adapter inference.Adapter, dir string, iter int, cfg inference.LoRAConfig) error {
-	ckptFile := filepath.Join(dir, fmt.Sprintf("%07d_adapters.safetensors", iter))
+	ckptFile := core.Path(dir, core.Sprintf("%07d_adapters.safetensors", iter))
 	if err := adapter.Save(ckptFile); err != nil {
 		return err
 	}
 	// Also save the latest
-	if err := adapter.Save(filepath.Join(dir, "adapters.safetensors")); err != nil {
+	if err := adapter.Save(core.Path(dir, "adapters.safetensors")); err != nil {
 		return err
 	}
 	return writeAdapterConfig(dir, cfg)
@@ -538,15 +536,15 @@ func writeAdapterConfig(dir string, cfg inference.LoRAConfig) error {
 	if err != nil {
 		return err
 	}
-	return coreio.Local.Write(filepath.Join(dir, "adapter_config.json"), string(data))
+	return coreio.Local.Write(core.Path(dir, "adapter_config.json"), string(data))
 }
 
 func escapeFieldStr(s string, max int) string {
 	s = truncate(s, max)
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	s = strings.ReplaceAll(s, "\n", `\n`)
-	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = replaceAll(s, `\`, `\\`)
+	s = replaceAll(s, `"`, `\"`)
+	s = replaceAll(s, "\n", `\n`)
+	s = replaceAll(s, "\r", `\r`)
 	return s
 }
 
@@ -567,8 +565,8 @@ func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
+		line := core.Trim(scanner.Text())
+		if line == "" || core.HasPrefix(line, "#") {
 			continue
 		}
 
@@ -627,7 +625,7 @@ func formatConversation(messages []ml.Message, modelType string, includeAssistan
 }
 
 func formatQwen3Train(messages []ml.Message, includeAssistant bool) string {
-	var sb strings.Builder
+	sb := core.NewBuilder()
 	for _, msg := range messages {
 		if msg.Role == "assistant" && !includeAssistant {
 			sb.WriteString("<|im_start|>assistant\n")
@@ -635,18 +633,18 @@ func formatQwen3Train(messages []ml.Message, includeAssistant bool) string {
 		}
 		switch msg.Role {
 		case "system":
-			sb.WriteString(fmt.Sprintf("<|im_start|>system\n%s<|im_end|>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<|im_start|>system\n%s<|im_end|>\n", msg.Content))
 		case "user":
-			sb.WriteString(fmt.Sprintf("<|im_start|>user\n%s<|im_end|>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<|im_start|>user\n%s<|im_end|>\n", msg.Content))
 		case "assistant":
-			sb.WriteString(fmt.Sprintf("<|im_start|>assistant\n%s<|im_end|>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<|im_start|>assistant\n%s<|im_end|>\n", msg.Content))
 		}
 	}
 	return sb.String()
 }
 
 func formatGemmaTrain(messages []ml.Message, includeAssistant bool) string {
-	var sb strings.Builder
+	sb := core.NewBuilder()
 	for _, msg := range messages {
 		if msg.Role == "assistant" && !includeAssistant {
 			sb.WriteString("<start_of_turn>model\n")
@@ -654,11 +652,11 @@ func formatGemmaTrain(messages []ml.Message, includeAssistant bool) string {
 		}
 		switch msg.Role {
 		case "user":
-			sb.WriteString(fmt.Sprintf("<start_of_turn>user\n%s<end_of_turn>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<start_of_turn>user\n%s<end_of_turn>\n", msg.Content))
 		case "assistant":
-			sb.WriteString(fmt.Sprintf("<start_of_turn>model\n%s<end_of_turn>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<start_of_turn>model\n%s<end_of_turn>\n", msg.Content))
 		case "system":
-			sb.WriteString(fmt.Sprintf("<start_of_turn>user\n[System: %s]<end_of_turn>\n", msg.Content))
+			sb.WriteString(core.Sprintf("<start_of_turn>user\n[System: %s]<end_of_turn>\n", msg.Content))
 		}
 	}
 	return sb.String()

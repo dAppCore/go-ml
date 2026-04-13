@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"dappco.re/go/core/ml"
+	"dappco.re/go/core/store"
 	"dappco.re/go/core/cli/pkg/cli"
 )
 
@@ -30,7 +30,7 @@ func init() {
 }
 
 func runPublish(cmd *cli.Command, args []string) error {
-	return ml.Publish(ml.PublishConfig{
+	return store.Publish(store.PublishConfig{
 		InputDir: publishInputDir,
 		Repo:     publishRepo,
 		Public:   publishPublic,

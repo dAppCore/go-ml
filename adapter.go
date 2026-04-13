@@ -4,9 +4,8 @@ package ml
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/inference"
 )
@@ -34,7 +33,7 @@ func NewInferenceAdapter(model inference.TextModel, name string) *InferenceAdapt
 // Generate collects all tokens from the model's iterator into a single string.
 func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
-	var b strings.Builder
+	b := core.NewBuilder()
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
@@ -49,7 +48,7 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 // conversion is needed.
 func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
-	var b strings.Builder
+	b := core.NewBuilder()
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
@@ -105,7 +104,7 @@ func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
 func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) (*inference.AttentionSnapshot, error) {
 	inspector, ok := a.model.(inference.AttentionInspector)
 	if !ok {
-		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", fmt.Sprintf("backend %q does not support attention inspection", a.name), nil)
+		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil)
 	}
 	return inspector.InspectAttention(ctx, prompt, opts...)
 }

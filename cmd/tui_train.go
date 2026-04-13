@@ -3,9 +3,8 @@
 package cmd
 
 import (
-	"fmt"
+	"dappco.re/go/core"
 	"math"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -71,7 +70,7 @@ func (m *trainStatusModel) View(width, _ int) string {
 		status = "error"
 	}
 
-	line := fmt.Sprintf(" LEM %s | %s | iter %d/%d (%.0f%%) | loss %.4f | %.0f tok/s | %.1fGB",
+	line := core.Sprintf(" LEM %s | %s | iter %d/%d (%.0f%%) | loss %.4f | %.0f tok/s | %.1fGB",
 		t.Phase, status, t.Iter, t.TotalIters, pct, t.Loss, t.TokensPerS, t.PeakMemGB)
 
 	if width > 0 && len(line) > width {
@@ -123,7 +122,7 @@ func (m *trainContentModel) View(width, height int) string {
 		return " waiting for first training step..."
 	}
 
-	var b strings.Builder
+	b := core.NewBuilder()
 
 	// --- Progress bar ---
 	t := m.tick
@@ -136,8 +135,8 @@ func (m *trainContentModel) View(width, height int) string {
 	if filled > barWidth {
 		filled = barWidth
 	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
-	b.WriteString(fmt.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
+	bar := repeatStr("█", filled) + repeatStr("░", barWidth-filled)
+	b.WriteString(core.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
 
 	// --- Loss chart ---
 	chartHeight := height - 10
@@ -153,21 +152,21 @@ func (m *trainContentModel) View(width, height int) string {
 	b.WriteByte('\n')
 
 	// --- Metrics table ---
-	b.WriteString(fmt.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
-	b.WriteString(fmt.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
+	b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
+	b.WriteString(core.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
 	if t.ValLoss > 0 {
-		b.WriteString(fmt.Sprintf(" val loss:   %.4f  (ppl %.2f)\n", t.ValLoss, math.Exp(math.Min(t.ValLoss, 20))))
+		b.WriteString(core.Sprintf(" val loss:   %.4f  (ppl %.2f)\n", t.ValLoss, math.Exp(math.Min(t.ValLoss, 20))))
 	}
-	b.WriteString(fmt.Sprintf(" lr:         %.2e\n", t.LR))
-	b.WriteString(fmt.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
-	b.WriteString(fmt.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
-	b.WriteString(fmt.Sprintf(" tokens:     %d\n", t.Tokens))
+	b.WriteString(core.Sprintf(" lr:         %.2e\n", t.LR))
+	b.WriteString(core.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
+	b.WriteString(core.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
+	b.WriteString(core.Sprintf(" tokens:     %d\n", t.Tokens))
 
 	if t.Done {
 		b.WriteString("\n training complete!")
 	}
 	if t.Err != nil {
-		b.WriteString(fmt.Sprintf("\n error: %v", t.Err))
+		b.WriteString(core.Sprintf("\n error: %v", t.Err))
 	}
 
 	return b.String()
@@ -210,17 +209,17 @@ func renderLossChart(train, val []float64, width, height int) string {
 	// Build character grid
 	blocks := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
-	var b strings.Builder
+	b := core.NewBuilder()
 
 	// Y-axis labels + chart
-	b.WriteString(fmt.Sprintf(" %6.3f ┐\n", maxV))
+	b.WriteString(core.Sprintf(" %6.3f ┐\n", maxV))
 
 	for row := height - 1; row >= 0; row-- {
 		rowMin := minV + span*float64(row)/float64(height)
 		rowMax := minV + span*float64(row+1)/float64(height)
 
 		if row == height/2 {
-			b.WriteString(fmt.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
+			b.WriteString(core.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
 		} else {
 			b.WriteString("        │")
 		}
@@ -241,7 +240,7 @@ func renderLossChart(train, val []float64, width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	b.WriteString(fmt.Sprintf(" %6.3f └%s\n", minV, strings.Repeat("─", len(points))))
+	b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatStr("─", len(points))))
 
 	return b.String()
 }

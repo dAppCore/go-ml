@@ -2,31 +2,29 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"iter"
-	"log"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
 
 // RunAgentLoop is the main scoring agent loop.
 func RunAgentLoop(cfg *AgentConfig) {
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
-	log.Println("ROCm Scoring Agent — Go Edition")
-	log.Printf("M3: %s@%s", cfg.M3User, cfg.M3Host)
-	log.Printf("Inference API: %s", cfg.APIURL)
-	log.Printf("Judge API: %s (%s)", cfg.JudgeURL, cfg.JudgeModel)
-	log.Printf("InfluxDB: %s/%s", cfg.InfluxURL, cfg.InfluxDB)
+	core.Print(nil, repeatStr("=", LogSeparatorWidth))
+	core.Print(nil, "ROCm Scoring Agent — Go Edition")
+	core.Print(nil, "M3: %s@%s", cfg.M3User, cfg.M3Host)
+	core.Print(nil, "Inference API: %s", cfg.APIURL)
+	core.Print(nil, "Judge API: %s (%s)", cfg.JudgeURL, cfg.JudgeModel)
+	core.Print(nil, "InfluxDB: %s/%s", cfg.InfluxURL, cfg.InfluxDB)
 	if cfg.DBPath != "" {
-		log.Printf("DuckDB: %s", cfg.DBPath)
+		core.Print(nil, "DuckDB: %s", cfg.DBPath)
 	}
-	log.Printf("Poll interval: %ds", cfg.PollInterval)
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	core.Print(nil, "Poll interval: %ds", cfg.PollInterval)
+	core.Print(nil, repeatStr("=", LogSeparatorWidth))
 
 	influx := NewInfluxClient(cfg.InfluxURL, cfg.InfluxDB)
 	coreio.Local.EnsureDir(cfg.WorkDir)
@@ -34,34 +32,34 @@ func RunAgentLoop(cfg *AgentConfig) {
 	for {
 		ReplayInfluxBuffer(cfg.WorkDir, influx)
 
-		log.Println("Discovering checkpoints on M3...")
+		core.Print(nil, "Discovering checkpoints on M3...")
 		checkpoints, err := DiscoverCheckpoints(cfg)
 		if err != nil {
-			log.Printf("Discovery failed: %v", err)
+			core.Print(nil, "Discovery failed: %v", err)
 			if cfg.OneShot {
 				return
 			}
 			time.Sleep(time.Duration(cfg.PollInterval) * time.Second)
 			continue
 		}
-		log.Printf("Found %d total checkpoints", len(checkpoints))
+		core.Print(nil, "Found %d total checkpoints", len(checkpoints))
 
 		var unscored []Checkpoint
 		if cfg.Force {
 			unscored = checkpoints
-			log.Printf("Force mode: scoring all %d checkpoints", len(unscored))
+			core.Print(nil, "Force mode: scoring all %d checkpoints", len(unscored))
 		} else {
 			scored, err := GetScoredLabels(influx)
 			if err != nil {
-				log.Printf("InfluxDB query failed: %v", err)
+				core.Print(nil, "InfluxDB query failed: %v", err)
 			}
-			log.Printf("Already scored: %d (run_id, label) pairs", len(scored))
+			core.Print(nil, "Already scored: %d (run_id, label) pairs", len(scored))
 			unscored = FindUnscored(checkpoints, scored)
-			log.Printf("Unscored: %d checkpoints", len(unscored))
+			core.Print(nil, "Unscored: %d checkpoints", len(unscored))
 		}
 
 		if len(unscored) == 0 {
-			log.Printf("Nothing to score. Sleeping %ds...", cfg.PollInterval)
+			core.Print(nil, "Nothing to score. Sleeping %ds...", cfg.PollInterval)
 			if cfg.OneShot {
 				return
 			}
@@ -75,15 +73,15 @@ func RunAgentLoop(cfg *AgentConfig) {
 		}
 
 		for i, target := range targets {
-			log.Printf("Grabbed: %s (%s) [%d/%d]", target.Label, target.Dirname, i+1, len(targets))
+			core.Print(nil, "Grabbed: %s (%s) [%d/%d]", target.Label, target.Dirname, i+1, len(targets))
 
 			if cfg.DryRun {
-				log.Printf("[DRY RUN] Would process: %s/%s", target.Dirname, target.Filename)
+				core.Print(nil, "[DRY RUN] Would process: %s/%s", target.Dirname, target.Filename)
 				continue
 			}
 
 			if err := ProcessOne(cfg, influx, target); err != nil {
-				log.Printf("Error processing %s: %v", target.Label, err)
+				core.Print(nil, "Error processing %s: %v", target.Label, err)
 			}
 			time.Sleep(InterCheckpointDelay)
 		}
@@ -115,7 +113,7 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 		t := cfg.transport()
 		ctx := context.Background()
-		out, err := t.Run(ctx, fmt.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
+		out, err := t.Run(ctx, core.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
 		if err != nil {
 			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", err))
 			return
@@ -124,13 +122,13 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		iterRe := regexp.MustCompile(`(\d+)`)
 
 		var adapterDirs []string
-		for dirpath := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		for dirpath := range splitSeq(core.Trim(out), "\n") {
 			if dirpath == "" {
 				continue
 			}
-			subOut, subErr := t.Run(ctx, fmt.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
-			if subErr == nil && strings.TrimSpace(subOut) != "" {
-				for sub := range strings.SplitSeq(strings.TrimSpace(subOut), "\n") {
+			subOut, subErr := t.Run(ctx, core.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
+			if subErr == nil && core.Trim(subOut) != "" {
+				for sub := range splitSeq(core.Trim(subOut), "\n") {
 					if sub != "" {
 						adapterDirs = append(adapterDirs, sub)
 					}
@@ -141,14 +139,14 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 
 		for _, dirpath := range adapterDirs {
-			dirname := strings.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
+			dirname := core.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
 
-			filesOut, err := t.Run(ctx, fmt.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
+			filesOut, err := t.Run(ctx, core.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
 			if err != nil {
 				continue
 			}
 
-			for fp := range strings.SplitSeq(strings.TrimSpace(filesOut), "\n") {
+			for fp := range splitSeq(core.Trim(filesOut), "\n") {
 				if fp == "" {
 					continue
 				}
@@ -159,11 +157,11 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 					continue
 				}
 				iteration := 0
-				fmt.Sscanf(match[1], "%d", &iteration)
+				sscanf(match[1], "%d", &iteration)
 
 				modelTag, labelPrefix, stem := AdapterMeta(dirname)
-				label := fmt.Sprintf("%s @%s", labelPrefix, match[1])
-				runID := fmt.Sprintf("%s-capability-auto", stem)
+				label := core.Sprintf("%s @%s", labelPrefix, match[1])
+				runID := core.Sprintf("%s-capability-auto", stem)
 
 				if !yield(Checkpoint{
 					RemoteDir: dirpath,
@@ -207,7 +205,7 @@ func FindUnscored(checkpoints []Checkpoint, scored map[[2]string]bool) []Checkpo
 	}
 	slices.SortFunc(unscored, func(a, b Checkpoint) int {
 		if a.Dirname != b.Dirname {
-			return strings.Compare(a.Dirname, b.Dirname)
+			return compareStr(a.Dirname, b.Dirname)
 		}
 		return a.Iteration - b.Iteration
 	})
@@ -230,14 +228,14 @@ func FindUnscoredIter(checkpoints []Checkpoint, scored map[[2]string]bool) iter.
 // isMLXNative returns true if this model can be served directly on M3 via
 // mlx_lm.server with --adapter, avoiding the MLX→PEFT conversion step.
 func isMLXNative(modelTag string) bool {
-	return strings.HasPrefix(modelTag, "gemma-3-") || strings.HasPrefix(modelTag, "gpt-oss")
+	return core.HasPrefix(modelTag, "gemma-3-") || core.HasPrefix(modelTag, "gpt-oss")
 }
 
 // ProcessOne fetches, converts, scores, and pushes one checkpoint.
 func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
-	log.Printf("Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
-	log.Println(strings.Repeat("=", LogSeparatorWidth))
+	core.Print(nil, repeatStr("=", LogSeparatorWidth))
+	core.Print(nil, "Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
+	core.Print(nil, repeatStr("=", LogSeparatorWidth))
 
 	if isMLXNative(cp.ModelTag) {
 		return processMLXNative(cfg, influx, cp)

@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
+	"dappco.re/go/core/store"
 	"dappco.re/go/core/cli/pkg/cli"
 )
 
@@ -29,7 +29,7 @@ func init() {
 func runApprove(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runApprove", "--db or LEM_DB required", nil)
@@ -37,10 +37,10 @@ func runApprove(cmd *cli.Command, args []string) error {
 
 	output := approveOutput
 	if output == "" {
-		output = filepath.Join(filepath.Dir(path), "expansion-approved.jsonl")
+		output = core.Path(core.PathDir(path), "expansion-approved.jsonl")
 	}
 
-	db, err := ml.OpenDB(path)
+	db, err := store.OpenDuckDB(path)
 	if err != nil {
 		return coreerr.E("cmd.runApprove", "open db", err)
 	}

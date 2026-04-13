@@ -3,9 +3,9 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"runtime"
 	"time"
@@ -165,7 +165,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 		}
 
 		slog.Info("sandwich: generating",
-			"seed", fmt.Sprintf("%d/%d", i+1, len(seeds)),
+			"seed", core.Sprintf("%d/%d", i+1, len(seeds)),
 			"id", seed.ID,
 			"category", seed.Category,
 		)
@@ -222,7 +222,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 
 // buildSandwich constructs the signed prompt: KB preamble + seed prompt + LEK-1 kernel.
 func buildSandwich(kb, prompt, kernel string) string {
-	return fmt.Sprintf(`Name: Ethics Experiment
+	return core.Sprintf(`Name: Ethics Experiment
 KB:
 %s
 

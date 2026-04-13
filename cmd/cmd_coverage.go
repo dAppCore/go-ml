@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"os"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
+	"dappco.re/go/core/store"
 	"dappco.re/go/core/cli/pkg/cli"
 )
 
@@ -18,13 +19,13 @@ var coverageCmd = &cli.Command{
 func runCoverage(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runCoverage", "--db or LEM_DB required", nil)
 	}
 
-	db, err := ml.OpenDB(path)
+	db, err := store.OpenDuckDB(path)
 	if err != nil {
 		return coreerr.E("cmd.runCoverage", "open db", err)
 	}

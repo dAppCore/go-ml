@@ -3,13 +3,11 @@
 package cmd
 
 import (
+	"dappco.re/go/core"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	coreio "dappco.re/go/core/io"
@@ -118,7 +116,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	}
 
 	if lesson.ID == "" {
-		lesson.ID = strings.TrimSuffix(filepath.Base(lessonFile), filepath.Ext(lessonFile))
+		lesson.ID = core.TrimSuffix(core.PathBase(lessonFile), core.PathExt(lessonFile))
 	}
 
 	// Resolve output path
@@ -130,11 +128,11 @@ func runLesson(cmd *cli.Command, args []string) error {
 	var kbText, kernelText string
 	sandwich := false
 	if lesson.Sandwich != nil {
-		baseDir := filepath.Dir(lessonFile)
+		baseDir := core.PathDir(lessonFile)
 		if lesson.Sandwich.KB != "" {
 			kbPath := lesson.Sandwich.KB
-			if !filepath.IsAbs(kbPath) {
-				kbPath = filepath.Join(baseDir, kbPath)
+			if !core.PathIsAbs(kbPath) {
+				kbPath = core.Path(baseDir, kbPath)
 			}
 			d, err := coreio.Local.Read(kbPath)
 			if err != nil {
@@ -144,8 +142,8 @@ func runLesson(cmd *cli.Command, args []string) error {
 		}
 		if lesson.Sandwich.Kernel != "" {
 			kernelPath := lesson.Sandwich.Kernel
-			if !filepath.IsAbs(kernelPath) {
-				kernelPath = filepath.Join(baseDir, kernelPath)
+			if !core.PathIsAbs(kernelPath) {
+				kernelPath = core.Path(baseDir, kernelPath)
 			}
 			d, err := coreio.Local.Read(kernelPath)
 			if err != nil {
@@ -226,7 +224,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 		promptStart := time.Now()
 
 		slog.Info("lesson: generating",
-			"prompt", fmt.Sprintf("%d/%d", i+1, len(remaining)),
+			"prompt", core.Sprintf("%d/%d", i+1, len(remaining)),
 			"id", prompt.ID,
 			"category", prompt.Category,
 		)
@@ -292,16 +290,16 @@ func runLesson(cmd *cli.Command, args []string) error {
 
 		// Interactive mode: show response and wait for confirmation
 		if lessonInteract {
-			fmt.Printf("\n--- %s (%s) ---\n", prompt.ID, prompt.Category)
-			fmt.Printf("Prompt: %s\n\n", prompt.Prompt)
+			core.Print(nil,("\n--- %s (%s) ---\n", prompt.ID, prompt.Category)
+			core.Print(nil,("Prompt: %s\n\n", prompt.Prompt)
 			if prompt.Signal != "" {
-				fmt.Printf("Signal: %s\n\n", prompt.Signal)
+				core.Print(nil,("Signal: %s\n\n", prompt.Signal)
 			}
-			fmt.Printf("Response:\n%s\n", response)
-			fmt.Printf("\nPress Enter to continue (or 'q' to stop)... ")
+			core.Print(nil,("Response:\n%s\n", response)
+			core.Print(nil,("\nPress Enter to continue (or 'q' to stop)... ")
 			var input string
-			fmt.Scanln(&input)
-			if strings.TrimSpace(input) == "q" {
+			scanln(&input)
+			if core.Trim(input) == "q" {
 				break
 			}
 		}

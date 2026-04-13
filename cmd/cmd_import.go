@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
+	"dappco.re/go/core"
 
 	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	"dappco.re/go/core/store"
 	"dappco.re/go/core/cli/pkg/cli"
 )
 
@@ -31,7 +30,7 @@ func init() {
 func runImportAll(cmd *cli.Command, args []string) error {
 	path := dbPath
 	if path == "" {
-		path = os.Getenv("LEM_DB")
+		path = core.Env("LEM_DB")
 	}
 	if path == "" {
 		return coreerr.E("cmd.runImportAll", "--db or LEM_DB required", nil)
@@ -39,20 +38,20 @@ func runImportAll(cmd *cli.Command, args []string) error {
 
 	dataDir := importDataDir
 	if dataDir == "" {
-		dataDir = filepath.Dir(path)
+		dataDir = core.PathDir(path)
 	}
 
-	db, err := ml.OpenDBReadWrite(path)
+	db, err := store.OpenDuckDBReadWrite(path)
 	if err != nil {
 		return coreerr.E("cmd.runImportAll", "open db", err)
 	}
 	defer db.Close()
 
-	cfg := ml.ImportConfig{
+	cfg := store.ImportConfig{
 		SkipM3:  importSkipM3,
 		DataDir: dataDir,
 		M3Host:  importM3Host,
 	}
 
-	return ml.ImportAll(db, cfg, cmd.OutOrStdout())
+	return store.ImportAll(db, cfg, cmd.OutOrStdout())
 }

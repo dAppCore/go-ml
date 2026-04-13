@@ -1,11 +1,11 @@
 package ml
 
 import (
-	"fmt"
+	"dappco.re/go/core"
 	"io"
-	"strings"
 
 	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/store"
 )
 
 // NormalizeConfig configures the seed normalization process.
@@ -22,24 +22,24 @@ type NormalizeConfig struct {
 //  3. Assign priority based on domain coverage (underrepresented domains
 //     receive higher priority via RANK).
 //  4. Print a region distribution summary.
-func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
+func NormalizeSeeds(db *store.DuckDB, cfg NormalizeConfig, w io.Writer) error {
 	// 1. Check seeds table exists and get count.
 	var seedCount int
-	if err := db.conn.QueryRow("SELECT count(*) FROM seeds").Scan(&seedCount); err != nil {
+	if err := db.Conn().QueryRow("SELECT count(*) FROM seeds").Scan(&seedCount); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "no seeds table (run import-all first)", err)
 	}
-	fmt.Fprintf(w, "Seeds table: %d rows\n", seedCount)
+	fprintf(w, "Seeds table: %d rows\n", seedCount)
 
 	if seedCount == 0 {
 		return coreerr.E("ml.NormalizeSeeds", "seeds table is empty, nothing to normalize", nil)
 	}
 
 	// 2. Drop and recreate expansion_prompts.
-	if _, err := db.conn.Exec("DROP TABLE IF EXISTS expansion_prompts"); err != nil {
+	if _, err := db.Conn().Exec("DROP TABLE IF EXISTS expansion_prompts"); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "drop expansion_prompts", err)
 	}
 
-	createSQL := fmt.Sprintf(`
+	createSQL := core.Sprintf(`
 		CREATE TABLE expansion_prompts AS
 		WITH unique_seeds AS (
 			SELECT
@@ -68,18 +68,18 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 		)
 	`, cfg.MinLength)
 
-	if _, err := db.conn.Exec(createSQL); err != nil {
+	if _, err := db.Conn().Exec(createSQL); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "create expansion_prompts", err)
 	}
 
 	var epCount int
-	if err := db.conn.QueryRow("SELECT count(*) FROM expansion_prompts").Scan(&epCount); err != nil {
+	if err := db.Conn().QueryRow("SELECT count(*) FROM expansion_prompts").Scan(&epCount); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "count expansion_prompts", err)
 	}
-	fmt.Fprintf(w, "Expansion prompts created: %d (min length %d, deduped, excluding existing)\n", epCount, cfg.MinLength)
+	fprintf(w, "Expansion prompts created: %d (min length %d, deduped, excluding existing)\n", epCount, cfg.MinLength)
 
 	if epCount == 0 {
-		fmt.Fprintln(w, "No new expansion prompts to process.")
+		fprintf(w, "%s\n", "No new expansion prompts to process.")
 		return nil
 	}
 
@@ -96,16 +96,16 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 		) sub
 		WHERE expansion_prompts.domain = sub.domain
 	`
-	if _, err := db.conn.Exec(prioritySQL); err != nil {
+	if _, err := db.Conn().Exec(prioritySQL); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "assign priority", err)
 	}
-	fmt.Fprintln(w, "Priority assigned (underrepresented domains ranked higher).")
+	fprintf(w, "%s\n", "Priority assigned (underrepresented domains ranked higher).")
 
 	// 4. Region distribution summary.
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Region distribution:")
+	core.Print(w, "")
+	core.Print(w, "Region distribution:")
 
-	rows, err := db.conn.Query(`
+	rows, err := db.Conn().Query(`
 		SELECT
 			CASE
 				WHEN region LIKE 'cn%' THEN 'cn'
@@ -139,17 +139,17 @@ func NormalizeSeeds(db *DB, cfg NormalizeConfig, w io.Writer) error {
 			return coreerr.E("ml.NormalizeSeeds", "scan region row", err)
 		}
 		totalFromRegions += cnt
-		lines = append(lines, fmt.Sprintf("  %-10s %6d", region, cnt))
+		lines = append(lines, core.Sprintf("  %-10s %6d", region, cnt))
 	}
 	if err := rows.Err(); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "iterate region rows", err)
 	}
 
 	for _, line := range lines {
-		fmt.Fprintln(w, line)
+		fprintf(w, "%s\n", line)
 	}
-	fmt.Fprintf(w, "  %-10s %6d\n", strings.Repeat("-", 10), totalFromRegions)
-	fmt.Fprintf(w, "  %-10s %6d\n", "total", totalFromRegions)
+	fprintf(w, "  %-10s %6d\n", repeatStr("-", 10), totalFromRegions)
+	fprintf(w, "  %-10s %6d\n", "total", totalFromRegions)
 
 	return nil
 }
