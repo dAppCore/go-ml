@@ -46,5 +46,9 @@ func runSeedInflux(cmd *cli.Command, args []string) error {
 	return ml.SeedInflux(db, influx, ml.SeedInfluxConfig{
 		Force:     seedInfluxForce,
 		BatchSize: seedInfluxBatchSize,
+<<<<<<< HEAD
 	}, nil)
+=======
+	}, cmd.OutOrStdout())
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }

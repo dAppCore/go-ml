@@ -3,12 +3,15 @@ package ml
 import (
 	"dappco.re/go/core"
 	"bufio"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"math/rand"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
-
 )
 
 // ChatMessage is a single message in the chat training format.
@@ -97,12 +100,7 @@ func WriteTrainingJSONL(path string, responses []Response) error {
 			},
 		}
 
-		data, err := json.Marshal(example)
-		if err != nil {
-			return coreerr.E("ml.WriteTrainingJSONL", "marshal example", err)
-		}
-
-		if _, err := w.Write(data); err != nil {
+		if _, err := w.WriteString(core.JSONMarshalString(example)); err != nil {
 			return coreerr.E("ml.WriteTrainingJSONL", "write line", err)
 		}
 		if _, err := w.WriteString("\n"); err != nil {

@@ -1,10 +1,16 @@
 package ml
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
 	"encoding/json"
 	"io"
 
+=======
+	"io"
+
+	"dappco.re/go/core"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/store"
@@ -44,7 +50,6 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 	}
 	defer f.Close()
 
-	enc := json.NewEncoder(f)
 	count := 0
 	regionSet := make(map[string]bool)
 	domainSet := make(map[string]bool)
@@ -64,7 +69,7 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 			},
 		}
 
-		if err := enc.Encode(example); err != nil {
+		if _, err := f.Write([]byte(core.Concat(core.JSONMarshalString(example), "\n"))); err != nil {
 			return coreerr.E("ml.ApproveExpansions", "encode example", err)
 		}
 
@@ -77,9 +82,15 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 		return coreerr.E("ml.ApproveExpansions", "iterate approved rows", err)
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "Approved: %d responses (threshold: heuristic > 0)\n", count)
 	fprintf(w, "Exported: %s\n", cfg.Output)
 	fprintf(w, "  Regions: %d, Domains: %d\n", len(regionSet), len(domainSet))
+=======
+	core.Print(w, "Approved: %d responses (threshold: heuristic > 0)", count)
+	core.Print(w, "Exported: %s", cfg.Output)
+	core.Print(w, "  Regions: %d, Domains: %d", len(regionSet), len(domainSet))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return nil
 }

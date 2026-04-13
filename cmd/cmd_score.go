@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"dappco.re/go/core/cli/pkg/cli"
@@ -66,6 +67,7 @@ func runScore(cmd *cli.Command, args []string) error {
 		if err := ml.WriteScores(scoreOutput, output); err != nil {
 			return coreerr.E("cmd.runScore", "write output", err)
 		}
+<<<<<<< HEAD
 		core.Print(nil,("Scores written to %s\n", scoreOutput)
 	} else {
 		for _, model := range slices.Sorted(maps.Keys(averages)) {
@@ -73,6 +75,15 @@ func runScore(cmd *cli.Command, args []string) error {
 			core.Print(nil,("%s:\n", model)
 			for _, field := range slices.Sorted(maps.Keys(avgs)) {
 				core.Print(nil,("  %-25s %.3f\n", field, avgs[field])
+=======
+		core.Print(cmd.OutOrStdout(), "Scores written to %s", scoreOutput)
+	} else {
+		for _, model := range slices.Sorted(maps.Keys(averages)) {
+			avgs := averages[model]
+			core.Print(cmd.OutOrStdout(), "%s:", model)
+			for _, field := range slices.Sorted(maps.Keys(avgs)) {
+				core.Print(cmd.OutOrStdout(), "  %-25s %.3f", field, avgs[field])
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 		}
 	}

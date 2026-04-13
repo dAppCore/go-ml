@@ -1,9 +1,13 @@
 package ml
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/store"
 )
@@ -38,10 +42,17 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		}
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "DuckDB has %d records, InfluxDB golden_gen has %d\n", total, existing)
 
 	if existing >= total && !cfg.Force {
 		fprintf(w, "%s\n", "InfluxDB already has all records. Use --force to re-seed.")
+=======
+	core.Print(w, "DuckDB has %d records, InfluxDB golden_gen has %d", total, existing)
+
+	if existing >= total && !cfg.Force {
+		core.Print(w, "InfluxDB already has all records. Use --force to re-seed.")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return nil
 	}
 
@@ -70,7 +81,11 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		// Build line protocol point.
 		// Tags: i (idx), w (worker), d (domain), v (voice)
 		// Fields: seed_id (string), gen_time (float), chars (integer)
+<<<<<<< HEAD
 		escapedSeedID := replaceAll(seedID, `"`, `\"`)
+=======
+		escapedSeedID := core.Replace(seedID, `"`, `\"`)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 		line := core.Sprintf(
 			"gold_gen,i=%s,w=migration,d=%s,v=%s seed_id=\"%s\",gen_time=%v,chars=%di",
@@ -91,7 +106,11 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 			batch = batch[:0]
 
 			if written%2000 == 0 {
+<<<<<<< HEAD
 				fprintf(w, "  wrote %d / %d\n", written, total)
+=======
+				core.Print(w, "  wrote %d / %d", written, total)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 		}
 	}
@@ -108,6 +127,10 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		written += len(batch)
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "Seeded %d records into InfluxDB golden_gen\n", written)
+=======
+	core.Print(w, "Seeded %d records into InfluxDB golden_gen", written)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return nil
 }

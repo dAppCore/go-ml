@@ -1,10 +1,14 @@
 package ml
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 	"time"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/store"
 )
@@ -15,8 +19,13 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 	// Overall stats.
 	var total, domains, voices int
 	var avgGenTime, avgChars float64
+<<<<<<< HEAD
 	err := db.Conn().QueryRow(
 		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), " +
+=======
+	err := db.conn.QueryRow(
+		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), "+
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			"coalesce(avg(gen_time), 0), coalesce(avg(char_count), 0) FROM golden_set",
 	).Scan(&total, &domains, &voices, &avgGenTime, &avgChars)
 	if err != nil {
@@ -24,7 +33,11 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 	}
 
 	if total == 0 {
+<<<<<<< HEAD
 		fprintf(w, "%s\n", "golden_set is empty, nothing to push")
+=======
+		core.Print(w, "golden_set is empty, nothing to push")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return nil
 	}
 
@@ -94,10 +107,17 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		return coreerr.E("ml.PushMetrics", "write metrics to influxdb", err)
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "Pushed %d points to InfluxDB\n", len(lines))
 	fprintf(w, "  total=%d  domains=%d  voices=%d  completion=%.1f%%\n",
 		total, domains, voices, completionPct)
 	fprintf(w, "  avg_gen_time=%.2fs  avg_chars=%.0f\n", avgGenTime, avgChars)
+=======
+	core.Print(w, "Pushed %d points to InfluxDB", len(lines))
+	core.Print(w, "  total=%d  domains=%d  voices=%d  completion=%.1f%%",
+		total, domains, voices, completionPct)
+	core.Print(w, "  avg_gen_time=%.2fs  avg_chars=%.0f", avgGenTime, avgChars)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return nil
 }

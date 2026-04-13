@@ -4,13 +4,17 @@ import (
 	"dappco.re/go/core"
 	"cmp"
 	"encoding/binary"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 	"math"
 	"regexp"
 	"slices"
 	"strconv"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -112,8 +116,8 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 			Scale float64 `json:"scale"`
 		} `json:"lora_parameters"`
 	}
-	if err := json.Unmarshal([]byte(cfgData), &mlxConfig); err != nil {
-		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "parse config", err)
+	if r := core.JSONUnmarshalString(cfgData, &mlxConfig); !r.OK {
+		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "parse config", r.Value.(error))
 	}
 
 	rank := mlxConfig.LoraParameters.Rank
@@ -305,7 +309,7 @@ func DetectArchFromConfig(configPath string) string {
 			Rank int `json:"rank"`
 		} `json:"lora_parameters"`
 	}
-	json.Unmarshal([]byte(data), &cfg)
+	core.JSONUnmarshalString(data, &cfg)
 	return "gemma3"
 }
 
@@ -346,8 +350,8 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 			Digest    string `json:"digest"`
 		} `json:"layers"`
 	}
-	if err := json.Unmarshal([]byte(data), &manifest); err != nil {
-		return "", coreerr.E("ml.GGUFModelBlobPath", "parse manifest", err)
+	if r := core.JSONUnmarshalString(data, &manifest); !r.OK {
+		return "", coreerr.E("ml.GGUFModelBlobPath", "parse manifest", r.Value.(error))
 	}
 
 	for _, layer := range manifest.Layers {

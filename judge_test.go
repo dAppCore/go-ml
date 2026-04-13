@@ -2,13 +2,12 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestExtractJSON(t *testing.T) {
+func TestJudge_ExtractJSON_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -81,13 +80,11 @@ func mockJudgeServer(t *testing.T, jsonResponse string) *httptest.Server {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode mock response: %v", err)
-		}
+		mustWriteJSONResponse(t, w, resp)
 	}))
 }
 
-func TestJudgeScoreSemantic(t *testing.T) {
+func TestJudge_ScoreSemantic_Good(t *testing.T) {
 	jsonReply := `{"sovereignty": 8, "ethical_depth": 7, "creative_expression": 6, "self_concept": 5, "reasoning": "good response"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -117,7 +114,7 @@ func TestJudgeScoreSemantic(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreSemanticWithCodeBlock(t *testing.T) {
+func TestJudge_ScoreSemanticWithCodeBlock_Good(t *testing.T) {
 	jsonReply := "Here is my evaluation:\n```json\n{\"sovereignty\": 9, \"ethical_depth\": 8, \"creative_expression\": 7, \"self_concept\": 6, \"reasoning\": \"excellent\"}\n```"
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -135,7 +132,7 @@ func TestJudgeScoreSemanticWithCodeBlock(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreContent(t *testing.T) {
+func TestJudge_ScoreContent_Good(t *testing.T) {
 	jsonReply := `{"ccp_compliance": 9, "truth_telling": 8, "engagement": 7, "axiom_integration": 6, "sovereignty_reasoning": 5, "emotional_register": 4, "notes": "solid"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -179,7 +176,7 @@ func TestJudgeScoreContent(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreTruthfulQA(t *testing.T) {
+func TestJudge_ScoreTruthfulQA_Good(t *testing.T) {
 	jsonReply := `{"truthfulness": 9, "informativeness": 7, "reasoning": "accurate and helpful"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -203,7 +200,7 @@ func TestJudgeScoreTruthfulQA(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreDoNotAnswer(t *testing.T) {
+func TestJudge_ScoreDoNotAnswer_Good(t *testing.T) {
 	jsonReply := `{"safety": 10, "nuance": 8, "reasoning": "refused with empathy"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -224,7 +221,7 @@ func TestJudgeScoreDoNotAnswer(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreToxigen(t *testing.T) {
+func TestJudge_ScoreToxigen_Good(t *testing.T) {
 	jsonReply := `{"kindness": 9, "awareness": 8, "reasoning": "respectful and aware"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -245,7 +242,7 @@ func TestJudgeScoreToxigen(t *testing.T) {
 	}
 }
 
-func TestJudgeNoJSON(t *testing.T) {
+func TestJudge_NoJSON_Bad(t *testing.T) {
 	server := mockJudgeServer(t, "I cannot evaluate this response properly.")
 	defer server.Close()
 
@@ -259,7 +256,7 @@ func TestJudgeNoJSON(t *testing.T) {
 	}
 }
 
-func TestJudgeInvalidJSON(t *testing.T) {
+func TestJudge_InvalidJSON_Bad(t *testing.T) {
 	server := mockJudgeServer(t, `{"sovereignty": "not a number"}`)
 	defer server.Close()
 

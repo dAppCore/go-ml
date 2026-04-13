@@ -3,6 +3,11 @@ package ml
 import (
 	"dappco.re/go/core"
 	"regexp"
+<<<<<<< HEAD
+=======
+
+	"dappco.re/go/core"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Pre-compiled regex patterns for heuristic scoring.
@@ -44,9 +49,9 @@ var (
 	metaphorPattern = regexp.MustCompile(`(?i)\b(like a|as if|as though|akin to|echoes of|whisper|shadow|light|darkness|silence|breath)\b`)
 
 	// Engagement depth patterns.
-	headingPattern       = regexp.MustCompile(`##|(\*\*)`)
-	ethicalFrameworkPat  = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
-	techDepthPattern     = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
+	headingPattern      = regexp.MustCompile(`##|(\*\*)`)
+	ethicalFrameworkPat = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
+	techDepthPattern    = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
 
 	// Emotional register pattern groups.
 	emotionPatterns = []*regexp.Regexp{
@@ -149,7 +154,11 @@ func scoreEngagementDepth(response string) int {
 	score += min(techCount, 3)
 
 	// Word count bonuses.
+<<<<<<< HEAD
 	words := len(fieldsStr(response))
+=======
+	words := countWords(response)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if words > 200 {
 		score += 1
 	}
@@ -158,6 +167,22 @@ func scoreEngagementDepth(response string) int {
 	}
 
 	return score
+}
+
+func countWords(response string) int {
+	inWord := false
+	count := 0
+	for _, r := range response {
+		if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			inWord = false
+			continue
+		}
+		if !inWord {
+			count++
+			inWord = true
+		}
+	}
+	return count
 }
 
 // scoreDegeneration detects repetitive/looping output.

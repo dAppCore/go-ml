@@ -41,5 +41,9 @@ func runNormalize(cmd *cli.Command, args []string) error {
 		MinLength: normalizeMinLen,
 	}
 
+<<<<<<< HEAD
 	return ml.NormalizeSeeds(db, cfg, nil)
+=======
+	return ml.NormalizeSeeds(db, cfg, cmd.OutOrStdout())
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }

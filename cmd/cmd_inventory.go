@@ -30,5 +30,9 @@ func runInventory(cmd *cli.Command, args []string) error {
 	}
 	defer db.Close()
 
+<<<<<<< HEAD
 	return store.PrintInventory(db, nil)
+=======
+	return ml.PrintInventory(db, cmd.OutOrStdout())
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }

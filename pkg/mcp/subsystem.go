@@ -6,6 +6,7 @@ import (
 	"dappco.re/go/core"
 	"context"
 
+	"dappco.re/go/core"
 	"dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
 
@@ -15,12 +16,14 @@ import (
 )
 
 // MLSubsystem exposes ML inference and scoring tools via MCP.
+// Usage example: subsystem := mcp.NewMLSubsystem(service)
 type MLSubsystem struct {
 	service *ml.Service
 	logger  *log.Logger
 }
 
 // NewMLSubsystem creates an MCP subsystem for ML tools.
+// Usage example: server.AddSubsystem(mcp.NewMLSubsystem(service))
 func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	return &MLSubsystem{
 		service: svc,
@@ -28,9 +31,11 @@ func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	}
 }
 
+// Name returns the subsystem identifier exposed to the MCP server.
 func (m *MLSubsystem) Name() string { return "ml" }
 
 // RegisterTools adds ML tools to the MCP server.
+// Usage example: subsystem.RegisterTools(server)
 func (m *MLSubsystem) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_generate",
@@ -181,7 +186,11 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	output := MLScoreOutput{}
 
+<<<<<<< HEAD
 	for suite := range splitSeq(suites, ",") {
+=======
+	for _, suite := range core.Split(suites, ",") {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		suite = core.Trim(suite)
 		switch suite {
 		case "heuristic":
@@ -211,7 +220,11 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 	probes := ml.CapabilityProbes
 	if input.Categories != "" {
 		cats := make(map[string]bool)
+<<<<<<< HEAD
 		for c := range splitSeq(input.Categories, ",") {
+=======
+		for _, c := range core.Split(input.Categories, ",") {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			cats[core.Trim(c)] = true
 		}
 		var filtered []ml.Probe
@@ -256,8 +269,13 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	}
 
 	influx := ml.NewInfluxClient(url, db)
+<<<<<<< HEAD
 	var buf core.NewBuilder()
 	if err := ml.PrintStatus(influx, &buf); err != nil {
+=======
+	buf := core.NewBuilder()
+	if err := ml.PrintStatus(influx, buf); err != nil {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
 	}
 

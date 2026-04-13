@@ -3,15 +3,18 @@ package ml
 import (
 	"dappco.re/go/core"
 	"bufio"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 	"regexp"
 	"strconv"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
-
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.
@@ -99,7 +102,11 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 		totalPoints += n
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "Ingested %d total points into InfluxDB\n", totalPoints)
+=======
+	core.Print(w, "Ingested %d total points into InfluxDB", totalPoints)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return nil
 }
 
@@ -127,14 +134,23 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 		}
 
 		var entry contentScoreLine
+<<<<<<< HEAD
 		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
 			return totalPoints, coreerr.E("ml.ingestContentScores", core.Sprintf("line %d: parse json", lineNum), err)
+=======
+		if r := core.JSONUnmarshalString(raw, &entry); !r.OK {
+			return totalPoints, coreerr.E("ml.ingestContentScores", core.Sprintf("line %d: parse json", lineNum), r.Value.(error))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 
 		label := entry.Label
 		iteration := extractIteration(label)
 		hasKernel := "false"
+<<<<<<< HEAD
 		if core.Contains(toLower(label), "kernel") || core.Contains(label, "LEK") {
+=======
+		if core.Contains(core.Lower(label), "kernel") || core.Contains(label, "LEK") {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			hasKernel = "true"
 		}
 		ts := time.Now().UnixNano()
@@ -191,7 +207,11 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 		}
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "  content scores: %d points from %d lines\n", totalPoints, lineNum)
+=======
+	core.Print(w, "  content scores: %d points from %d lines", totalPoints, lineNum)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return totalPoints, nil
 }
 
@@ -219,8 +239,13 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 		}
 
 		var entry capabilityScoreLine
+<<<<<<< HEAD
 		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
 			return totalPoints, coreerr.E("ml.ingestCapabilityScores", core.Sprintf("line %d: parse json", lineNum), err)
+=======
+		if r := core.JSONUnmarshalString(raw, &entry); !r.OK {
+			return totalPoints, coreerr.E("ml.ingestCapabilityScores", core.Sprintf("line %d: parse json", lineNum), r.Value.(error))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 
 		label := entry.Label
@@ -271,7 +296,11 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 		}
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "  capability scores: %d points from %d lines\n", totalPoints, lineNum)
+=======
+	core.Print(w, "  capability scores: %d points from %d lines", totalPoints, lineNum)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return totalPoints, nil
 }
 
@@ -346,14 +375,28 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 		}
 	}
 
+<<<<<<< HEAD
 	fprintf(w, "  training log: %d points from %d lines\n", totalPoints, lineNum)
+=======
+	core.Print(w, "  training log: %d points from %d lines", totalPoints, lineNum)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return totalPoints, nil
 }
 
 // extractIteration extracts an iteration number from a label like "model@200".
 // Returns 0 if no iteration is found.
 func extractIteration(label string) int {
+<<<<<<< HEAD
 	idx := lastIndexStr(label, "@")
+=======
+	idx := -1
+	for i := len(label) - 1; i >= 0; i-- {
+		if label[i] == '@' {
+			idx = i
+			break
+		}
+	}
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if idx < 0 || idx+1 >= len(label) {
 		return 0
 	}
@@ -374,9 +417,6 @@ func toFloat64(v any) (float64, bool) {
 		return float64(val), true
 	case int64:
 		return float64(val), true
-	case json.Number:
-		f, err := val.Float64()
-		return f, err == nil
 	case string:
 		f, err := strconv.ParseFloat(val, 64)
 		return f, err == nil

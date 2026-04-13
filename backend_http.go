@@ -3,12 +3,19 @@ package ml
 import (
 	"bytes"
 	"context"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+	"io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"net/http"
 	"time"
 
 	"dappco.re/go/core"
+<<<<<<< HEAD
 
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -97,10 +104,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 		MaxTokens:   maxTokens,
 	}
 
-	body, err := json.Marshal(req)
-	if err != nil {
-		return Result{}, coreerr.E("ml.HTTPBackend.Chat", "marshal request", err)
-	}
+	body := []byte(core.JSONMarshalString(req))
 
 	const maxAttempts = 3
 	var lastErr error
@@ -155,8 +159,8 @@ func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) (string, error
 	}
 
 	var chatResp chatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", err)
+	if r := core.JSONUnmarshal(respBody, &chatResp); !r.OK {
+		return "", coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", r.Value.(error))
 	}
 
 	if len(chatResp.Choices) == 0 {

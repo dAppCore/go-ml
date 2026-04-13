@@ -4,12 +4,14 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"path/filepath"
 	"testing"
 
+<<<<<<< HEAD
 	coreio "dappco.re/go/core/io"
+=======
+	"dappco.re/go/core"
+	coreio "forge.lthn.ai/core/go-io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +46,7 @@ func (f *fakeTransport) Run(_ context.Context, cmd string) (string, error) {
 			return fc.stdout, fc.err
 		}
 	}
-	return "", errors.New("fakeTransport: no match for command: " + cmd)
+	return "", core.NewError(core.Concat("fakeTransport: no match for command: ", cmd))
 }
 
 func (f *fakeTransport) CopyFrom(_ context.Context, _, _ string) error { return nil }
@@ -275,7 +277,7 @@ func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
 	BufferInfluxResult(workDir, cp, results)
 
 	// Verify the buffer file exists and contains valid JSONL
-	bufPath := filepath.Join(workDir, InfluxBufferFile)
+	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	raw, err := coreio.Local.Read(bufPath)
 	data := []byte(raw)
 	require.NoError(t, err)
@@ -283,8 +285,7 @@ func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
 
 	// Parse the JSONL entry and verify fields
 	var entry bufferEntry
-	err = json.Unmarshal(data[:len(data)-1], &entry) // trim trailing newline
-	require.NoError(t, err)
+	mustJSONUnmarshalBytes(t, data[:len(data)-1], &entry) // trim trailing newline
 	assert.Equal(t, cp.Label, entry.Checkpoint.Label)
 	assert.Equal(t, cp.ModelTag, entry.Checkpoint.ModelTag)
 	assert.Equal(t, cp.RunID, entry.Checkpoint.RunID)
@@ -314,7 +315,7 @@ func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
 		BufferInfluxResult(workDir, cp, results)
 	}
 
-	bufPath := filepath.Join(workDir, InfluxBufferFile)
+	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	raw, err := coreio.Local.Read(bufPath)
 	data := []byte(raw)
 	require.NoError(t, err)
@@ -336,7 +337,7 @@ func TestReplayInfluxBuffer_EmptyFile_Good(t *testing.T) {
 	ReplayInfluxBuffer(workDir, nil)
 
 	// Buffer file still shouldn't exist
-	assert.False(t, coreio.Local.IsFile(filepath.Join(workDir, InfluxBufferFile)))
+	assert.False(t, coreio.Local.IsFile(core.JoinPath(workDir, InfluxBufferFile)))
 }
 
 func TestReplayInfluxBuffer_MissingFile_Good(t *testing.T) {
@@ -358,10 +359,10 @@ func TestDiscoverCheckpoints_HappyPath_Good(t *testing.T) {
 		base+"/adapters-27b\n"+base+"/adapters-1b\n", nil)
 
 	// Command 2a: sub-directory check for adapters-27b — no gemma-3-* subdirs
-	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", errors.New("no match"))
+	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", core.NewError("no match"))
 
 	// Command 2b: sub-directory check for adapters-1b — no gemma-3-* subdirs
-	ft.On("ls -d "+base+"/adapters-1b/gemma-3-* 2>/dev/null", "", errors.New("no match"))
+	ft.On("ls -d "+base+"/adapters-1b/gemma-3-* 2>/dev/null", "", core.NewError("no match"))
 
 	// Command 3a: list safetensors in adapters-27b
 	ft.On("ls "+base+"/adapters-27b/*_adapters.safetensors 2>/dev/null",
@@ -470,7 +471,7 @@ func TestDiscoverCheckpoints_SSHError_Bad(t *testing.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
-	ft.On("ls -d "+base+"/adapters-* 2>/dev/null", "", errors.New("ssh: connection refused"))
+	ft.On("ls -d "+base+"/adapters-* 2>/dev/null", "", core.NewError("ssh: connection refused"))
 
 	cfg := &AgentConfig{
 		M3AdapterBase: base,
@@ -491,7 +492,7 @@ func TestDiscoverCheckpoints_FilterPattern_Good(t *testing.T) {
 		base+"/adapters-27b\n", nil)
 
 	// No gemma-3-* subdirs
-	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", errors.New("no match"))
+	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", core.NewError("no match"))
 
 	ft.On("ls "+base+"/adapters-27b/*_adapters.safetensors 2>/dev/null",
 		base+"/adapters-27b/0001000_adapters.safetensors\n", nil)
@@ -514,10 +515,10 @@ func TestDiscoverCheckpoints_NoSafetensors_Good(t *testing.T) {
 
 	ft.On("ls -d "+base+"/adapters-* 2>/dev/null",
 		base+"/adapters-27b\n", nil)
-	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", errors.New("no match"))
+	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", core.NewError("no match"))
 
 	// safetensors listing fails (no checkpoint files yet)
-	ft.On("ls "+base+"/adapters-27b/*_adapters.safetensors 2>/dev/null", "", errors.New("no match"))
+	ft.On("ls "+base+"/adapters-27b/*_adapters.safetensors 2>/dev/null", "", core.NewError("no match"))
 
 	cfg := &AgentConfig{
 		M3AdapterBase: base,

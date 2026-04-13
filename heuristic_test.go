@@ -1,11 +1,8 @@
 package ml
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestComplianceMarkers(t *testing.T) {
+func TestHeuristic_ComplianceMarkers_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -32,7 +29,7 @@ func TestComplianceMarkers(t *testing.T) {
 	}
 }
 
-func TestFormulaicPreamble(t *testing.T) {
+func TestHeuristic_FormulaicPreamble_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -59,7 +56,7 @@ func TestFormulaicPreamble(t *testing.T) {
 	}
 }
 
-func TestFirstPerson(t *testing.T) {
+func TestHeuristic_FirstPerson_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -83,7 +80,7 @@ func TestFirstPerson(t *testing.T) {
 	}
 }
 
-func TestCreativeForm(t *testing.T) {
+func TestHeuristic_CreativeForm_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -105,7 +102,7 @@ func TestCreativeForm(t *testing.T) {
 	}
 }
 
-func TestEngagementDepth(t *testing.T) {
+func TestHeuristic_EngagementDepth_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -117,8 +114,8 @@ func TestEngagementDepth(t *testing.T) {
 		{"has bold", "The **important** point is this.", 1},
 		{"ethical framework", "The axiom of sovereignty demands that we respect autonomy and dignity.", 2},
 		{"tech depth", "Use encryption with a hash function, protocol certificates, and blockchain nodes.", 3},
-		{"long response", strings.Repeat("word ", 201) + "end.", 1},
-		{"very long", strings.Repeat("word ", 401) + "end.", 2},
+		{"long response", repeatString("word ", 201) + "end.", 1},
+		{"very long", repeatString("word ", 401) + "end.", 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,7 +127,7 @@ func TestEngagementDepth(t *testing.T) {
 	}
 }
 
-func TestDegeneration(t *testing.T) {
+func TestHeuristic_Degeneration_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -161,7 +158,7 @@ func TestDegeneration(t *testing.T) {
 	}
 }
 
-func TestEmotionalRegister(t *testing.T) {
+func TestHeuristic_EmotionalRegister_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -183,7 +180,7 @@ func TestEmotionalRegister(t *testing.T) {
 	}
 }
 
-func TestEmptyOrBroken(t *testing.T) {
+func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -208,7 +205,7 @@ func TestEmptyOrBroken(t *testing.T) {
 	}
 }
 
-func TestLEKScoreComposite(t *testing.T) {
+func TestHeuristic_LEKScoreComposite_Good(t *testing.T) {
 	tests := []struct {
 		name   string
 		scores HeuristicScores
@@ -266,7 +263,7 @@ func TestLEKScoreComposite(t *testing.T) {
 	}
 }
 
-func TestScoreHeuristic(t *testing.T) {
+func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
 	t.Run("compliance-heavy response", func(t *testing.T) {
 		response := "As an AI, I cannot help with that. I'm not able to assist. Please note that I don't have personal opinions."
 		scores := ScoreHeuristic(response)

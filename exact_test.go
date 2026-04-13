@@ -2,7 +2,7 @@ package ml
 
 import "testing"
 
-func TestScoreGSM8K(t *testing.T) {
+func TestExact_ScoreGSM8K_Good(t *testing.T) {
 	tests := []struct {
 		name          string
 		response      string

@@ -3,8 +3,12 @@ package ml
 import (
 	"dappco.re/go/core"
 	"bufio"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -32,8 +36,13 @@ func ReadResponses(path string) ([]Response, error) {
 		}
 
 		var r Response
+<<<<<<< HEAD
 		if err := json.Unmarshal([]byte(line), &r); err != nil {
 			return nil, coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), err)
+=======
+		if rj := core.JSONUnmarshalString(line, &r); !rj.OK {
+			return nil, coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 		responses = append(responses, r)
 	}
@@ -47,12 +56,16 @@ func ReadResponses(path string) ([]Response, error) {
 
 // WriteScores writes a ScorerOutput to a JSON file with 2-space indentation.
 func WriteScores(path string, output *ScorerOutput) error {
+<<<<<<< HEAD
 	data, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return coreerr.E("ml.WriteScores", "marshal scores", err)
 	}
 
 	if err := coreio.Local.Write(path, string(data)); err != nil {
+=======
+	if err := coreio.Local.Write(path, core.JSONMarshalString(output)); err != nil {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err)
 	}
 
@@ -67,8 +80,13 @@ func ReadScorerOutput(path string) (*ScorerOutput, error) {
 	}
 
 	var output ScorerOutput
+<<<<<<< HEAD
 	if err := json.Unmarshal([]byte(data), &output); err != nil {
 		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), err)
+=======
+	if r := core.JSONUnmarshalString(data, &output); !r.OK {
+		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	return &output, nil

@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"dappco.re/go/core"
+<<<<<<< HEAD
 
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -61,7 +64,11 @@ func runExport(cmd *cli.Command, args []string) error {
 	if err != nil {
 		return coreerr.E("cmd.runExport", "query golden set", err)
 	}
+<<<<<<< HEAD
 	core.Print(nil,("Loaded %d golden set rows (min %d chars)\n", len(rows), exportMinChars)
+=======
+	core.Print(cmd.OutOrStdout(), "Loaded %d golden set rows (min %d chars)", len(rows), exportMinChars)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	// Convert to Response format.
 	var responses []ml.Response
@@ -75,10 +82,17 @@ func runExport(cmd *cli.Command, args []string) error {
 	}
 
 	filtered := ml.FilterResponses(responses)
+<<<<<<< HEAD
 	core.Print(nil,("After filtering: %d responses\n", len(filtered))
 
 	train, valid, test := ml.SplitData(filtered, exportTrainPct, exportValidPct, exportTestPct, exportSeed)
 	core.Print(nil,("Split: train=%d, valid=%d, test=%d\n", len(train), len(valid), len(test))
+=======
+	core.Print(cmd.OutOrStdout(), "After filtering: %d responses", len(filtered))
+
+	train, valid, test := ml.SplitData(filtered, exportTrainPct, exportValidPct, exportTestPct, exportSeed)
+	core.Print(cmd.OutOrStdout(), "Split: train=%d, valid=%d, test=%d", len(train), len(valid), len(test))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	if err := coreio.Local.EnsureDir(exportOutputDir); err != nil {
 		return coreerr.E("cmd.runExport", "create output dir", err)
@@ -92,11 +106,19 @@ func runExport(cmd *cli.Command, args []string) error {
 		{"valid", valid},
 		{"test", test},
 	} {
+<<<<<<< HEAD
 		path := core.Sprintf("%s/%s.jsonl", exportOutputDir, split.name)
 		if err := ml.WriteTrainingJSONL(path, split.data); err != nil {
 			return coreerr.E("cmd.runExport", core.Sprintf("write %s", split.name), err)
 		}
 		core.Print(nil,("  %s.jsonl: %d examples\n", split.name, len(split.data))
+=======
+		path := core.JoinPath(exportOutputDir, core.Concat(split.name, ".jsonl"))
+		if err := ml.WriteTrainingJSONL(path, split.data); err != nil {
+			return coreerr.E("cmd.runExport", core.Sprintf("write %s", split.name), err)
+		}
+		core.Print(cmd.OutOrStdout(), "  %s.jsonl: %d examples", split.name, len(split.data))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	if exportParquet {
@@ -104,7 +126,11 @@ func runExport(cmd *cli.Command, args []string) error {
 		if err != nil {
 			return coreerr.E("cmd.runExport", "export parquet", err)
 		}
+<<<<<<< HEAD
 		core.Print(nil,("  Parquet: %d total rows\n", n)
+=======
+		core.Print(cmd.OutOrStdout(), "  Parquet: %d total rows", n)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	return nil

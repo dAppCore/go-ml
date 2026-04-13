@@ -3,11 +3,14 @@
 package ml
 
 import (
-	"encoding/json"
-	"path/filepath"
 	"testing"
 
+<<<<<<< HEAD
 	coreio "dappco.re/go/core/io"
+=======
+	"dappco.re/go/core"
+	coreio "forge.lthn.ai/core/go-io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,19 +20,19 @@ import (
 // ValidatePercentages
 // ---------------------------------------------------------------------------
 
-func TestValidatePercentages_Good(t *testing.T) {
+func TestExport_ValidatePercentages_Good(t *testing.T) {
 	assert.NoError(t, ValidatePercentages(80, 10, 10))
 	assert.NoError(t, ValidatePercentages(100, 0, 0))
 	assert.NoError(t, ValidatePercentages(0, 0, 100))
 }
 
-func TestValidatePercentages_WrongSum_Bad(t *testing.T) {
+func TestExport_ValidatePercentagesWrongSum_Bad(t *testing.T) {
 	err := ValidatePercentages(50, 20, 10)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "sum to 100")
 }
 
-func TestValidatePercentages_Negative_Bad(t *testing.T) {
+func TestExport_ValidatePercentagesNegative_Bad(t *testing.T) {
 	err := ValidatePercentages(-10, 60, 50)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-negative")
@@ -39,7 +42,7 @@ func TestValidatePercentages_Negative_Bad(t *testing.T) {
 // FilterResponses
 // ---------------------------------------------------------------------------
 
-func TestFilterResponses_Good(t *testing.T) {
+func TestExport_FilterResponses_Good(t *testing.T) {
 	responses := []Response{
 		{ID: "ok", Response: "This is a valid response with enough characters to pass the filter."},
 		{ID: "empty", Response: ""},
@@ -54,7 +57,7 @@ func TestFilterResponses_Good(t *testing.T) {
 	assert.Equal(t, "ok2", filtered[1].ID)
 }
 
-func TestFilterResponses_AllFiltered_Good(t *testing.T) {
+func TestExport_FilterResponsesAllFiltered_Good(t *testing.T) {
 	responses := []Response{
 		{Response: ""},
 		{Response: "ERROR: fail"},
@@ -66,7 +69,7 @@ func TestFilterResponses_AllFiltered_Good(t *testing.T) {
 // SplitData
 // ---------------------------------------------------------------------------
 
-func TestSplitData_Good(t *testing.T) {
+func TestExport_SplitData_Good(t *testing.T) {
 	responses := make([]Response, 100)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i%26))}
@@ -78,7 +81,7 @@ func TestSplitData_Good(t *testing.T) {
 	assert.Len(t, test, 10)
 }
 
-func TestSplitData_Deterministic_Good(t *testing.T) {
+func TestExport_SplitDataDeterministic_Good(t *testing.T) {
 	responses := make([]Response, 20)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i))}
@@ -96,9 +99,9 @@ func TestSplitData_Deterministic_Good(t *testing.T) {
 // WriteTrainingJSONL
 // ---------------------------------------------------------------------------
 
-func TestWriteTrainingJSONL_Good(t *testing.T) {
+func TestExport_WriteTrainingJSONL_Good(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "train.jsonl")
+	path := core.JoinPath(dir, "train.jsonl")
 
 	responses := []Response{
 		{Prompt: "What is 2+2?", Response: "4"},
@@ -115,7 +118,7 @@ func TestWriteTrainingJSONL_Good(t *testing.T) {
 	assert.Len(t, lines, 2)
 
 	var example TrainingExample
-	require.NoError(t, json.Unmarshal([]byte(lines[0]), &example))
+	mustJSONUnmarshalString(t, lines[0], &example)
 	assert.Len(t, example.Messages, 2)
 	assert.Equal(t, "user", example.Messages[0].Role)
 	assert.Equal(t, "What is 2+2?", example.Messages[0].Content)
@@ -123,9 +126,9 @@ func TestWriteTrainingJSONL_Good(t *testing.T) {
 	assert.Equal(t, "4", example.Messages[1].Content)
 }
 
-func TestWriteTrainingJSONL_Empty_Good(t *testing.T) {
+func TestExport_WriteTrainingJSONLEmpty_Good(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "empty.jsonl")
+	path := core.JoinPath(dir, "empty.jsonl")
 
 	require.NoError(t, WriteTrainingJSONL(path, nil))
 

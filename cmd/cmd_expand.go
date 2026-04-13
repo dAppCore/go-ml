@@ -4,6 +4,7 @@ import (
 	"dappco.re/go/core"
 	"context"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"dappco.re/go/core/store"
@@ -45,8 +46,12 @@ func runExpand(cmd *cli.Command, args []string) error {
 	}
 
 	if expandWorker == "" {
+<<<<<<< HEAD
 		h, _ := hostname()
 		expandWorker = h
+=======
+		expandWorker = core.Env("HOSTNAME")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	db, err := store.OpenDuckDBReadWrite(path)
@@ -59,7 +64,11 @@ func runExpand(cmd *cli.Command, args []string) error {
 	if err != nil {
 		return coreerr.E("cmd.runExpand", "query expansion_prompts", err)
 	}
+<<<<<<< HEAD
 	core.Print(nil,("Loaded %d pending prompts from %s\n", len(rows), path)
+=======
+	core.Print(cmd.OutOrStdout(), "Loaded %d pending prompts from %s", len(rows), path)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	var prompts []ml.Response
 	for _, r := range rows {

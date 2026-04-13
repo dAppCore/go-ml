@@ -3,11 +3,16 @@
 package cmd
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
 	"encoding/json"
+=======
+	"io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -144,7 +149,6 @@ func runSequence(cmd *cli.Command, args []string) error {
 		return coreerr.E("cmd.runSequence", "create output", err)
 	}
 	defer outFile.Close()
-	encoder := json.NewEncoder(outFile)
 
 	baseDir := core.PathDir(sequenceFile)
 	totalGenerated := 0
@@ -152,7 +156,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 	for i, lessonPath := range seq.Lessons {
 		// Resolve lesson path
 		if !core.PathIsAbs(lessonPath) {
+<<<<<<< HEAD
 			lessonPath = core.Path(baseDir, lessonPath)
+=======
+			lessonPath = core.JoinPath(baseDir, lessonPath)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 
 		// Load lesson
@@ -210,7 +218,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 			if lesson.Sandwich.KB != "" {
 				kbPath := lesson.Sandwich.KB
 				if !core.PathIsAbs(kbPath) {
+<<<<<<< HEAD
 					kbPath = core.Path(lessonDir, kbPath)
+=======
+					kbPath = core.JoinPath(lessonDir, kbPath)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				}
 				d, err := coreio.Local.Read(kbPath)
 				if err != nil {
@@ -222,7 +234,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 			if lesson.Sandwich.Kernel != "" {
 				kernelPath := lesson.Sandwich.Kernel
 				if !core.PathIsAbs(kernelPath) {
+<<<<<<< HEAD
 					kernelPath = core.Path(lessonDir, kernelPath)
+=======
+					kernelPath = core.JoinPath(lessonDir, kernelPath)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				}
 				d, err := coreio.Local.Read(kernelPath)
 				if err != nil {
@@ -273,7 +289,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 					{Role: "assistant", Content: response},
 				},
 			}
-			if err := encoder.Encode(record); err != nil {
+			if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
 				return coreerr.E("cmd.runSequence", "write record", err)
 			}
 
@@ -314,14 +330,12 @@ func loadSequenceState(path string) sequenceState {
 		return sequenceState{}
 	}
 	var state sequenceState
-	json.Unmarshal([]byte(data), &state)
+	if r := core.JSONUnmarshalString(data, &state); !r.OK {
+		return sequenceState{}
+	}
 	return state
 }
 
 func saveSequenceState(path string, state sequenceState) {
-	data, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return
-	}
-	coreio.Local.Write(path, string(data))
+	_ = coreio.Local.Write(path, core.JSONMarshalString(state))
 }

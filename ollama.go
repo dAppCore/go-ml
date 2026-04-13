@@ -1,15 +1,23 @@
 package ml
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+	"io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"net/http"
 	"time"
 
 	"dappco.re/go/core"
+<<<<<<< HEAD
 
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -66,7 +74,11 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+<<<<<<< HEAD
 		body, _ := readAll(resp.Body)
+=======
+		body, _ := io.ReadAll(resp.Body)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return "", coreerr.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 	return digest, nil
@@ -88,7 +100,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 		return coreerr.E("ml.OllamaCreateModel", "upload adapter config", err)
 	}
 
-	reqBody, _ := json.Marshal(map[string]any{
+	reqBody := core.JSONMarshalString(map[string]any{
 		"model": modelName,
 		"from":  baseModel,
 		"adapters": map[string]string{
@@ -98,23 +110,29 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	})
 
 	client := &http.Client{Timeout: 10 * time.Minute}
-	resp, err := client.Post(ollamaURL+"/api/create", "application/json", bytes.NewReader(reqBody))
+	resp, err := client.Post(ollamaURL+"/api/create", "application/json", bytes.NewReader([]byte(reqBody)))
 	if err != nil {
 		return coreerr.E("ml.OllamaCreateModel", "ollama create", err)
 	}
 	defer resp.Body.Close()
 
-	decoder := json.NewDecoder(resp.Body)
-	for decoder.More() {
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
 		var status struct {
 			Status string `json:"status"`
 			Error  string `json:"error"`
 		}
+<<<<<<< HEAD
 		if err := decoder.Decode(&status); err != nil {
 			if err == ioEOF {
 				break
 			}
 			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", err)
+=======
+		if r := core.JSONUnmarshalString(scanner.Text(), &status); !r.OK {
+			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", r.Value.(error))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 		if status.Error != "" {
 			return coreerr.E("ml.OllamaCreateModel", core.Sprintf("ollama create: %s", status.Error), nil)
@@ -122,6 +140,9 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 		if status.Status == "success" {
 			return nil
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return coreerr.E("ml.OllamaCreateModel", "ollama create decode", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -132,9 +153,9 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 
 // OllamaDeleteModel removes a temporary Ollama model.
 func OllamaDeleteModel(ollamaURL, modelName string) error {
-	body, _ := json.Marshal(map[string]string{"model": modelName})
+	body := core.JSONMarshalString(map[string]string{"model": modelName})
 
-	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", bytes.NewReader([]byte(body)))
 	if err != nil {
 		return coreerr.E("ml.OllamaDeleteModel", "ollama delete request", err)
 	}
@@ -148,7 +169,11 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+<<<<<<< HEAD
 		respBody, _ := readAll(resp.Body)
+=======
+		respBody, _ := io.ReadAll(resp.Body)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return coreerr.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 	return nil

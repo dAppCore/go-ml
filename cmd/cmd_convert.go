@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"dappco.re/go/core"
+<<<<<<< HEAD
 
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"dappco.re/go/core/cli/pkg/cli"
@@ -36,6 +39,10 @@ func runConvert(cmd *cli.Command, args []string) error {
 	if err := ml.ConvertMLXtoPEFT(convertInput, convertConfig, convertOutputDir, convertBaseModel); err != nil {
 		return coreerr.E("cmd.runConvert", "convert to PEFT", err)
 	}
+<<<<<<< HEAD
 	core.Print(nil,("PEFT adapter written to %s\n", convertOutputDir)
+=======
+	core.Print(cmd.OutOrStdout(), "PEFT adapter written to %s", convertOutputDir)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return nil
 }

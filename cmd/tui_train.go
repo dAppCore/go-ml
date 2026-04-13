@@ -3,12 +3,21 @@
 package cmd
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
 	"math"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"dappco.re/go/core/cli/pkg/cli"
+=======
+	"math"
+	"time"
+
+	"dappco.re/go/core"
+	"forge.lthn.ai/core/cli/pkg/cli"
+	tea "github.com/charmbracelet/bubbletea"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Compile-time checks.
@@ -82,12 +91,12 @@ func (m *trainStatusModel) View(width, _ int) string {
 // --- Content: Loss chart + metrics ---
 
 type trainContentModel struct {
-	tick       TrainTickMsg
-	lossHist   []float64
-	valHist    []float64
-	valIters   []int
-	width      int
-	height     int
+	tick     TrainTickMsg
+	lossHist []float64
+	valHist  []float64
+	valIters []int
+	width    int
+	height   int
 }
 
 func newTrainContentModel() *trainContentModel {
@@ -135,8 +144,13 @@ func (m *trainContentModel) View(width, height int) string {
 	if filled > barWidth {
 		filled = barWidth
 	}
+<<<<<<< HEAD
 	bar := repeatStr("█", filled) + repeatStr("░", barWidth-filled)
 	b.WriteString(core.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
+=======
+	bar := repeatString("█", filled) + repeatString("░", barWidth-filled)
+	_, _ = b.WriteString(core.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	// --- Loss chart ---
 	chartHeight := height - 10
@@ -148,10 +162,11 @@ func (m *trainContentModel) View(width, height int) string {
 		chartWidth = 20
 	}
 
-	b.WriteString(renderLossChart(m.lossHist, m.valHist, chartWidth, chartHeight))
-	b.WriteByte('\n')
+	_, _ = b.WriteString(renderLossChart(m.lossHist, m.valHist, chartWidth, chartHeight))
+	_ = b.WriteByte('\n')
 
 	// --- Metrics table ---
+<<<<<<< HEAD
 	b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
 	b.WriteString(core.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
 	if t.ValLoss > 0 {
@@ -161,12 +176,27 @@ func (m *trainContentModel) View(width, height int) string {
 	b.WriteString(core.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
 	b.WriteString(core.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
 	b.WriteString(core.Sprintf(" tokens:     %d\n", t.Tokens))
+=======
+	_, _ = b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
+	_, _ = b.WriteString(core.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
+	if t.ValLoss > 0 {
+		_, _ = b.WriteString(core.Sprintf(" val loss:   %.4f  (ppl %.2f)\n", t.ValLoss, math.Exp(math.Min(t.ValLoss, 20))))
+	}
+	_, _ = b.WriteString(core.Sprintf(" lr:         %.2e\n", t.LR))
+	_, _ = b.WriteString(core.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
+	_, _ = b.WriteString(core.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
+	_, _ = b.WriteString(core.Sprintf(" tokens:     %d\n", t.Tokens))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	if t.Done {
-		b.WriteString("\n training complete!")
+		_, _ = b.WriteString("\n training complete!")
 	}
 	if t.Err != nil {
+<<<<<<< HEAD
 		b.WriteString(core.Sprintf("\n error: %v", t.Err))
+=======
+		_, _ = b.WriteString(core.Sprintf("\n error: %v", t.Err))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	return b.String()
@@ -212,16 +242,24 @@ func renderLossChart(train, val []float64, width, height int) string {
 	b := core.NewBuilder()
 
 	// Y-axis labels + chart
+<<<<<<< HEAD
 	b.WriteString(core.Sprintf(" %6.3f ┐\n", maxV))
+=======
+	_, _ = b.WriteString(core.Sprintf(" %6.3f ┐\n", maxV))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	for row := height - 1; row >= 0; row-- {
 		rowMin := minV + span*float64(row)/float64(height)
 		rowMax := minV + span*float64(row+1)/float64(height)
 
 		if row == height/2 {
+<<<<<<< HEAD
 			b.WriteString(core.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
+=======
+			_, _ = b.WriteString(core.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		} else {
-			b.WriteString("        │")
+			_, _ = b.WriteString("        │")
 		}
 
 		for col := range len(points) {
@@ -230,17 +268,21 @@ func renderLossChart(train, val []float64, width, height int) string {
 				// Fractional position within this row
 				frac := (v - rowMin) / (rowMax - rowMin)
 				idx := int(frac * float64(len(blocks)-1))
-				b.WriteRune(blocks[idx])
+				_, _ = b.WriteRune(blocks[idx])
 			} else if v >= rowMax {
-				b.WriteRune('█')
+				_, _ = b.WriteRune('█')
 			} else {
-				b.WriteRune(' ')
+				_, _ = b.WriteRune(' ')
 			}
 		}
-		b.WriteByte('\n')
+		_ = b.WriteByte('\n')
 	}
 
+<<<<<<< HEAD
 	b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatStr("─", len(points))))
+=======
+	_, _ = b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatString("─", len(points))))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return b.String()
 }
@@ -296,6 +338,7 @@ func (m *trainHintsModel) View(width, _ int) string {
 // --- Training Frame ---
 
 // TrainFrame wraps a cli.Frame for training display.
+// Usage example: tui := cmd.NewTrainFrame()
 type TrainFrame struct {
 	frame   *cli.Frame
 	content *trainContentModel
@@ -304,6 +347,7 @@ type TrainFrame struct {
 }
 
 // NewTrainFrame creates a training dashboard TUI.
+// Usage example: tui := cmd.NewTrainFrame()
 func NewTrainFrame() *TrainFrame {
 	status := newTrainStatusModel()
 	content := newTrainContentModel()

@@ -3,9 +3,15 @@ package ml
 import (
 	"dappco.re/go/core"
 	"context"
+<<<<<<< HEAD
+=======
+	"log"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"maps"
 	"slices"
 	"sync"
+
+	"dappco.re/go/core"
 )
 
 // Engine orchestrates concurrent scoring across multiple suites.
@@ -27,7 +33,11 @@ func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 		suites["standard"] = true
 		suites["exact"] = true
 	} else {
+<<<<<<< HEAD
 		for s := range splitSeq(suiteList, ",") {
+=======
+		for _, s := range core.Split(suiteList, ",") {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			s = core.Trim(s)
 			if s != "" {
 				suites[s] = true

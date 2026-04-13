@@ -5,11 +5,16 @@ package cmd
 import (
 	"dappco.re/go/core"
 	"context"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+	"io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"runtime"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -96,8 +101,8 @@ func runSandwich(cmd *cli.Command, args []string) error {
 		return coreerr.E("cmd.runSandwich", "read seeds", err)
 	}
 	var seeds []seedPrompt
-	if err := json.Unmarshal([]byte(seedBytes), &seeds); err != nil {
-		return coreerr.E("cmd.runSandwich", "parse seeds", err)
+	if r := core.JSONUnmarshalString(seedBytes, &seeds); !r.OK {
+		return coreerr.E("cmd.runSandwich", "parse seeds", r.Value.(error))
 	}
 
 	slog.Info("sandwich: loaded inputs",
@@ -116,7 +121,6 @@ func runSandwich(cmd *cli.Command, args []string) error {
 		return coreerr.E("cmd.runSandwich", "create output", err)
 	}
 	defer outFile.Close()
-	encoder := json.NewEncoder(outFile)
 
 	// Dry-run mode: output prompts without inference
 	if sandwichDryRun {
@@ -127,7 +131,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 					{Role: "user", Content: signedPrompt},
 				},
 			}
-			if err := encoder.Encode(record); err != nil {
+			if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
 				return coreerr.E("cmd.runSandwich", "write record", err)
 			}
 		}
@@ -191,7 +195,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 				{Role: "assistant", Content: response},
 			},
 		}
-		if err := encoder.Encode(record); err != nil {
+		if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
 			return coreerr.E("cmd.runSandwich", "write record", err)
 		}
 

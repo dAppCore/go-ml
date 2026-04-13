@@ -33,5 +33,9 @@ func runMetrics(cmd *cli.Command, args []string) error {
 
 	influx := ml.NewInfluxClient(influxURL, influxDB)
 
+<<<<<<< HEAD
 	return ml.PushMetrics(db, influx, nil)
+=======
+	return ml.PushMetrics(db, influx, cmd.OutOrStdout())
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }

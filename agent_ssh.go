@@ -3,11 +3,17 @@ package ml
 import (
 	"dappco.re/go/core"
 	"context"
+<<<<<<< HEAD
 	"os/exec"
+=======
+	"strconv"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
+	goexec "dappco.re/go/core/process/exec"
 )
 
 // RemoteTransport abstracts remote command execution and file transfer.
@@ -105,7 +111,7 @@ func (t *SSHTransport) Run(ctx context.Context, cmd string) (string, error) {
 	args := t.sshPortArgs()
 	args = append(args, core.Sprintf("%s@%s", t.User, t.Host), cmd)
 
-	c := exec.CommandContext(ctx, "ssh", args...)
+	c := goexec.Command(ctx, "ssh", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
 		return "", coreerr.E("ml.SSHTransport.Run", core.Sprintf("ssh %q: %s", cmd, core.Trim(string(result))), err)
@@ -119,7 +125,7 @@ func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) error
 	args := t.commonArgs()
 	args = append(args, core.Sprintf("%s@%s:%s", t.User, t.Host, remote), local)
 
-	c := exec.CommandContext(ctx, "scp", args...)
+	c := goexec.Command(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
 		return coreerr.E("ml.SSHTransport.CopyFrom", core.Sprintf("scp %s: %s", remote, core.Trim(string(result))), err)
@@ -132,7 +138,7 @@ func (t *SSHTransport) CopyTo(ctx context.Context, local, remote string) error {
 	args := t.commonArgs()
 	args = append(args, local, core.Sprintf("%s@%s:%s", t.User, t.Host, remote))
 
-	c := exec.CommandContext(ctx, "scp", args...)
+	c := goexec.Command(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
 		return coreerr.E("ml.SSHTransport.CopyTo", core.Sprintf("scp to %s: %s", remote, core.Trim(string(result))), err)
@@ -160,15 +166,24 @@ func SCPTo(cfg *AgentConfig, localPath, remotePath string) error {
 
 // fileBase returns the last component of a path.
 func fileBase(path string) string {
+<<<<<<< HEAD
 	if i := lastIndexAny(path, "/\\"); i >= 0 {
 		return path[i+1:]
+=======
+	if core.Contains(path, "\\") {
+		path = core.Replace(path, "\\", "/")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
-	return path
+	return core.PathBase(path)
 }
 
 // EnvOr returns the environment variable value or a fallback.
 func EnvOr(key, fallback string) string {
+<<<<<<< HEAD
 	if v := envGet(key); v != "" {
+=======
+	if v := core.Env(key); v != "" {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return v
 	}
 	return fallback
@@ -176,6 +191,7 @@ func EnvOr(key, fallback string) string {
 
 // IntEnvOr returns the integer environment variable value or a fallback.
 func IntEnvOr(key string, fallback int) int {
+<<<<<<< HEAD
 	v := envGet(key)
 	if v == "" {
 		return fallback
@@ -183,6 +199,14 @@ func IntEnvOr(key string, fallback int) int {
 	var n int
 	sscanf(v, "%d", &n)
 	if n == 0 {
+=======
+	v := core.Env(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n == 0 {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return fallback
 	}
 	return n
@@ -191,9 +215,15 @@ func IntEnvOr(key string, fallback int) int {
 // ExpandHome expands ~ to the user's home directory.
 func ExpandHome(path string) string {
 	if core.HasPrefix(path, "~/") {
+<<<<<<< HEAD
 		home, err := userHomeDir()
 		if err == nil {
 			return core.Path(home, path[2:])
+=======
+		home := core.Env("DIR_HOME")
+		if home != "" {
+			return core.JoinPath(home, path[2:])
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 	}
 	return path

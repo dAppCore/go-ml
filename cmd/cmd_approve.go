@@ -37,7 +37,11 @@ func runApprove(cmd *cli.Command, args []string) error {
 
 	output := approveOutput
 	if output == "" {
+<<<<<<< HEAD
 		output = core.Path(core.PathDir(path), "expansion-approved.jsonl")
+=======
+		output = core.JoinPath(core.PathDir(path), "expansion-approved.jsonl")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	db, err := store.OpenDuckDB(path)

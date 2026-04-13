@@ -3,12 +3,11 @@
 package api_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"dappco.re/go/core"
 	goapi "dappco.re/go/core/api"
 	mlapi "dappco.re/go/core/ml/api"
 
@@ -21,7 +20,7 @@ func init() {
 
 // ── Interface satisfaction ─────────────────────────────────────────────
 
-func TestRoutes_Good_SatisfiesRouteGroup(t *testing.T) {
+func TestRoutes_SatisfiesRouteGroup_Good(t *testing.T) {
 	var rg goapi.RouteGroup = mlapi.NewRoutes(nil)
 
 	if rg.Name() != "ml" {
@@ -32,7 +31,7 @@ func TestRoutes_Good_SatisfiesRouteGroup(t *testing.T) {
 	}
 }
 
-func TestRoutes_Good_SatisfiesStreamGroup(t *testing.T) {
+func TestRoutes_SatisfiesStreamGroup_Good(t *testing.T) {
 	var sg goapi.StreamGroup = mlapi.NewRoutes(nil)
 
 	channels := sg.Channels()
@@ -49,7 +48,7 @@ func TestRoutes_Good_SatisfiesStreamGroup(t *testing.T) {
 
 // ── Engine integration ─────────────────────────────────────────────────
 
-func TestRoutes_Good_EngineRegistration(t *testing.T) {
+func TestRoutes_EngineRegistration_Good(t *testing.T) {
 	e, err := goapi.New()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -67,7 +66,7 @@ func TestRoutes_Good_EngineRegistration(t *testing.T) {
 	}
 }
 
-func TestRoutes_Good_EngineChannels(t *testing.T) {
+func TestRoutes_EngineChannels_Good(t *testing.T) {
 	e, _ := goapi.New()
 	routes := mlapi.NewRoutes(nil)
 	e.Register(routes)
@@ -80,7 +79,7 @@ func TestRoutes_Good_EngineChannels(t *testing.T) {
 
 // ── ListBackends handler ───────────────────────────────────────────────
 
-func TestListBackends_Bad_NilService(t *testing.T) {
+func TestRoutes_ListBackendsNilService_Bad(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -93,9 +92,7 @@ func TestListBackends_Bad_NilService(t *testing.T) {
 	}
 
 	var resp goapi.Response[any]
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal error: %v", err)
-	}
+	mustJSONUnmarshalBytes(t, w.Body.Bytes(), &resp)
 	if resp.Success {
 		t.Fatal("expected Success=false for nil service")
 	}
@@ -109,7 +106,7 @@ func TestListBackends_Bad_NilService(t *testing.T) {
 
 // ── Status handler ─────────────────────────────────────────────────────
 
-func TestStatus_Bad_NilService(t *testing.T) {
+func TestRoutes_StatusNilService_Bad(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -122,9 +119,7 @@ func TestStatus_Bad_NilService(t *testing.T) {
 	}
 
 	var resp goapi.Response[any]
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal error: %v", err)
-	}
+	mustJSONUnmarshalBytes(t, w.Body.Bytes(), &resp)
 	if resp.Success {
 		t.Fatal("expected Success=false for nil service")
 	}
@@ -132,13 +127,13 @@ func TestStatus_Bad_NilService(t *testing.T) {
 
 // ── Generate handler ───────────────────────────────────────────────────
 
-func TestGenerate_Bad_NilService(t *testing.T) {
+func TestRoutes_GenerateNilService_Bad(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
 	body := `{"prompt":"hello"}`
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/v1/ml/generate", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/ml/generate", core.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(w, req)
 
@@ -147,7 +142,7 @@ func TestGenerate_Bad_NilService(t *testing.T) {
 	}
 }
 
-func TestGenerate_Bad_MissingPrompt(t *testing.T) {
+func TestRoutes_GenerateMissingPrompt_Bad(t *testing.T) {
 	// Even with a nil service, request validation happens first when service
 	// is nil — but our handler checks service first. So this tests a valid
 	// scenario where the body is empty.
@@ -155,7 +150,7 @@ func TestGenerate_Bad_MissingPrompt(t *testing.T) {
 	h := buildHandler(routes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/v1/ml/generate", strings.NewReader(`{}`))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/ml/generate", core.NewReader(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(w, req)
 
@@ -167,7 +162,7 @@ func TestGenerate_Bad_MissingPrompt(t *testing.T) {
 
 // ── Envelope format ────────────────────────────────────────────────────
 
-func TestEnvelope_Good_ErrorFormat(t *testing.T) {
+func TestRoutes_EnvelopeErrorFormat_Good(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -176,10 +171,8 @@ func TestEnvelope_Good_ErrorFormat(t *testing.T) {
 	h.ServeHTTP(w, req)
 
 	// Verify the envelope has the correct JSON structure.
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("unmarshal error: %v", err)
-	}
+	var raw map[string]any
+	mustJSONUnmarshalBytes(t, w.Body.Bytes(), &raw)
 
 	// Must have "success" key.
 	if _, ok := raw["success"]; !ok {
@@ -192,15 +185,12 @@ func TestEnvelope_Good_ErrorFormat(t *testing.T) {
 	}
 
 	// "data" should be absent or null for failure responses.
-	if data, ok := raw["data"]; ok {
-		var d any
-		if err := json.Unmarshal(data, &d); err == nil && d != nil {
-			t.Fatal("expected 'data' to be absent or null for failure response")
-		}
+	if data, ok := raw["data"]; ok && data != nil {
+		t.Fatal("expected 'data' to be absent or null for failure response")
 	}
 }
 
-func TestEnvelope_Good_HealthViaEngine(t *testing.T) {
+func TestRoutes_HealthViaEngine_Good(t *testing.T) {
 	// Verify that the built-in /health endpoint still works
 	// when our ML routes are registered alongside it.
 	e, _ := goapi.New()
@@ -217,9 +207,7 @@ func TestEnvelope_Good_HealthViaEngine(t *testing.T) {
 	}
 
 	var resp goapi.Response[string]
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal error: %v", err)
-	}
+	mustJSONUnmarshalBytes(t, w.Body.Bytes(), &resp)
 	if !resp.Success || resp.Data != "healthy" {
 		t.Fatalf("expected healthy response, got success=%v data=%q", resp.Success, resp.Data)
 	}
@@ -227,7 +215,7 @@ func TestEnvelope_Good_HealthViaEngine(t *testing.T) {
 
 // ── Route method checks ────────────────────────────────────────────────
 
-func TestRoutes_Bad_WrongMethod(t *testing.T) {
+func TestRoutes_WrongMethod_Bad(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -241,7 +229,7 @@ func TestRoutes_Bad_WrongMethod(t *testing.T) {
 	}
 }
 
-func TestRoutes_Bad_NotFound(t *testing.T) {
+func TestRoutes_NotFound_Bad(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 

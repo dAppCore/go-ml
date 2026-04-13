@@ -6,12 +6,16 @@ import (
 	"dappco.re/go/core"
 	"bufio"
 	"context"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"math"
 	"runtime"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
@@ -43,25 +47,25 @@ Training data format (one JSON object per line):
 }
 
 var (
-	trainModelPath    string
-	trainData         string
-	trainOutputDir    string
-	trainRank         int
-	trainAlpha        float64
-	trainLR           float64
-	trainMinLR        float64
-	trainEpochs       int
-	trainIters        int
-	trainMaxSeqLen    int
-	trainTargets      string
-	trainMemoryLimit  int
-	trainCheckEvery   int
-	trainValEvery     int
-	trainScoreEvery   int
-	trainLogEvery     int
-	trainValidSplit   float64
-	trainRunID        string
-	trainPhase        string
+	trainModelPath      string
+	trainData           string
+	trainOutputDir      string
+	trainRank           int
+	trainAlpha          float64
+	trainLR             float64
+	trainMinLR          float64
+	trainEpochs         int
+	trainIters          int
+	trainMaxSeqLen      int
+	trainTargets        string
+	trainMemoryLimit    int
+	trainCheckEvery     int
+	trainValEvery       int
+	trainScoreEvery     int
+	trainLogEvery       int
+	trainValidSplit     float64
+	trainRunID          string
+	trainPhase          string
 	trainNoTelemetry    bool
 	trainGradCheckpoint bool
 	trainNoTUI          bool
@@ -138,7 +142,11 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 	// --- Auto-generate run ID ---
 	if trainRunID == "" {
+<<<<<<< HEAD
 		trainRunID = core.Sprintf("train-%s", time.Now().Format("20060102-150405"))
+=======
+		trainRunID = core.Concat("train-", time.Now().Format("20060102-150405"))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	// --- Load model ---
@@ -206,7 +214,11 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	if err := coreio.Local.EnsureDir(trainOutputDir); err != nil {
 		return coreerr.E("cmd.runTrainLoop", "create output dir", err)
 	}
+<<<<<<< HEAD
 	adapterFile := core.Path(trainOutputDir, "adapters.safetensors")
+=======
+	adapterFile := core.JoinPath(trainOutputDir, "adapters.safetensors")
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	// --- Telemetry ---
 	var influx *ml.InfluxClient
@@ -497,7 +509,7 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 	// Generate a live response
 	response := core.NewBuilder()
 	for tok := range tm.Generate(ctx, prompt, inference.WithMaxTokens(128), inference.WithTemperature(0.7)) {
-		response.WriteString(tok.Text)
+		_, _ = response.WriteString(tok.Text)
 	}
 
 	// Queue to InfluxDB for scoring
@@ -513,12 +525,20 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 
 // saveCheckpoint saves adapter weights and config at a training iteration.
 func saveCheckpoint(adapter inference.Adapter, dir string, iter int, cfg inference.LoRAConfig) error {
+<<<<<<< HEAD
 	ckptFile := core.Path(dir, core.Sprintf("%07d_adapters.safetensors", iter))
+=======
+	ckptFile := core.JoinPath(dir, core.Sprintf("%07d_adapters.safetensors", iter))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if err := adapter.Save(ckptFile); err != nil {
 		return err
 	}
 	// Also save the latest
+<<<<<<< HEAD
 	if err := adapter.Save(core.Path(dir, "adapters.safetensors")); err != nil {
+=======
+	if err := adapter.Save(core.JoinPath(dir, "adapters.safetensors")); err != nil {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return err
 	}
 	return writeAdapterConfig(dir, cfg)
@@ -532,19 +552,30 @@ func writeAdapterConfig(dir string, cfg inference.LoRAConfig) error {
 		"alpha":          cfg.Alpha,
 		"lora_layers":    cfg.TargetKeys,
 	}
+<<<<<<< HEAD
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
 	}
 	return coreio.Local.Write(core.Path(dir, "adapter_config.json"), string(data))
+=======
+	return coreio.Local.Write(core.JoinPath(dir, "adapter_config.json"), core.JSONMarshalString(config))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }
 
 func escapeFieldStr(s string, max int) string {
 	s = truncate(s, max)
+<<<<<<< HEAD
 	s = replaceAll(s, `\`, `\\`)
 	s = replaceAll(s, `"`, `\"`)
 	s = replaceAll(s, "\n", `\n`)
 	s = replaceAll(s, "\r", `\r`)
+=======
+	s = core.Replace(s, `\`, `\\`)
+	s = core.Replace(s, `"`, `\"`)
+	s = core.Replace(s, "\n", `\n`)
+	s = core.Replace(s, "\r", `\r`)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return s
 }
 
@@ -573,8 +604,8 @@ func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int
 		var entry struct {
 			Messages []ml.Message `json:"messages"`
 		}
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			slog.Warn("skipping invalid line", "line", lineNum, "error", err)
+		if r := core.JSONUnmarshalString(line, &entry); !r.OK {
+			slog.Warn("skipping invalid line", "line", lineNum, "error", r.Value.(error))
 			continue
 		}
 
@@ -628,16 +659,24 @@ func formatQwen3Train(messages []ml.Message, includeAssistant bool) string {
 	sb := core.NewBuilder()
 	for _, msg := range messages {
 		if msg.Role == "assistant" && !includeAssistant {
-			sb.WriteString("<|im_start|>assistant\n")
+			_, _ = sb.WriteString("<|im_start|>assistant\n")
 			return sb.String()
 		}
 		switch msg.Role {
 		case "system":
+<<<<<<< HEAD
 			sb.WriteString(core.Sprintf("<|im_start|>system\n%s<|im_end|>\n", msg.Content))
 		case "user":
 			sb.WriteString(core.Sprintf("<|im_start|>user\n%s<|im_end|>\n", msg.Content))
 		case "assistant":
 			sb.WriteString(core.Sprintf("<|im_start|>assistant\n%s<|im_end|>\n", msg.Content))
+=======
+			_, _ = sb.WriteString(core.Sprintf("<|im_start|>system\n%s<|im_end|>\n", msg.Content))
+		case "user":
+			_, _ = sb.WriteString(core.Sprintf("<|im_start|>user\n%s<|im_end|>\n", msg.Content))
+		case "assistant":
+			_, _ = sb.WriteString(core.Sprintf("<|im_start|>assistant\n%s<|im_end|>\n", msg.Content))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 	}
 	return sb.String()
@@ -647,16 +686,24 @@ func formatGemmaTrain(messages []ml.Message, includeAssistant bool) string {
 	sb := core.NewBuilder()
 	for _, msg := range messages {
 		if msg.Role == "assistant" && !includeAssistant {
-			sb.WriteString("<start_of_turn>model\n")
+			_, _ = sb.WriteString("<start_of_turn>model\n")
 			return sb.String()
 		}
 		switch msg.Role {
 		case "user":
+<<<<<<< HEAD
 			sb.WriteString(core.Sprintf("<start_of_turn>user\n%s<end_of_turn>\n", msg.Content))
 		case "assistant":
 			sb.WriteString(core.Sprintf("<start_of_turn>model\n%s<end_of_turn>\n", msg.Content))
 		case "system":
 			sb.WriteString(core.Sprintf("<start_of_turn>user\n[System: %s]<end_of_turn>\n", msg.Content))
+=======
+			_, _ = sb.WriteString(core.Sprintf("<start_of_turn>user\n%s<end_of_turn>\n", msg.Content))
+		case "assistant":
+			_, _ = sb.WriteString(core.Sprintf("<start_of_turn>model\n%s<end_of_turn>\n", msg.Content))
+		case "system":
+			_, _ = sb.WriteString(core.Sprintf("<start_of_turn>user\n[System: %s]<end_of_turn>\n", msg.Content))
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 	}
 	return sb.String()

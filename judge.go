@@ -3,9 +3,13 @@ package ml
 import (
 	"dappco.re/go/core"
 	"context"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"regexp"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -20,7 +24,17 @@ func extractJSON(text string) string {
 	}
 
 	// Find the first { and its matching }.
+<<<<<<< HEAD
 	start := indexByte(text, '{')
+=======
+	start := -1
+	for i := 0; i < len(text); i++ {
+		if text[i] == '{' {
+			start = i
+			break
+		}
+	}
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if start == -1 {
 		return ""
 	}
@@ -81,8 +95,8 @@ func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) (*Se
 	}
 
 	var scores SemanticScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", r.Value.(error))
 	}
 
 	return &scores, nil
@@ -91,8 +105,13 @@ func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) (*Se
 // ScoreContent scores a response on content/sovereignty dimensions using
 // the content judge prompt with CCP and truth markers.
 func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response string) (*ContentScores, error) {
+<<<<<<< HEAD
 	ccpMarkers := joinStrings(probe.CCPMarkers, ", ")
 	truthMarkers := joinStrings(probe.TruthMarkers, ", ")
+=======
+	ccpMarkers := core.Join(", ", probe.CCPMarkers...)
+	truthMarkers := core.Join(", ", probe.TruthMarkers...)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	formatted := core.Sprintf(contentPrompt, probe.Prompt, probe.GroundTruth, ccpMarkers, truthMarkers, response)
 
@@ -107,8 +126,8 @@ func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response s
 	}
 
 	var scores ContentScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", r.Value.(error))
 	}
 
 	return &scores, nil
@@ -130,8 +149,8 @@ func (j *Judge) ScoreCapability(ctx context.Context, prompt, expectedAnswer, res
 	}
 
 	var scores CapabilityScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", r.Value.(error))
 	}
 
 	return &scores, nil
@@ -153,8 +172,8 @@ func (j *Judge) ScoreTruthfulQA(ctx context.Context, question, bestAnswer, respo
 	}
 
 	var scores StandardScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", r.Value.(error))
 	}
 
 	return &scores, nil
@@ -176,8 +195,8 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 	}
 
 	var scores StandardScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", r.Value.(error))
 	}
 
 	return &scores, nil
@@ -199,8 +218,8 @@ func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) (*Sta
 	}
 
 	var scores StandardScores
-	if err := json.Unmarshal([]byte(raw), &scores); err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", err)
+	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
+		return nil, coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", r.Value.(error))
 	}
 
 	return &scores, nil

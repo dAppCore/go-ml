@@ -1,8 +1,13 @@
 package ml
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
+=======
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"time"
+
+	"dappco.re/go/core"
 )
 
 // ----- Scoring epoch & timing -----
@@ -146,9 +151,17 @@ func AdapterMeta(dirname string) (string, string, string) {
 	name := core.TrimPrefix(dirname, "adapters-")
 
 	for _, fam := range ModelFamilies {
+<<<<<<< HEAD
 		if after, ok := cutPrefix(name, fam.DirPrefix); ok {
 			variant := after
 			variant = trimLeft(variant, "-")
+=======
+		if core.HasPrefix(name, fam.DirPrefix) {
+			variant := name[len(fam.DirPrefix):]
+			for len(variant) > 0 && variant[0] == '-' {
+				variant = variant[1:]
+			}
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			if variant == "" {
 				variant = "base"
 			}

@@ -3,13 +3,20 @@
 package cmd
 
 import (
+<<<<<<< HEAD
 	"dappco.re/go/core"
 	"context"
 	"encoding/json"
+=======
+	"bufio"
+	"context"
+	"io"
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"runtime"
 	"time"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
@@ -132,7 +139,11 @@ func runLesson(cmd *cli.Command, args []string) error {
 		if lesson.Sandwich.KB != "" {
 			kbPath := lesson.Sandwich.KB
 			if !core.PathIsAbs(kbPath) {
+<<<<<<< HEAD
 				kbPath = core.Path(baseDir, kbPath)
+=======
+				kbPath = core.JoinPath(baseDir, kbPath)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 			d, err := coreio.Local.Read(kbPath)
 			if err != nil {
@@ -143,7 +154,11 @@ func runLesson(cmd *cli.Command, args []string) error {
 		if lesson.Sandwich.Kernel != "" {
 			kernelPath := lesson.Sandwich.Kernel
 			if !core.PathIsAbs(kernelPath) {
+<<<<<<< HEAD
 				kernelPath = core.Path(baseDir, kernelPath)
+=======
+				kernelPath = core.JoinPath(baseDir, kernelPath)
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 			d, err := coreio.Local.Read(kernelPath)
 			if err != nil {
@@ -216,7 +231,8 @@ func runLesson(cmd *cli.Command, args []string) error {
 		return coreerr.E("cmd.runLesson", "create output", err)
 	}
 	defer outFile.Close()
-	encoder := json.NewEncoder(outFile)
+	reviewScanner := bufio.NewScanner(cmd.InOrStdin())
+	out := cmd.OutOrStdout()
 
 	generated := 0
 
@@ -263,7 +279,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 				{Role: "assistant", Content: response},
 			},
 		}
-		if err := encoder.Encode(record); err != nil {
+		if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
 			return coreerr.E("cmd.runLesson", "write record", err)
 		}
 
@@ -290,6 +306,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 
 		// Interactive mode: show response and wait for confirmation
 		if lessonInteract {
+<<<<<<< HEAD
 			core.Print(nil,("\n--- %s (%s) ---\n", prompt.ID, prompt.Category)
 			core.Print(nil,("Prompt: %s\n\n", prompt.Prompt)
 			if prompt.Signal != "" {
@@ -300,6 +317,25 @@ func runLesson(cmd *cli.Command, args []string) error {
 			var input string
 			scanln(&input)
 			if core.Trim(input) == "q" {
+=======
+			core.Print(out, "")
+			core.Print(out, "--- %s (%s) ---", prompt.ID, prompt.Category)
+			core.Print(out, "Prompt: %s", prompt.Prompt)
+			core.Print(out, "")
+			if prompt.Signal != "" {
+				core.Print(out, "Signal: %s", prompt.Signal)
+				core.Print(out, "")
+			}
+			core.Print(out, "Response:")
+			core.Print(out, "%s", response)
+			if _, err := io.WriteString(out, "\nPress Enter to continue (or 'q' to stop)... "); err != nil {
+				return coreerr.E("cmd.runLesson", "prompt interactive confirmation", err)
+			}
+			if !reviewScanner.Scan() {
+				break
+			}
+			if core.Trim(reviewScanner.Text()) == "q" {
+>>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				break
 			}
 		}
@@ -328,14 +364,12 @@ func loadLessonState(path string) lessonState {
 		return lessonState{}
 	}
 	var state lessonState
-	json.Unmarshal([]byte(data), &state)
+	if r := core.JSONUnmarshalString(data, &state); !r.OK {
+		return lessonState{}
+	}
 	return state
 }
 
 func saveLessonState(path string, state lessonState) error {
-	data, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return err
-	}
-	return coreio.Local.Write(path, string(data))
+	return coreio.Local.Write(path, core.JSONMarshalString(state))
 }
