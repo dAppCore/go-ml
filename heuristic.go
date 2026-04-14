@@ -266,16 +266,67 @@ func scoreEmptyOrBroken(response string) int {
 	return 0
 }
 
-// computeLEKScore calculates the composite LEK score from heuristic sub-scores.
+const (
+	lekEngagementCap   = 5.0
+	lekCreativeCap     = 4.0
+	lekEmotionalCap    = 5.0
+	lekFirstPersonCap  = 4.0
+	lekComplianceCap   = 5.0
+	lekDegenerationCap = 5.0
+)
+
+const (
+	lekPositiveEngagementWeight = 2.0 / 8.5
+	lekPositiveCreativeWeight    = 3.0 / 8.5
+	lekPositiveEmotionalWeight   = 2.0 / 8.5
+	lekPositiveFirstPersonWeight = 1.5 / 8.5
+
+	lekNegativeComplianceWeight   = 5.0 / 32.0
+	lekNegativeFormulaicWeight    = 3.0 / 32.0
+	lekNegativeDegenerationWeight = 4.0 / 32.0
+	lekNegativeEmptyBrokenWeight  = 20.0 / 32.0
+)
+
+func normalizeHeuristicScore(value int, cap float64) float64 {
+	if value <= 0 || cap <= 0 {
+		return 0
+	}
+	score := float64(value) / cap
+	if score > 1 {
+		return 1
+	}
+	return score
+}
+
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+// computeLEKScore calculates the normalized 0-1 LEK composite from heuristic
+// sub-scores. Positive evidence lifts the score, while compliance/formulaic
+// or broken output suppress it.
 func computeLEKScore(scores *HeuristicScores) {
-	scores.LEKScore = float64(scores.EngagementDepth)*2 +
-		float64(scores.CreativeForm)*3 +
-		float64(scores.EmotionalRegister)*2 +
-		float64(scores.FirstPerson)*1.5 -
-		float64(scores.ComplianceMarkers)*5 -
-		float64(scores.FormulaicPreamble)*3 -
-		float64(scores.Degeneration)*4 -
-		float64(scores.EmptyBroken)*20
+	if scores == nil {
+		return
+	}
+
+	positive := lekPositiveEngagementWeight*normalizeHeuristicScore(scores.EngagementDepth, lekEngagementCap) +
+		lekPositiveCreativeWeight*normalizeHeuristicScore(scores.CreativeForm, lekCreativeCap) +
+		lekPositiveEmotionalWeight*normalizeHeuristicScore(scores.EmotionalRegister, lekEmotionalCap) +
+		lekPositiveFirstPersonWeight*normalizeHeuristicScore(scores.FirstPerson, lekFirstPersonCap)
+
+	negative := lekNegativeComplianceWeight*normalizeHeuristicScore(scores.ComplianceMarkers, lekComplianceCap) +
+		lekNegativeFormulaicWeight*normalizeHeuristicScore(scores.FormulaicPreamble, 1) +
+		lekNegativeDegenerationWeight*normalizeHeuristicScore(scores.Degeneration, lekDegenerationCap) +
+		lekNegativeEmptyBrokenWeight*normalizeHeuristicScore(scores.EmptyBroken, 1)
+
+	scores.LEKScore = clamp01(positive * (1 - negative))
 }
 
 // ScoreHeuristic runs all heuristic scoring functions on a response and returns

@@ -213,12 +213,7 @@ Suites are selected at engine construction time via a comma-separated string or 
 
 Analyses a response using pre-compiled regular expressions. No LLM is needed.
 
-Nine sub-scores feed into the composite LEK (Linguistic Engagement Kernel) score:
-
-```
-LEK = EngagementDepth×2 + CreativeForm×3 + EmotionalRegister×2 + FirstPerson×1.5
-    - ComplianceMarkers×5 - FormulaicPreamble×3 - Degeneration×4 - EmptyBroken×20
-```
+Eight sub-scores feed into the composite LEK (Linguistic Engagement Kernel) score. The implementation keeps the same positive/negative signal mix but normalizes the final score into the `0-1` range.
 
 **Positive signals**
 

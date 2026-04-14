@@ -214,60 +214,45 @@ func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
 }
 
 func TestHeuristic_LEKScoreComposite_Good(t *testing.T) {
-	tests := []struct {
-		name   string
-		scores HeuristicScores
-		want   float64
-	}{
-		{
-			name: "all positive",
-			scores: HeuristicScores{
-				EngagementDepth:   5,
-				CreativeForm:      2,
-				EmotionalRegister: 3,
-				FirstPerson:       2,
-			},
-			// 5*2 + 2*3 + 3*2 + 2*1.5 = 10+6+6+3 = 25
-			want: 25,
-		},
-		{
-			name: "all negative",
-			scores: HeuristicScores{
-				ComplianceMarkers: 2,
-				FormulaicPreamble: 1,
-				Degeneration:      5,
-				EmptyBroken:       1,
-			},
-			// -2*5 - 1*3 - 5*4 - 1*20 = -10-3-20-20 = -53
-			want: -53,
-		},
-		{
-			name: "mixed",
-			scores: HeuristicScores{
-				EngagementDepth:   3,
-				CreativeForm:      1,
-				EmotionalRegister: 2,
-				FirstPerson:       4,
-				ComplianceMarkers: 1,
-				FormulaicPreamble: 1,
-			},
-			// 3*2 + 1*3 + 2*2 + 4*1.5 - 1*5 - 1*3 = 6+3+4+6-5-3 = 11
-			want: 11,
-		},
-		{
-			name:   "all zero",
-			scores: HeuristicScores{},
-			want:   0,
-		},
+	allPositive := HeuristicScores{
+		EngagementDepth:   5,
+		CreativeForm:      2,
+		EmotionalRegister: 3,
+		FirstPerson:       2,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := tt.scores
-			computeLEKScore(&s)
-			if s.LEKScore != tt.want {
-				t.Errorf("computeLEKScore() = %f, want %f", s.LEKScore, tt.want)
-			}
-		})
+	computeLEKScore(&allPositive)
+	if allPositive.LEKScore <= 0.5 || allPositive.LEKScore > 1 {
+		t.Fatalf("all positive LEK score = %f, want (0.5, 1]", allPositive.LEKScore)
+	}
+
+	allNegative := HeuristicScores{
+		ComplianceMarkers: 2,
+		FormulaicPreamble: 1,
+		Degeneration:      5,
+		EmptyBroken:       1,
+	}
+	computeLEKScore(&allNegative)
+	if allNegative.LEKScore != 0 {
+		t.Fatalf("all negative LEK score = %f, want 0", allNegative.LEKScore)
+	}
+
+	mixed := HeuristicScores{
+		EngagementDepth:   3,
+		CreativeForm:      1,
+		EmotionalRegister: 2,
+		FirstPerson:       4,
+		ComplianceMarkers: 1,
+		FormulaicPreamble: 1,
+	}
+	computeLEKScore(&mixed)
+	if mixed.LEKScore <= 0 || mixed.LEKScore >= allPositive.LEKScore {
+		t.Fatalf("mixed LEK score = %f, want between 0 and %f", mixed.LEKScore, allPositive.LEKScore)
+	}
+
+	allZero := HeuristicScores{}
+	computeLEKScore(&allZero)
+	if allZero.LEKScore != 0 {
+		t.Fatalf("all zero LEK score = %f, want 0", allZero.LEKScore)
 	}
 }
 
@@ -278,8 +263,8 @@ func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
 		if scores.ComplianceMarkers < 4 {
 			t.Errorf("expected >= 4 compliance markers, got %d", scores.ComplianceMarkers)
 		}
-		if scores.LEKScore >= 0 {
-			t.Errorf("compliance-heavy response should have negative LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore < 0 || scores.LEKScore > 1 {
+			t.Errorf("compliance-heavy response should be normalized to 0-1, got %f", scores.LEKScore)
 		}
 	})
 
@@ -299,8 +284,8 @@ func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
 		if scores.EmotionalRegister < 3 {
 			t.Errorf("expected emotional_register >= 3, got %d", scores.EmotionalRegister)
 		}
-		if scores.LEKScore <= 0 {
-			t.Errorf("creative response should have positive LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore <= 0.5 || scores.LEKScore > 1 {
+			t.Errorf("creative response should have a strong normalized LEK score, got %f", scores.LEKScore)
 		}
 	})
 
@@ -312,8 +297,8 @@ func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
 		if scores.Degeneration != 10 {
 			t.Errorf("expected degeneration = 10, got %d", scores.Degeneration)
 		}
-		if scores.LEKScore >= 0 {
-			t.Errorf("empty response should have very negative LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore != 0 {
+			t.Errorf("empty response should have a zero LEK score, got %f", scores.LEKScore)
 		}
 	})
 

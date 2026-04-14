@@ -43,7 +43,7 @@ type PromptScore struct {
 **File**: `heuristic.go`
 **Cost**: Zero -- pure regex, runs inline without goroutines.
 
-`ScoreHeuristic(response)` runs eight analysis functions and computes a composite LEK (Lethean Evaluation Kernel) score:
+`ScoreHeuristic(response)` runs eight analysis functions and computes a normalized LEK (Lethean Evaluation Kernel) score in the `0-1` range:
 
 | Sub-score | What it measures | Method |
 |-----------|-----------------|--------|
@@ -56,14 +56,7 @@ type PromptScore struct {
 | `Degeneration` | Repetitive/looping output (sentence uniqueness ratio) | 0-10 penalty |
 | `EmptyBroken` | Empty, error, or token-leak responses | Binary (0 or 1) |
 
-**LEK Score Formula**:
-
-```
-LEK = EngagementDepth*2 + CreativeForm*3 + EmotionalRegister*2 + FirstPerson*1.5
-    - ComplianceMarkers*5 - FormulaicPreamble*3 - Degeneration*4 - EmptyBroken*20
-```
-
-Higher LEK indicates more sovereign, creative, emotionally engaged output. Negative LEK indicates formulaic or degenerate output.
+The implementation keeps the same positive/negative signal mix but normalizes the result to `0-1`, so higher scores still indicate more sovereign, creative, emotionally engaged output while low scores represent formulaic or broken responses.
 
 ### Semantic Suite
 
