@@ -1,13 +1,7 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"encoding/binary"
-<<<<<<< HEAD
-	"encoding/json"
-=======
-	"log"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"maps"
 	"math"
 	"regexp"
@@ -76,18 +70,7 @@ func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, err
 
 	tensors := make(map[string]SafetensorsTensorInfo)
 	for key, raw := range rawHeader {
-<<<<<<< HEAD
-		if key == "__metadata__" {
-			continue
-		}
-		var info SafetensorsTensorInfo
-		if err := json.Unmarshal(raw, &info); err != nil {
-			return nil, nil, coreerr.E("ml.ReadSafetensors", core.Sprintf("parse tensor %s", key), err)
-		}
-		tensors[key] = info
-=======
 		tensors[key] = raw
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	return tensors, tensorData, nil
@@ -217,11 +200,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		peftData[peftKey] = data
 	}
 
-<<<<<<< HEAD
-	outSafetensors := core.Path(outputDir, "adapter_model.safetensors")
-=======
 	outSafetensors := core.JoinPath(outputDir, "adapter_model.safetensors")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if err := WriteSafetensors(outSafetensors, peftTensors, peftData); err != nil {
 		return coreerr.E("ml.ConvertMLXtoPEFT", "write safetensors", err)
 	}
@@ -286,16 +265,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		"task_type":               "CAUSAL_LM",
 	}
 
-<<<<<<< HEAD
-	cfgJSON, err := json.MarshalIndent(peftConfig, "", "  ")
-	if err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "marshal peft config", err)
-	}
-
-	if err := coreio.Local.Write(core.Path(outputDir, "adapter_config.json"), string(cfgJSON)); err != nil {
-=======
 	if err := coreio.Local.Write(core.JoinPath(outputDir, "adapter_config.json"), core.JSONMarshalString(peftConfig)); err != nil {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return coreerr.E("ml.ConvertMLXtoPEFT", "write adapter_config.json", err)
 	}
 

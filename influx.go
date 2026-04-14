@@ -2,19 +2,11 @@ package ml
 
 import (
 	"bytes"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"net/http"
 	"time"
 
 	"dappco.re/go/core"
-<<<<<<< HEAD
-
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -38,15 +30,6 @@ func NewInfluxClient(url, db string) *InfluxClient {
 		db = "training"
 	}
 
-<<<<<<< HEAD
-	token := envGet("INFLUX_TOKEN")
-	if token == "" {
-		home, err := userHomeDir()
-		if err == nil {
-			data, err := coreio.Local.Read(core.Path(home, ".influx_token"))
-			if err == nil {
-				token = core.Trim(string(data))
-=======
 	token := core.Env("INFLUX_TOKEN")
 	if token == "" {
 		home := core.Env("DIR_HOME")
@@ -54,7 +37,6 @@ func NewInfluxClient(url, db string) *InfluxClient {
 			data, err := coreio.Local.Read(core.JoinPath(home, ".influx_token"))
 			if err == nil {
 				token = core.Trim(data)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 		}
 	}
@@ -68,11 +50,7 @@ func NewInfluxClient(url, db string) *InfluxClient {
 
 // WriteLp writes line protocol data to InfluxDB.
 func (c *InfluxClient) WriteLp(lines []string) error {
-<<<<<<< HEAD
-	body := joinStrings(lines, "\n")
-=======
 	body := core.Join("\n", lines...)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	url := core.Sprintf("%s/api/v3/write_lp?db=%s", c.url, c.db)
 
@@ -91,11 +69,7 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-<<<<<<< HEAD
-		respBody, _ := readAll(resp.Body)
-=======
 		respBody, _ := io.ReadAll(resp.Body)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
@@ -147,14 +121,8 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 // EscapeLp escapes spaces, commas, and equals signs for InfluxDB line protocol
 // tag values.
 func EscapeLp(s string) string {
-<<<<<<< HEAD
-	s = replaceAll(s, `,`, `\,`)
-	s = replaceAll(s, `=`, `\=`)
-	s = replaceAll(s, ` `, `\ `)
-=======
 	s = core.Replace(s, `,`, `\,`)
 	s = core.Replace(s, `=`, `\=`)
 	s = core.Replace(s, ` `, `\ `)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	return s
 }

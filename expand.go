@@ -1,13 +1,8 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"log"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"time"
 
 	"dappco.re/go/core"
@@ -93,11 +88,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 		return nil
 	}
 
-<<<<<<< HEAD
-	outputPath := core.Path(outputDir, core.Sprintf("expand-%s.jsonl", worker))
-=======
 	outputPath := core.JoinPath(outputDir, core.Sprintf("expand-%s.jsonl", worker))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
 		return coreerr.E("ml.ExpandPrompts", "open output file", err)
@@ -131,20 +122,9 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			Chars:          chars,
 		}
 
-<<<<<<< HEAD
-		line, err := json.Marshal(out)
-		if err != nil {
-			core.Print(nil,"[%d/%d] id=%s marshal error: %v", idx+1, total, p.ID, err)
-			continue
-		}
-
-		if _, err := f.Write(append(line, '\n')); err != nil {
-			core.Print(nil,"[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
-=======
 		line := core.JSONMarshalString(out)
 		if _, err := f.Write([]byte(core.Concat(line, "\n"))); err != nil {
 			log.Printf("[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			continue
 		}
 

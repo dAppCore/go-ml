@@ -1,10 +1,6 @@
 package ml
 
 import (
-<<<<<<< HEAD
-	"dappco.re/go/core"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"maps"
 	"slices"
 
@@ -43,14 +39,9 @@ func RunCompare(oldPath, newPath string) error {
 			continue
 		}
 
-<<<<<<< HEAD
-		printf("\nModel: %s\n", model)
-		printf("%-25s %11s  %11s  %6s\n", "", "Old", "New", "Delta")
-=======
 		core.Print(nil, "")
 		core.Print(nil, "Model: %s", model)
 		core.Print(nil, "%-25s %11s  %11s  %6s", "", "Old", "New", "Delta")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 		// Collect all metrics from both old and new.
 		metrics := make(map[string]bool)
@@ -68,11 +59,7 @@ func RunCompare(oldPath, newPath string) error {
 
 			deltaStr := core.Sprintf("%+.2f", delta)
 
-<<<<<<< HEAD
-			printf("%-25s %11.2f  %11.2f  %6s\n", metric, oldVal, newVal, deltaStr)
-=======
 			core.Print(nil, "%-25s %11.2f  %11.2f  %6s", metric, oldVal, newVal, deltaStr)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 	}
 

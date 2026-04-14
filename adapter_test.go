@@ -7,13 +7,8 @@ import (
 	"iter"
 	"testing"
 
-<<<<<<< HEAD
-	"dappco.re/go/core/inference"
-=======
 	"dappco.re/go/core"
-	"forge.lthn.ai/core/go-inference"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-
+	"dappco.re/go/core/inference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

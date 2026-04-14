@@ -5,19 +5,11 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"net/http"
 	"time"
 
 	"dappco.re/go/core"
-<<<<<<< HEAD
-
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -74,11 +66,7 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-<<<<<<< HEAD
-		body, _ := readAll(resp.Body)
-=======
 		body, _ := io.ReadAll(resp.Body)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return "", coreerr.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 	return digest, nil
@@ -123,16 +111,8 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 			Status string `json:"status"`
 			Error  string `json:"error"`
 		}
-<<<<<<< HEAD
-		if err := decoder.Decode(&status); err != nil {
-			if err == ioEOF {
-				break
-			}
-			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", err)
-=======
 		if r := core.JSONUnmarshalString(scanner.Text(), &status); !r.OK {
 			return coreerr.E("ml.OllamaCreateModel", "ollama create decode", r.Value.(error))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 		if status.Error != "" {
 			return coreerr.E("ml.OllamaCreateModel", core.Sprintf("ollama create: %s", status.Error), nil)
@@ -169,11 +149,7 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-<<<<<<< HEAD
-		respBody, _ := readAll(resp.Body)
-=======
 		respBody, _ := io.ReadAll(resp.Body)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return coreerr.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 	return nil

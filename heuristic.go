@@ -1,13 +1,9 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"regexp"
-<<<<<<< HEAD
-=======
 
 	"dappco.re/go/core"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Pre-compiled regex patterns for heuristic scoring.
@@ -154,11 +150,7 @@ func scoreEngagementDepth(response string) int {
 	score += min(techCount, 3)
 
 	// Word count bonuses.
-<<<<<<< HEAD
-	words := len(fieldsStr(response))
-=======
 	words := countWords(response)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if words > 200 {
 		score += 1
 	}

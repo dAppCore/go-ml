@@ -2,47 +2,32 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-<<<<<<< HEAD
-
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
-var (
-	convertInput     string
-	convertConfig    string
-	convertOutputDir string
-	convertBaseModel string
-)
+// addConvertCommand registers `ml convert` — converts an MLX safetensors LoRA
+// adapter to HuggingFace PEFT format for consumption by Ollama.
+//
+//	core ml convert --input adapter.safetensors --config adapter_config.json --output-dir peft/
+func addConvertCommand(c *core.Core) {
+	c.Command("ml/convert", core.Command{
+		Description: "Convert MLX LoRA adapter to PEFT format",
+		Action: func(opts core.Options) core.Result {
+			input := opts.String("input")
+			cfgPath := opts.String("config")
+			outputDir := opts.String("output-dir")
+			baseModel := opts.String("base-model")
 
-var convertCmd = &cli.Command{
-	Use:   "convert",
-	Short: "Convert MLX LoRA adapter to PEFT format",
-	Long:  "Converts an MLX safetensors LoRA adapter to HuggingFace PEFT format for Ollama.",
-	RunE:  runConvert,
-}
+			if input == "" || cfgPath == "" || outputDir == "" {
+				return resultFromError(coreerr.E("cmd.runConvert", "--input, --config, and --output-dir are required", nil))
+			}
 
-func init() {
-	convertCmd.Flags().StringVar(&convertInput, "input", "", "Input safetensors file (required)")
-	convertCmd.Flags().StringVar(&convertConfig, "config", "", "Adapter config JSON (required)")
-	convertCmd.Flags().StringVar(&convertOutputDir, "output-dir", "", "Output directory (required)")
-	convertCmd.Flags().StringVar(&convertBaseModel, "base-model", "", "Base model name for adapter_config.json")
-	convertCmd.MarkFlagRequired("input")
-	convertCmd.MarkFlagRequired("config")
-	convertCmd.MarkFlagRequired("output-dir")
-}
-
-func runConvert(cmd *cli.Command, args []string) error {
-	if err := ml.ConvertMLXtoPEFT(convertInput, convertConfig, convertOutputDir, convertBaseModel); err != nil {
-		return coreerr.E("cmd.runConvert", "convert to PEFT", err)
-	}
-<<<<<<< HEAD
-	core.Print(nil,("PEFT adapter written to %s\n", convertOutputDir)
-=======
-	core.Print(cmd.OutOrStdout(), "PEFT adapter written to %s", convertOutputDir)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-	return nil
+			if err := ml.ConvertMLXtoPEFT(input, cfgPath, outputDir, baseModel); err != nil {
+				return resultFromError(coreerr.E("cmd.runConvert", "convert to PEFT", err))
+			}
+			core.Print(nil, "PEFT adapter written to %s", outputDir)
+			return core.Result{OK: true}
+		},
+	})
 }

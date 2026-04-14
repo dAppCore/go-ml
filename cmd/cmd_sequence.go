@@ -1,23 +1,17 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-<<<<<<< HEAD
-	"dappco.re/go/core"
-	"encoding/json"
-=======
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/cli/pkg/cli"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
-
 	"gopkg.in/yaml.v3"
 )
 
@@ -156,11 +150,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	for i, lessonPath := range seq.Lessons {
 		// Resolve lesson path
 		if !core.PathIsAbs(lessonPath) {
-<<<<<<< HEAD
-			lessonPath = core.Path(baseDir, lessonPath)
-=======
 			lessonPath = core.JoinPath(baseDir, lessonPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 
 		// Load lesson
@@ -218,11 +208,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 			if lesson.Sandwich.KB != "" {
 				kbPath := lesson.Sandwich.KB
 				if !core.PathIsAbs(kbPath) {
-<<<<<<< HEAD
-					kbPath = core.Path(lessonDir, kbPath)
-=======
 					kbPath = core.JoinPath(lessonDir, kbPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				}
 				d, err := coreio.Local.Read(kbPath)
 				if err != nil {
@@ -234,11 +220,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 			if lesson.Sandwich.Kernel != "" {
 				kernelPath := lesson.Sandwich.Kernel
 				if !core.PathIsAbs(kernelPath) {
-<<<<<<< HEAD
-					kernelPath = core.Path(lessonDir, kernelPath)
-=======
 					kernelPath = core.JoinPath(lessonDir, kernelPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				}
 				d, err := coreio.Local.Read(kernelPath)
 				if err != nil {

@@ -1,13 +1,8 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"log"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"maps"
 	"slices"
 	"time"
@@ -202,11 +197,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 	db.EnsureScoringTables()
 
-<<<<<<< HEAD
 	err = db.Exec(
-=======
-	_, err = db.conn.Exec(
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		core.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, iteration, correct, total, accuracy)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableCheckpointScores),
 		cp.ModelTag, cp.RunID, cp.Label, cp.Iteration,
@@ -217,11 +208,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 	}
 
 	for probeID, probeRes := range results.Probes {
-<<<<<<< HEAD
 		db.Exec(
-=======
-		db.conn.Exec(
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			core.Sprintf(`INSERT OR REPLACE INTO %s (model, run_id, label, probe_id, passed, response, iteration)
 			 VALUES (?, ?, ?, ?, ?, ?, ?)`, TableProbeResults),
 			cp.ModelTag, cp.RunID, cp.Label, probeID,
@@ -234,11 +221,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 // BufferInfluxResult saves results to a local JSONL file when InfluxDB is down.
 func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
-<<<<<<< HEAD
-	bufPath := core.Path(workDir, InfluxBufferFile)
-=======
 	bufPath := core.JoinPath(workDir, InfluxBufferFile)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	f, err := coreio.Local.Append(bufPath)
 	if err != nil {
 		core.Print(nil,"Cannot open buffer file: %v", err)
@@ -251,34 +234,20 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 		Results:    results,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 	}
-<<<<<<< HEAD
-	data, _ := json.Marshal(entry)
-	f.Write(append(data, '\n'))
-	core.Print(nil,"Buffered results to %s", bufPath)
-=======
 	f.Write([]byte(core.Concat(core.JSONMarshalString(entry), "\n")))
 	log.Printf("Buffered results to %s", bufPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }
 
 // ReplayInfluxBuffer retries pushing buffered results to InfluxDB.
 func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
-<<<<<<< HEAD
-	bufPath := core.Path(workDir, InfluxBufferFile)
-=======
 	bufPath := core.JoinPath(workDir, InfluxBufferFile)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	data, err := coreio.Local.Read(bufPath)
 	if err != nil {
 		return
 	}
 
 	var remaining []string
-<<<<<<< HEAD
-	for line := range splitSeq(core.Trim(string(data)), "\n") {
-=======
 	for _, line := range core.Split(core.Trim(data), "\n") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		if line == "" {
 			continue
 		}
@@ -295,11 +264,7 @@ func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 	}
 
 	if len(remaining) > 0 {
-<<<<<<< HEAD
-		coreio.Local.Write(bufPath, joinStrings(remaining, "\n")+"\n")
-=======
 		coreio.Local.Write(bufPath, core.Concat(core.Join("\n", remaining...), "\n"))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	} else {
 		coreio.Local.Delete(bufPath)
 		core.Print(nil,"Buffer fully replayed and cleared")

@@ -3,13 +3,8 @@ package ml
 import (
 	"bufio"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-	"io"
-=======
 	"io"
 	"log"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
@@ -75,13 +70,8 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	}
 
 	tempModel := core.Sprintf("lem-%s-%d", cp.ModelTag, cp.Iteration)
-<<<<<<< HEAD
-	localAdapterDir := core.Path(cfg.WorkDir, "adapter-"+cp.Dirname)
-	peftDir := core.Path(cfg.WorkDir, "peft-"+cp.Dirname)
-=======
 	localAdapterDir := core.JoinPath(cfg.WorkDir, core.Concat("adapter-", cp.Dirname))
 	peftDir := core.JoinPath(cfg.WorkDir, core.Concat("peft-", cp.Dirname))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	coreio.Local.EnsureDir(localAdapterDir)
 
@@ -91,19 +81,11 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		OllamaDeleteModel(cfg.JudgeURL, tempModel)
 	}()
 
-<<<<<<< HEAD
-	core.Print(nil,"Fetching adapter from M3 (%s)...", cp.Filename)
-	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
-	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
-	localSF := core.Path(localAdapterDir, cp.Filename)
-	localCfg := core.Path(localAdapterDir, "adapter_config.json")
-=======
 	log.Printf("Fetching adapter from M3 (%s)...", cp.Filename)
 	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
 	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 	localSF := core.JoinPath(localAdapterDir, cp.Filename)
 	localCfg := core.JoinPath(localAdapterDir, "adapter_config.json")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	ctx := context.Background()
 	t := cfg.transport()
@@ -169,36 +151,20 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 
 // processWithConversion fetches adapter locally, converts MLX→PEFT, and scores.
 func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-<<<<<<< HEAD
-	localAdapterDir := core.Path(cfg.WorkDir, cp.Dirname)
-	coreio.Local.EnsureDir(localAdapterDir)
-
-	localSF := core.Path(localAdapterDir, cp.Filename)
-	localCfg := core.Path(localAdapterDir, "adapter_config.json")
-=======
 	localAdapterDir := core.JoinPath(cfg.WorkDir, cp.Dirname)
 	coreio.Local.EnsureDir(localAdapterDir)
 
 	localSF := core.JoinPath(localAdapterDir, cp.Filename)
 	localCfg := core.JoinPath(localAdapterDir, "adapter_config.json")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	defer func() {
 		coreio.Local.Delete(localSF)
 		coreio.Local.Delete(localCfg)
-<<<<<<< HEAD
-		peftDir := core.Path(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
-		coreio.Local.DeleteAll(peftDir)
-	}()
-
-	core.Print(nil,"Fetching adapter from M3...")
-=======
 		peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 		coreio.Local.DeleteAll(peftDir)
 	}()
 
 	log.Println("Fetching adapter from M3...")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
 	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 
@@ -211,13 +177,8 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		return coreerr.E("ml.processWithConversion", "scp config", err)
 	}
 
-<<<<<<< HEAD
-	core.Print(nil,"Converting MLX to PEFT format...")
-	peftDir := core.Path(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
-=======
 	log.Println("Converting MLX to PEFT format...")
 	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
 		return coreerr.E("ml.processWithConversion", "convert adapter", err)
 	}
@@ -317,11 +278,7 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		response := res.Text
 		if err != nil {
-<<<<<<< HEAD
 			core.Print(nil,"  [%s] ERROR: %v", probe.ID, err)
-=======
-			log.Printf("  [%s] ERROR: %v", probe.ID, err)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			response = core.Sprintf("ERROR: %v", err)
 		}
 
@@ -407,24 +364,14 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 			"max_tokens": ContentMaxTokens,
 			"temp":       ContentTemperature,
 		}
-<<<<<<< HEAD
-		reqJSON, _ := json.Marshal(req)
-		core.Print(stdin, "%s", reqJSON)
-=======
 		reqJSON := core.JSONMarshalString(req)
 		io.WriteString(stdin, core.Sprintf("%s\n", reqJSON))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 		var response string
 		if scanner.Scan() {
 			var resp probeRunnerResponse
-<<<<<<< HEAD
-			if err := json.Unmarshal(scanner.Bytes(), &resp); err != nil {
-				core.Print(nil,"  [content:%s] parse error: %v", probe.ID, err)
-=======
 			if r := core.JSONUnmarshalString(string(scanner.Bytes()), &resp); !r.OK {
 				log.Printf("  [content:%s] parse error: %v", probe.ID, r.Value.(error))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				continue
 			} else if resp.Error != "" {
 				core.Print(nil,"  [content:%s] ERROR: %s", probe.ID, resp.Error)

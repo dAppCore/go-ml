@@ -1,15 +1,10 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-	"dappco.re/go/core"
 	"cmp"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"math"
 	"runtime"
@@ -17,11 +12,11 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/cli/pkg/cli"
 	"dappco.re/go/core/i18n/reversal"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.
@@ -386,32 +381,6 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	}
 
 	// Print summary
-<<<<<<< HEAD
-	core.Println()
-	core.Println("=== Benchmark Results ===")
-	core.Print(nil,("Baseline:  %s\n", benchmarkBaseline)
-	core.Print(nil,("Trained:   %s\n", benchmarkTrained)
-	core.Print(nil,("Prompts:   %d\n", len(results))
-	core.Println()
-	core.Println("--- LEK Heuristic ---")
-	core.Print(nil,("Avg LEK (baseline): %+.2f\n", summary.AvgBaselineLEK)
-	core.Print(nil,("Avg LEK (trained):  %+.2f\n", summary.AvgTrainedLEK)
-	core.Print(nil,("Avg Delta:          %+.2f\n", summary.AvgDelta)
-	core.Println()
-	core.Println("--- Grammar v3 ---")
-	core.Print(nil,("Avg Composite (baseline): %.2f\n", summary.AvgBaselineGrammar)
-	core.Print(nil,("Avg Composite (trained):  %.2f\n", summary.AvgTrainedGrammar)
-	core.Print(nil,("Avg Grammar Uplift:       %+.2f\n", summary.AvgGrammarUplift)
-	core.Print(nil,("Avg Echo (baseline):      %.3f\n", summary.AvgBaselineEcho)
-	core.Print(nil,("Avg Echo (trained):       %.3f\n", summary.AvgTrainedEcho)
-	core.Print(nil,("Sycophancy detected:      %d (%.0f%%)\n", sycophancyCount, float64(sycophancyCount)/n*100)
-	core.Println()
-	core.Print(nil,("Improved:   %d (%.0f%%)\n", improved, float64(improved)/n*100)
-	core.Print(nil,("Regressed:  %d (%.0f%%)\n", regressed, float64(regressed)/n*100)
-	core.Print(nil,("Unchanged:  %d (%.0f%%)\n", unchanged, float64(unchanged)/n*100)
-	core.Print(nil,("Duration:   %s\n", summary.Duration)
-	core.Print(nil,("Output:     %s\n", benchmarkOutput)
-=======
 	core.Print(nil, "")
 	core.Print(nil, "=== Benchmark Results ===")
 	core.Print(nil, "Baseline:  %s", benchmarkBaseline)
@@ -436,7 +405,6 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	core.Print(nil, "Unchanged:  %d (%.0f%%)", unchanged, float64(unchanged)/n*100)
 	core.Print(nil, "Duration:   %s", summary.Duration)
 	core.Print(nil, "Output:     %s", benchmarkOutput)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return nil
 }

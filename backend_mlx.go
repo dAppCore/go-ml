@@ -7,8 +7,8 @@ package ml
 import (
 	"log/slog"
 
-	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/inference"
+	coreerr "dappco.re/go/core/log"
 	_ "dappco.re/go/core/mlx" // registers "metal" backend via init()
 )
 

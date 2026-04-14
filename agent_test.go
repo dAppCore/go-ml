@@ -6,13 +6,8 @@ import (
 	"context"
 	"testing"
 
-<<<<<<< HEAD
-	coreio "dappco.re/go/core/io"
-=======
 	"dappco.re/go/core"
-	coreio "forge.lthn.ai/core/go-io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-
+	coreio "dappco.re/go/core/io"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

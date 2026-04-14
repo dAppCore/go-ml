@@ -2,13 +2,11 @@ package ml
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"runtime"
 	"time"
 
 	"dappco.re/go/core"
-
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
@@ -131,8 +129,8 @@ func workerPoll(cfg *WorkerConfig) int {
 		Tasks []APITask `json:"tasks"`
 		Count int       `json:"count"`
 	}
-	if err := json.Unmarshal(resp, &result); err != nil {
-		core.Print(nil,"Error parsing tasks: %v", err)
+	if r := core.JSONUnmarshal(resp, &result); !r.OK {
+		core.Print(nil, "Error parsing tasks: %v", r.Value)
 		return 0
 	}
 
@@ -232,10 +230,7 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 		"max_tokens":  maxTokens,
 	}
 
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
-	}
+	data := []byte(core.JSONMarshalString(reqBody))
 
 	req, err := http.NewRequest("POST", cfg.InferURL+"/v1/chat/completions", bytes.NewReader(data))
 	if err != nil {
@@ -266,8 +261,8 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return "", coreerr.E("ml.workerInfer", "parse response", err)
+	if r := core.JSONUnmarshal(body, &chatResp); !r.OK {
+		return "", coreerr.E("ml.workerInfer", "parse response", r.Value.(error))
 	}
 
 	if len(chatResp.Choices) == 0 {
@@ -323,10 +318,7 @@ func apiDelete(cfg *WorkerConfig, path string, data map[string]any) ([]byte, err
 }
 
 func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]byte, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
+	jsonData := []byte(core.JSONMarshalString(data))
 
 	req, err := http.NewRequest(method, cfg.APIBase+path, bytes.NewReader(jsonData))
 	if err != nil {

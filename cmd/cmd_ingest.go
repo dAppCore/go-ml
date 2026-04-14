@@ -1,60 +1,45 @@
 package cmd
 
 import (
-<<<<<<< HEAD
-
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
-var ingestCmd = &cli.Command{
-	Use:   "ingest",
-	Short: "Ingest benchmark scores and training logs into InfluxDB",
-	Long:  "Reads content score, capability score, and training log files and writes measurements to InfluxDB for the lab dashboard.",
-	RunE:  runIngest,
-}
+// addIngestCommand registers `ml ingest` — reads content score, capability
+// score, and training log files and writes measurements to InfluxDB for the
+// lab dashboard.
+//
+//	core ml ingest --content scores.jsonl --capability probe.jsonl --model gemma3:27b
+func addIngestCommand(c *core.Core) {
+	c.Command("ml/ingest", core.Command{
+		Description: "Ingest benchmark scores and training logs into InfluxDB",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var (
-	ingestContent    string
-	ingestCapability string
-	ingestTraining   string
-	ingestRunID      string
-	ingestBatchSize  int
-)
+			if modelName == "" {
+				return resultFromError(coreerr.E("cmd.runIngest", "--model is required", nil))
+			}
 
-func init() {
-	ingestCmd.Flags().StringVar(&ingestContent, "content", "", "Content scores JSONL file")
-	ingestCmd.Flags().StringVar(&ingestCapability, "capability", "", "Capability scores JSONL file")
-	ingestCmd.Flags().StringVar(&ingestTraining, "training-log", "", "MLX LoRA training log file")
-	ingestCmd.Flags().StringVar(&ingestRunID, "run-id", "", "Run ID tag (defaults to model name)")
-	ingestCmd.Flags().IntVar(&ingestBatchSize, "batch-size", 100, "Lines per InfluxDB write batch")
-}
+			content := opts.String("content")
+			capability := opts.String("capability")
+			trainingLog := opts.String("training-log")
+			if content == "" && capability == "" && trainingLog == "" {
+				return resultFromError(coreerr.E("cmd.runIngest", "at least one of --content, --capability, or --training-log is required", nil))
+			}
 
-func runIngest(cmd *cli.Command, args []string) error {
-	if modelName == "" {
-		return coreerr.E("cmd.runIngest", "--model is required", nil)
-	}
-	if ingestContent == "" && ingestCapability == "" && ingestTraining == "" {
-		return coreerr.E("cmd.runIngest", "at least one of --content, --capability, or --training-log is required", nil)
-	}
+			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	influx := ml.NewInfluxClient(influxURL, influxDB)
+			cfg := ml.IngestConfig{
+				ContentFile:    content,
+				CapabilityFile: capability,
+				TrainingLog:    trainingLog,
+				Model:          modelName,
+				RunID:          opts.String("run-id"),
+				BatchSize:      optInt(opts, "batch-size", 100),
+			}
 
-	cfg := ml.IngestConfig{
-		ContentFile:    ingestContent,
-		CapabilityFile: ingestCapability,
-		TrainingLog:    ingestTraining,
-		Model:          modelName,
-		RunID:          ingestRunID,
-		BatchSize:      ingestBatchSize,
-	}
-
-<<<<<<< HEAD
-	return ml.Ingest(influx, cfg, nil)
-=======
-	return ml.Ingest(influx, cfg, cmd.OutOrStdout())
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
+			return resultFromError(ml.Ingest(influx, cfg, nil))
+		},
+	})
 }

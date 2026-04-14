@@ -5,10 +5,7 @@ import (
 	"iter"
 	"regexp"
 	"slices"
-<<<<<<< HEAD
-=======
 	"strconv"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"time"
 
 	"dappco.re/go/core"
@@ -18,31 +15,17 @@ import (
 
 // RunAgentLoop is the main scoring agent loop.
 func RunAgentLoop(cfg *AgentConfig) {
-<<<<<<< HEAD
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))
 	core.Print(nil, "ROCm Scoring Agent — Go Edition")
 	core.Print(nil, "M3: %s@%s", cfg.M3User, cfg.M3Host)
 	core.Print(nil, "Inference API: %s", cfg.APIURL)
 	core.Print(nil, "Judge API: %s (%s)", cfg.JudgeURL, cfg.JudgeModel)
 	core.Print(nil, "InfluxDB: %s/%s", cfg.InfluxURL, cfg.InfluxDB)
-=======
-	log.Println(repeatString("=", LogSeparatorWidth))
-	log.Println("ROCm Scoring Agent — Go Edition")
-	log.Printf("M3: %s@%s", cfg.M3User, cfg.M3Host)
-	log.Printf("Inference API: %s", cfg.APIURL)
-	log.Printf("Judge API: %s (%s)", cfg.JudgeURL, cfg.JudgeModel)
-	log.Printf("InfluxDB: %s/%s", cfg.InfluxURL, cfg.InfluxDB)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if cfg.DBPath != "" {
 		core.Print(nil, "DuckDB: %s", cfg.DBPath)
 	}
-<<<<<<< HEAD
 	core.Print(nil, "Poll interval: %ds", cfg.PollInterval)
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))
-=======
-	log.Printf("Poll interval: %ds", cfg.PollInterval)
-	log.Println(repeatString("=", LogSeparatorWidth))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	influx := NewInfluxClient(cfg.InfluxURL, cfg.InfluxDB)
 	coreio.Local.EnsureDir(cfg.WorkDir)
@@ -140,21 +123,13 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		iterRe := regexp.MustCompile(`(\d+)`)
 
 		var adapterDirs []string
-<<<<<<< HEAD
-		for dirpath := range splitSeq(core.Trim(out), "\n") {
-=======
 		for _, dirpath := range core.Split(core.Trim(out), "\n") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			if dirpath == "" {
 				continue
 			}
 			subOut, subErr := t.Run(ctx, core.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
 			if subErr == nil && core.Trim(subOut) != "" {
-<<<<<<< HEAD
-				for sub := range splitSeq(core.Trim(subOut), "\n") {
-=======
 				for _, sub := range core.Split(core.Trim(subOut), "\n") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 					if sub != "" {
 						adapterDirs = append(adapterDirs, sub)
 					}
@@ -165,22 +140,14 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 
 		for _, dirpath := range adapterDirs {
-<<<<<<< HEAD
-			dirname := core.TrimPrefix(dirpath, cfg.M3AdapterBase+"/")
-=======
 			dirname := core.TrimPrefix(dirpath, core.Concat(cfg.M3AdapterBase, "/"))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 			filesOut, err := t.Run(ctx, core.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
 			if err != nil {
 				continue
 			}
 
-<<<<<<< HEAD
-			for fp := range splitSeq(core.Trim(filesOut), "\n") {
-=======
 			for _, fp := range core.Split(core.Trim(filesOut), "\n") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				if fp == "" {
 					continue
 				}
@@ -190,12 +157,7 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 				if len(match) < 2 {
 					continue
 				}
-<<<<<<< HEAD
-				iteration := 0
-				sscanf(match[1], "%d", &iteration)
-=======
 				iteration, _ := strconv.Atoi(match[1])
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 				modelTag, labelPrefix, stem := AdapterMeta(dirname)
 				label := core.Sprintf("%s @%s", labelPrefix, match[1])
@@ -243,14 +205,10 @@ func FindUnscored(checkpoints []Checkpoint, scored map[[2]string]bool) []Checkpo
 	}
 	slices.SortFunc(unscored, func(a, b Checkpoint) int {
 		if a.Dirname != b.Dirname {
-<<<<<<< HEAD
-			return compareStr(a.Dirname, b.Dirname)
-=======
 			if a.Dirname < b.Dirname {
 				return -1
 			}
 			return 1
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 		return a.Iteration - b.Iteration
 	})
@@ -278,15 +236,9 @@ func isMLXNative(modelTag string) bool {
 
 // ProcessOne fetches, converts, scores, and pushes one checkpoint.
 func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
-<<<<<<< HEAD
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))
 	core.Print(nil, "Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))
-=======
-	log.Println(repeatString("=", LogSeparatorWidth))
-	log.Printf("Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
-	log.Println(repeatString("=", LogSeparatorWidth))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	if isMLXNative(cp.ModelTag) {
 		return processMLXNative(cfg, influx, cp)

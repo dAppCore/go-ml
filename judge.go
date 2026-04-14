@@ -1,12 +1,7 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"regexp"
 
 	"dappco.re/go/core"
@@ -24,9 +19,6 @@ func extractJSON(text string) string {
 	}
 
 	// Find the first { and its matching }.
-<<<<<<< HEAD
-	start := indexByte(text, '{')
-=======
 	start := -1
 	for i := 0; i < len(text); i++ {
 		if text[i] == '{' {
@@ -34,7 +26,6 @@ func extractJSON(text string) string {
 			break
 		}
 	}
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	if start == -1 {
 		return ""
 	}
@@ -105,13 +96,8 @@ func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) (*Se
 // ScoreContent scores a response on content/sovereignty dimensions using
 // the content judge prompt with CCP and truth markers.
 func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response string) (*ContentScores, error) {
-<<<<<<< HEAD
-	ccpMarkers := joinStrings(probe.CCPMarkers, ", ")
-	truthMarkers := joinStrings(probe.TruthMarkers, ", ")
-=======
 	ccpMarkers := core.Join(", ", probe.CCPMarkers...)
 	truthMarkers := core.Join(", ", probe.TruthMarkers...)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	formatted := core.Sprintf(contentPrompt, probe.Prompt, probe.GroundTruth, ccpMarkers, truthMarkers, response)
 

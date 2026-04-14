@@ -4,9 +4,8 @@ import (
 	"database/sql"
 
 	"dappco.re/go/core"
-	_ "github.com/marcboeker/go-duckdb"
-
 	coreerr "dappco.re/go/core/log"
+	_ "github.com/marcboeker/go-duckdb"
 )
 
 // DB wraps a DuckDB connection.

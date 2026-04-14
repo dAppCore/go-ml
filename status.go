@@ -2,9 +2,10 @@ package ml
 
 import (
 	"cmp"
-	"dappco.re/go/core"
 	"io"
 	"slices"
+
+	"dappco.re/go/core"
 )
 
 // trainingRow holds deduplicated training status + loss for a single model.

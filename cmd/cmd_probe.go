@@ -1,84 +1,60 @@
 package cmd
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
-var (
-	probeOutput string
-)
+// addProbeCommand registers `ml probe` — runs 23 capability probes and 6
+// content probes against an OpenAI-compatible API.
+//
+//	core ml probe --api-url http://localhost:8090 --model gemma3:27b --output probes.json
+func addProbeCommand(c *core.Core) {
+	c.Command("ml/probe", core.Command{
+		Description: "Run capability and content probes against a model",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var probeCmd = &cli.Command{
-	Use:   "probe",
-	Short: "Run capability and content probes against a model",
-	Long:  "Runs 23 capability probes and 6 content probes against an OpenAI-compatible API.",
-	RunE:  runProbe,
-}
+			if apiURL == "" {
+				return resultFromError(coreerr.E("cmd.runProbe", "--api-url is required", nil))
+			}
 
-func init() {
-	probeCmd.Flags().StringVar(&probeOutput, "output", "", "Output JSON file for probe results")
-}
+			model := modelName
+			if model == "" {
+				model = "default"
+			}
+			output := opts.String("output")
 
-func runProbe(cmd *cli.Command, args []string) error {
-	if apiURL == "" {
-		return coreerr.E("cmd.runProbe", "--api-url is required", nil)
-	}
+			ctx := context.Background()
+			backend := ml.NewHTTPBackend(apiURL, model)
 
-	model := modelName
-	if model == "" {
-		model = "default"
-	}
+			core.Print(nil, "Running %d capability probes against %s...", len(ml.CapabilityProbes), apiURL)
+			results := ml.RunCapabilityProbes(ctx, backend)
 
-	ctx := context.Background()
-	backend := ml.NewHTTPBackend(apiURL, model)
+			core.Print(nil, "")
+			core.Print(nil, "Results: %.1f%% (%d/%d)", results.Accuracy, results.Correct, results.Total)
 
-<<<<<<< HEAD
-	core.Print(nil,("Running %d capability probes against %s...\n", len(ml.CapabilityProbes), apiURL)
-	results := ml.RunCapabilityProbes(ctx, backend)
+			for cat, data := range results.ByCategory {
+				catAcc := 0.0
+				if data.Total > 0 {
+					catAcc = float64(data.Correct) / float64(data.Total) * 100
+				}
+				core.Print(nil, "  %-20s %d/%d (%.0f%%)", cat, data.Correct, data.Total, catAcc)
+			}
 
-	core.Print(nil,("\nResults: %.1f%% (%d/%d)\n", results.Accuracy, results.Correct, results.Total)
-=======
-	core.Print(cmd.OutOrStdout(), "Running %d capability probes against %s...", len(ml.CapabilityProbes), apiURL)
-	results := ml.RunCapabilityProbes(ctx, backend)
+			if output != "" {
+				if err := coreio.Local.Write(output, core.JSONMarshalString(results)); err != nil {
+					return resultFromError(coreerr.E("cmd.runProbe", "write output", err))
+				}
+				core.Print(nil, "")
+				core.Print(nil, "Results written to %s", output)
+			}
 
-	core.Print(cmd.OutOrStdout(), "")
-	core.Print(cmd.OutOrStdout(), "Results: %.1f%% (%d/%d)", results.Accuracy, results.Correct, results.Total)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-
-	for cat, data := range results.ByCategory {
-		catAcc := 0.0
-		if data.Total > 0 {
-			catAcc = float64(data.Correct) / float64(data.Total) * 100
-		}
-<<<<<<< HEAD
-		core.Print(nil,("  %-20s %d/%d (%.0f%%)\n", cat, data.Correct, data.Total, catAcc)
-=======
-		core.Print(cmd.OutOrStdout(), "  %-20s %d/%d (%.0f%%)", cat, data.Correct, data.Total, catAcc)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-	}
-
-	if probeOutput != "" {
-		if err := coreio.Local.Write(probeOutput, core.JSONMarshalString(results)); err != nil {
-			return coreerr.E("cmd.runProbe", "write output", err)
-		}
-<<<<<<< HEAD
-		core.Print(nil,("\nResults written to %s\n", probeOutput)
-=======
-		core.Print(cmd.OutOrStdout(), "")
-		core.Print(cmd.OutOrStdout(), "Results written to %s", probeOutput)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
-	}
-
-	return nil
+			return core.Result{OK: true}
+		},
+	})
 }

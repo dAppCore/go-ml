@@ -2,34 +2,32 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
 	"dappco.re/go/core/store"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
-var coverageCmd = &cli.Command{
-	Use:   "coverage",
-	Short: "Analyze seed coverage by region and domain",
-	Long:  "Queries seeds by region and domain, renders ASCII bar charts, and highlights underrepresented areas.",
-	RunE:  runCoverage,
-}
+// addCoverageCommand registers `ml coverage` — queries seeds by region and
+// domain, renders ASCII bar charts, and highlights underrepresented areas.
+//
+//	core ml coverage --db /Volumes/Data/lem/lem.duckdb
+func addCoverageCommand(c *core.Core) {
+	c.Command("ml/coverage", core.Command{
+		Description: "Analyze seed coverage by region and domain",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-func runCoverage(cmd *cli.Command, args []string) error {
-	path := dbPath
-	if path == "" {
-		path = core.Env("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runCoverage", "--db or LEM_DB required", nil)
-	}
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runCoverage", "--db or LEM_DB required", nil))
+			}
 
-	db, err := store.OpenDuckDB(path)
-	if err != nil {
-		return coreerr.E("cmd.runCoverage", "open db", err)
-	}
-	defer db.Close()
+			db, err := store.OpenDuckDB(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runCoverage", "open db", err))
+			}
+			defer db.Close()
 
-	return ml.PrintCoverage(db, cmd.OutOrStdout())
+			return resultFromError(ml.PrintCoverage(db, nil))
+		},
+	})
 }

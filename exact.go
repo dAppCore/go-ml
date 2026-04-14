@@ -1,15 +1,11 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"math"
 	"regexp"
 	"strconv"
-<<<<<<< HEAD
-=======
 
 	"dappco.re/go/core"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Pre-compiled regex patterns for GSM8K answer extraction.
@@ -57,13 +53,8 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	}
 
 	// Clean commas and parse both numbers.
-<<<<<<< HEAD
-	cleanExtracted := replaceAll(extracted, ",", "")
-	cleanExpected := replaceAll(correctAnswer, ",", "")
-=======
 	cleanExtracted := core.Replace(extracted, ",", "")
 	cleanExpected := core.Replace(correctAnswer, ",", "")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	extVal, errExt := strconv.ParseFloat(cleanExtracted, 64)
 	expVal, errExp := strconv.ParseFloat(cleanExpected, 64)

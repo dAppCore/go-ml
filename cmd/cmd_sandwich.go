@@ -1,24 +1,19 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"runtime"
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/cli/pkg/cli"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
 var sandwichCmd = &cli.Command{

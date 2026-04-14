@@ -1,27 +1,20 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-<<<<<<< HEAD
-	"dappco.re/go/core"
-	"context"
-	"encoding/json"
-=======
 	"bufio"
 	"context"
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"runtime"
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/cli/pkg/cli"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
-
 	"gopkg.in/yaml.v3"
 )
 
@@ -139,11 +132,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 		if lesson.Sandwich.KB != "" {
 			kbPath := lesson.Sandwich.KB
 			if !core.PathIsAbs(kbPath) {
-<<<<<<< HEAD
-				kbPath = core.Path(baseDir, kbPath)
-=======
 				kbPath = core.JoinPath(baseDir, kbPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 			d, err := coreio.Local.Read(kbPath)
 			if err != nil {
@@ -154,11 +143,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 		if lesson.Sandwich.Kernel != "" {
 			kernelPath := lesson.Sandwich.Kernel
 			if !core.PathIsAbs(kernelPath) {
-<<<<<<< HEAD
-				kernelPath = core.Path(baseDir, kernelPath)
-=======
 				kernelPath = core.JoinPath(baseDir, kernelPath)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			}
 			d, err := coreio.Local.Read(kernelPath)
 			if err != nil {
@@ -306,18 +291,6 @@ func runLesson(cmd *cli.Command, args []string) error {
 
 		// Interactive mode: show response and wait for confirmation
 		if lessonInteract {
-<<<<<<< HEAD
-			core.Print(nil,("\n--- %s (%s) ---\n", prompt.ID, prompt.Category)
-			core.Print(nil,("Prompt: %s\n\n", prompt.Prompt)
-			if prompt.Signal != "" {
-				core.Print(nil,("Signal: %s\n\n", prompt.Signal)
-			}
-			core.Print(nil,("Response:\n%s\n", response)
-			core.Print(nil,("\nPress Enter to continue (or 'q' to stop)... ")
-			var input string
-			scanln(&input)
-			if core.Trim(input) == "q" {
-=======
 			core.Print(out, "")
 			core.Print(out, "--- %s (%s) ---", prompt.ID, prompt.Category)
 			core.Print(out, "Prompt: %s", prompt.Prompt)
@@ -335,7 +308,6 @@ func runLesson(cmd *cli.Command, args []string) error {
 				break
 			}
 			if core.Trim(reviewScanner.Text()) == "q" {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				break
 			}
 		}

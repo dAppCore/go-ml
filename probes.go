@@ -1,14 +1,10 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"regexp"
 	"slices"
-<<<<<<< HEAD
-=======
 
 	"dappco.re/go/core"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Probe defines a binary pass/fail capability check.
@@ -34,11 +30,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "What is 347 × 29? Show your work and give the final answer.",
 		Answer:   "10063",
 		Check: func(r string) bool {
-<<<<<<< HEAD
-			clean := replaceAll(replaceAll(r, ",", ""), " ", "")
-=======
 			clean := core.Replace(core.Replace(r, ",", ""), " ", "")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			return core.Contains(clean, "10063")
 		},
 	},
@@ -122,11 +114,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "If it rains, the ground gets wet. The ground is wet. Can we conclude it rained? Why or why not?",
 		Answer:   "No - affirming the consequent fallacy",
 		Check: func(r string) bool {
-<<<<<<< HEAD
-			lower := toLower(r)
-=======
 			lower := core.Lower(r)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			return regexp.MustCompile(`\bno\b|\bcannot\b|\bcan't\b|not necessarily|fallac|other reason|doesn't mean`).MatchString(lower)
 		},
 	},
@@ -136,11 +124,7 @@ var CapabilityProbes = []Probe{
 		Prompt:   "In a room of 30 people, what is the minimum number of people that must share a birth month?",
 		Answer:   "3",
 		Check: func(r string) bool {
-<<<<<<< HEAD
-			lower := toLower(r)
-=======
 			lower := core.Lower(r)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			has3 := regexp.MustCompile(`\b3\b|three`).MatchString(lower)
 			// Avoid matching "30" in the first 50 chars (restating the problem)
 			prefix := lower

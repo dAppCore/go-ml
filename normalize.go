@@ -1,10 +1,6 @@
 package ml
 
 import (
-<<<<<<< HEAD
-	"dappco.re/go/core"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 
 	"dappco.re/go/core"
@@ -32,11 +28,7 @@ func NormalizeSeeds(db *store.DuckDB, cfg NormalizeConfig, w io.Writer) error {
 	if err := db.Conn().QueryRow("SELECT count(*) FROM seeds").Scan(&seedCount); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "no seeds table (run import-all first)", err)
 	}
-<<<<<<< HEAD
-	fprintf(w, "Seeds table: %d rows\n", seedCount)
-=======
 	core.Print(w, "Seeds table: %d rows", seedCount)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	if seedCount == 0 {
 		return coreerr.E("ml.NormalizeSeeds", "seeds table is empty, nothing to normalize", nil)
@@ -84,17 +76,10 @@ func NormalizeSeeds(db *store.DuckDB, cfg NormalizeConfig, w io.Writer) error {
 	if err := db.Conn().QueryRow("SELECT count(*) FROM expansion_prompts").Scan(&epCount); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "count expansion_prompts", err)
 	}
-<<<<<<< HEAD
-	fprintf(w, "Expansion prompts created: %d (min length %d, deduped, excluding existing)\n", epCount, cfg.MinLength)
-
-	if epCount == 0 {
-		fprintf(w, "%s\n", "No new expansion prompts to process.")
-=======
 	core.Print(w, "Expansion prompts created: %d (min length %d, deduped, excluding existing)", epCount, cfg.MinLength)
 
 	if epCount == 0 {
 		core.Print(w, "No new expansion prompts to process.")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return nil
 	}
 
@@ -114,11 +99,7 @@ func NormalizeSeeds(db *store.DuckDB, cfg NormalizeConfig, w io.Writer) error {
 	if _, err := db.Conn().Exec(prioritySQL); err != nil {
 		return coreerr.E("ml.NormalizeSeeds", "assign priority", err)
 	}
-<<<<<<< HEAD
-	fprintf(w, "%s\n", "Priority assigned (underrepresented domains ranked higher).")
-=======
 	core.Print(w, "Priority assigned (underrepresented domains ranked higher).")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	// 4. Region distribution summary.
 	core.Print(w, "")
@@ -165,17 +146,10 @@ func NormalizeSeeds(db *store.DuckDB, cfg NormalizeConfig, w io.Writer) error {
 	}
 
 	for _, line := range lines {
-<<<<<<< HEAD
-		fprintf(w, "%s\n", line)
-	}
-	fprintf(w, "  %-10s %6d\n", repeatStr("-", 10), totalFromRegions)
-	fprintf(w, "  %-10s %6d\n", "total", totalFromRegions)
-=======
 		core.Print(w, "%s", line)
 	}
 	core.Print(w, "  %-10s %6d", repeatString("-", 10), totalFromRegions)
 	core.Print(w, "  %-10s %6d", "total", totalFromRegions)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return nil
 }

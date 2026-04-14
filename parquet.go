@@ -2,11 +2,10 @@ package ml
 
 import (
 	"bufio"
-	"dappco.re/go/core"
 
+	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
-
 	"github.com/parquet-go/parquet-go"
 )
 

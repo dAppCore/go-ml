@@ -1,15 +1,10 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
 	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"log/slog"
 	"maps"
 	"runtime"
@@ -17,10 +12,10 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/cli/pkg/cli"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 	"dappco.re/go/core/mlx"
 )
 
@@ -430,23 +425,6 @@ func runAB(cmd *cli.Command, args []string) error {
 }
 
 func printABSummary(s abSummary, condNames []string) {
-<<<<<<< HEAD
-	core.Println()
-	core.Println("=== A/B Test Results ===")
-	core.Print(nil,("Model:   %s\n", s.Model)
-	core.Print(nil,("Probes:  %d\n", s.TotalProbes)
-	core.Println()
-
-	// Per-probe table
-	header := core.Sprintf("  %-30s", "PROBE")
-	divider := core.Sprintf("  %-30s", repeatStr("-", 30))
-	for _, c := range condNames {
-		header += core.Sprintf("  %8s", c)
-		divider += core.Sprintf("  %8s", "--------")
-	}
-	core.Println(header)
-	core.Println(divider)
-=======
 	core.Print(nil, "")
 	core.Print(nil, "=== A/B Test Results ===")
 	core.Print(nil, "Model:   %s", s.Model)
@@ -462,7 +440,6 @@ func printABSummary(s abSummary, condNames []string) {
 	}
 	core.Print(nil, "%s", header)
 	core.Print(nil, "%s", divider)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	for _, r := range s.Results {
 		line := core.Sprintf("  %-30s", r.ID)
@@ -470,19 +447,11 @@ func printABSummary(s abSummary, condNames []string) {
 		for _, c := range condNames {
 			cs, ok := r.Conditions[c]
 			if !ok {
-<<<<<<< HEAD
-				line += core.Sprintf("  %8s", "n/a")
-				continue
-			}
-			if c == "baseline" {
-				line += core.Sprintf("  %8.1f", cs.LEKScore)
-=======
 				line = core.Concat(line, core.Sprintf("  %8s", "n/a"))
 				continue
 			}
 			if c == "baseline" {
 				line = core.Concat(line, core.Sprintf("  %8.1f", cs.LEKScore))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			} else {
 				delta := cs.LEKScore - baseScore
 				indicator := " "
@@ -491,24 +460,6 @@ func printABSummary(s abSummary, condNames []string) {
 				} else if delta < -0.5 {
 					indicator = "-"
 				}
-<<<<<<< HEAD
-				line += core.Sprintf("  %7.1f%s", cs.LEKScore, indicator)
-			}
-		}
-		core.Println(line)
-	}
-	core.Println()
-
-	// Category averages
-	header = core.Sprintf("  %-30s", "CATEGORY")
-	divider = core.Sprintf("  %-30s", repeatStr("-", 30))
-	for _, c := range condNames {
-		header += core.Sprintf("  %8s", c)
-		divider += core.Sprintf("  %8s", "--------")
-	}
-	core.Println(header)
-	core.Println(divider)
-=======
 				line = core.Concat(line, core.Sprintf("  %7.1f%s", cs.LEKScore, indicator))
 			}
 		}
@@ -525,7 +476,6 @@ func printABSummary(s abSummary, condNames []string) {
 	}
 	core.Print(nil, "%s", header)
 	core.Print(nil, "%s", divider)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	cats := slices.Sorted(maps.Keys(s.Categories))
 
@@ -533,31 +483,6 @@ func printABSummary(s abSummary, condNames []string) {
 		line := core.Sprintf("  %-30s", cat)
 		for _, c := range condNames {
 			if val, ok := s.Categories[cat][c]; ok {
-<<<<<<< HEAD
-				line += core.Sprintf("  %8.1f", val)
-			} else {
-				line += core.Sprintf("  %8s", "n/a")
-			}
-		}
-		core.Println(line)
-	}
-	core.Println()
-
-	// Condition summaries
-	core.Println("  CONDITION SUMMARY:")
-	for _, cs := range s.Conditions {
-		if cs.Name == "baseline" {
-			core.Print(nil,("    %-12s  avg=%.2f\n", cs.Name, cs.AvgLEK)
-		} else {
-			core.Print(nil,("    %-12s  avg=%.2f  delta=%+.2f  improved=%d  regressed=%d  unchanged=%d\n",
-				cs.Name, cs.AvgLEK, cs.DeltaVsBase, cs.Improved, cs.Regressed, cs.Unchanged)
-		}
-	}
-	core.Println()
-
-	core.Print(nil,("Duration: %s\n", s.Duration)
-	core.Print(nil,("Output:   %s\n", abOutput)
-=======
 				line = core.Concat(line, core.Sprintf("  %8.1f", val))
 			} else {
 				line = core.Concat(line, core.Sprintf("  %8s", "n/a"))
@@ -581,7 +506,6 @@ func printABSummary(s abSummary, condNames []string) {
 
 	core.Print(nil, "Duration: %s", s.Duration)
 	core.Print(nil, "Output:   %s", abOutput)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 }
 
 func loadABProbes() ([]abProbe, error) {
@@ -611,11 +535,7 @@ func loadABProbes() ([]abProbe, error) {
 		for i, s := range seeds {
 			probes[i] = abProbe{
 				ID:       s.ID,
-<<<<<<< HEAD
-				Category: toLower(s.Domain),
-=======
 				Category: core.Lower(s.Domain),
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 				Prompt:   s.Prompt,
 			}
 		}
@@ -632,12 +552,6 @@ func loadABKernels() ([]abKernelDef, error) {
 
 	var defs []abKernelDef
 	for _, spec := range abKernels {
-<<<<<<< HEAD
-		name, path, ok := cutStr(spec, "=")
-		if !ok {
-			// No name given, derive from filename
-			path = spec
-=======
 		parts := core.SplitN(spec, "=", 2)
 		name := ""
 		path := spec
@@ -646,7 +560,6 @@ func loadABKernels() ([]abKernelDef, error) {
 			path = parts[1]
 		} else {
 			// No name given, derive from filename
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			name = core.TrimSuffix(core.PathBase(path), core.PathExt(path))
 		}
 
@@ -671,11 +584,7 @@ func category(p abProbe) string {
 		return p.Category
 	}
 	if p.Domain != "" {
-<<<<<<< HEAD
-		return toLower(p.Domain)
-=======
 		return core.Lower(p.Domain)
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 	return "uncategorised"
 }

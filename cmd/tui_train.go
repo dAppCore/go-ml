@@ -1,23 +1,14 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
-<<<<<<< HEAD
-	"dappco.re/go/core"
 	"math"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"dappco.re/go/core"
 	"dappco.re/go/core/cli/pkg/cli"
-=======
-	"math"
-	"time"
-
-	"dappco.re/go/core"
-	"forge.lthn.ai/core/cli/pkg/cli"
 	tea "github.com/charmbracelet/bubbletea"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 )
 
 // Compile-time checks.
@@ -144,13 +135,8 @@ func (m *trainContentModel) View(width, height int) string {
 	if filled > barWidth {
 		filled = barWidth
 	}
-<<<<<<< HEAD
-	bar := repeatStr("█", filled) + repeatStr("░", barWidth-filled)
-	b.WriteString(core.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
-=======
 	bar := repeatString("█", filled) + repeatString("░", barWidth-filled)
 	_, _ = b.WriteString(core.Sprintf(" [%s] %3.0f%%\n\n", bar, pct*100))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	// --- Loss chart ---
 	chartHeight := height - 10
@@ -166,17 +152,6 @@ func (m *trainContentModel) View(width, height int) string {
 	_ = b.WriteByte('\n')
 
 	// --- Metrics table ---
-<<<<<<< HEAD
-	b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
-	b.WriteString(core.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
-	if t.ValLoss > 0 {
-		b.WriteString(core.Sprintf(" val loss:   %.4f  (ppl %.2f)\n", t.ValLoss, math.Exp(math.Min(t.ValLoss, 20))))
-	}
-	b.WriteString(core.Sprintf(" lr:         %.2e\n", t.LR))
-	b.WriteString(core.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
-	b.WriteString(core.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
-	b.WriteString(core.Sprintf(" tokens:     %d\n", t.Tokens))
-=======
 	_, _ = b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
 	_, _ = b.WriteString(core.Sprintf(" train loss: %.4f  (ppl %.2f)\n", t.Loss, math.Exp(math.Min(t.Loss, 20))))
 	if t.ValLoss > 0 {
@@ -186,17 +161,12 @@ func (m *trainContentModel) View(width, height int) string {
 	_, _ = b.WriteString(core.Sprintf(" throughput: %.0f tok/s\n", t.TokensPerS))
 	_, _ = b.WriteString(core.Sprintf(" peak mem:   %.1f GB\n", t.PeakMemGB))
 	_, _ = b.WriteString(core.Sprintf(" tokens:     %d\n", t.Tokens))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	if t.Done {
 		_, _ = b.WriteString("\n training complete!")
 	}
 	if t.Err != nil {
-<<<<<<< HEAD
-		b.WriteString(core.Sprintf("\n error: %v", t.Err))
-=======
 		_, _ = b.WriteString(core.Sprintf("\n error: %v", t.Err))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 
 	return b.String()
@@ -242,22 +212,14 @@ func renderLossChart(train, val []float64, width, height int) string {
 	b := core.NewBuilder()
 
 	// Y-axis labels + chart
-<<<<<<< HEAD
-	b.WriteString(core.Sprintf(" %6.3f ┐\n", maxV))
-=======
 	_, _ = b.WriteString(core.Sprintf(" %6.3f ┐\n", maxV))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	for row := height - 1; row >= 0; row-- {
 		rowMin := minV + span*float64(row)/float64(height)
 		rowMax := minV + span*float64(row+1)/float64(height)
 
 		if row == height/2 {
-<<<<<<< HEAD
-			b.WriteString(core.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
-=======
 			_, _ = b.WriteString(core.Sprintf(" %6.3f │", (rowMin+rowMax)/2))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		} else {
 			_, _ = b.WriteString("        │")
 		}
@@ -278,11 +240,7 @@ func renderLossChart(train, val []float64, width, height int) string {
 		_ = b.WriteByte('\n')
 	}
 
-<<<<<<< HEAD
-	b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatStr("─", len(points))))
-=======
 	_, _ = b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatString("─", len(points))))
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 
 	return b.String()
 }

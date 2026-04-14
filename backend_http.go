@@ -3,19 +3,10 @@ package ml
 import (
 	"bytes"
 	"context"
-<<<<<<< HEAD
-	"encoding/json"
-=======
-	"io"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"net/http"
 	"time"
 
 	"dappco.re/go/core"
-<<<<<<< HEAD
-
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	coreerr "dappco.re/go/core/log"
 )
 

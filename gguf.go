@@ -1,13 +1,8 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"cmp"
 	"encoding/binary"
-<<<<<<< HEAD
-	"encoding/json"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"io"
 	"math"
 	"regexp"

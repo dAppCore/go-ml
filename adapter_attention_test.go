@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"dappco.re/go/core/inference"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

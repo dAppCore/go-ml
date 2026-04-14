@@ -1,12 +1,7 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"bufio"
-<<<<<<< HEAD
-	"encoding/json"
-=======
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"math/rand"
 
 	"dappco.re/go/core"

@@ -1,43 +1,24 @@
 // Package cmd provides ML inference, scoring, and training pipeline commands.
+//
+// Commands are registered via AddMLCommands against a *core.Core instance,
+// producing a tree under the "ml" path. The go-cli runtime mounts them.
 package cmd
 
 import (
+	"strconv"
+
+	"dappco.re/go/core"
 	"dappco.re/go/core/cli/pkg/cli"
+	"dappco.re/go/core/ml"
 )
 
-var mlCmd = cli.NewGroup("ml", "ML inference, scoring, and training pipeline",
-	"Commands for ML model scoring, probe evaluation, data export, and format conversion.")
-
-// AddMLCommands registers the 'ml' command and all subcommands.
-func AddMLCommands(root *cli.Command) {
-	initFlags()
-	mlCmd.AddCommand(scoreCmd)
-	mlCmd.AddCommand(probeCmd)
-	mlCmd.AddCommand(exportCmd)
-	mlCmd.AddCommand(expandCmd)
-	mlCmd.AddCommand(statusCmd)
-	mlCmd.AddCommand(ggufCmd)
-	mlCmd.AddCommand(convertCmd)
-	mlCmd.AddCommand(agentCmd)
-	mlCmd.AddCommand(workerCmd)
-	mlCmd.AddCommand(serveCmd)
-	mlCmd.AddCommand(inventoryCmd)
-	mlCmd.AddCommand(queryCmd)
-	mlCmd.AddCommand(metricsCmd)
-	mlCmd.AddCommand(ingestCmd)
-	mlCmd.AddCommand(normalizeCmd)
-	mlCmd.AddCommand(seedInfluxCmd)
-	mlCmd.AddCommand(consolidateCmd)
-	mlCmd.AddCommand(importCmd)
-	mlCmd.AddCommand(approveCmd)
-	mlCmd.AddCommand(publishCmd)
-	mlCmd.AddCommand(coverageCmd)
-	mlCmd.AddCommand(liveCmd)
-	mlCmd.AddCommand(expandStatusCmd)
-	root.AddCommand(mlCmd)
+func init() {
+	cli.RegisterCommands(AddMLCommands)
 }
 
-// Shared persistent flags.
+// Shared persistent flags — populated lazily by each subcommand's Action
+// via opts.String("..."). Kept as package-level so helper code can read
+// them after parsing.
 var (
 	apiURL     string
 	judgeURL   string
@@ -48,12 +29,103 @@ var (
 	modelName  string
 )
 
-func initFlags() {
-	cli.PersistentStringFlag(mlCmd, &apiURL, "api-url", "", "http://10.69.69.108:8090", "OpenAI-compatible API URL")
-	cli.PersistentStringFlag(mlCmd, &judgeURL, "judge-url", "", "http://10.69.69.108:11434", "Judge model API URL (Ollama)")
-	cli.PersistentStringFlag(mlCmd, &judgeModel, "judge-model", "", "gemma3:27b", "Judge model name")
-	cli.PersistentStringFlag(mlCmd, &influxURL, "influx", "", "", "InfluxDB URL (default http://10.69.69.165:8181)")
-	cli.PersistentStringFlag(mlCmd, &influxDB, "influx-db", "", "", "InfluxDB database (default training)")
-	cli.PersistentStringFlag(mlCmd, &dbPath, "db", "", "", "DuckDB database path (or set LEM_DB env)")
-	cli.PersistentStringFlag(mlCmd, &modelName, "model", "", "", "Model name for API")
+// AddMLCommands registers the 'ml' parent command and all subcommands on
+// the given Core instance.
+//
+//	cli.RegisterCommands(cmd.AddMLCommands)
+func AddMLCommands(c *core.Core) {
+	c.Command("ml", core.Command{
+		Description: "ML inference, scoring, and training pipeline",
+	})
+
+	addApproveCommand(c)
+	addAgentCommand(c)
+	addConsolidateCommand(c)
+	addConvertCommand(c)
+	addCoverageCommand(c)
+	addExpandCommand(c)
+	addExpandStatusCommand(c)
+	addExportCommand(c)
+	addGGUFCommand(c)
+	addImportCommand(c)
+	addIngestCommand(c)
+	addInventoryCommand(c)
+	addLiveCommand(c)
+	addMetricsCommand(c)
+	addNormalizeCommand(c)
+	addProbeCommand(c)
+	addPublishCommand(c)
+	addQueryCommand(c)
+	addScoreCommand(c)
+	addSeedInfluxCommand(c)
+	addServeCommand(c)
+	addStatusCommand(c)
+	addWorkerCommand(c)
+}
+
+// readPersistentFlags populates the shared persistent-flag variables from
+// opts — every subcommand invokes it to give the package state its values
+// before running the action body. Persistent flags default to env-driven
+// values when unset.
+func readPersistentFlags(opts core.Options) {
+	apiURL = optStringOr(opts, "api-url", ml.EnvOr("ML_API_URL", "http://10.69.69.108:8090"))
+	judgeURL = optStringOr(opts, "judge-url", ml.EnvOr("ML_JUDGE_URL", "http://10.69.69.108:11434"))
+	judgeModel = optStringOr(opts, "judge-model", ml.EnvOr("ML_JUDGE_MODEL", "gemma3:27b"))
+	influxURL = optStringOr(opts, "influx", ml.EnvOr("ML_INFLUX_URL", ""))
+	influxDB = optStringOr(opts, "influx-db", ml.EnvOr("ML_INFLUX_DB", ""))
+	dbPath = optStringOr(opts, "db", ml.EnvOr("LEM_DB", ""))
+	modelName = optStringOr(opts, "model", ml.EnvOr("ML_MODEL", ""))
+}
+
+// optStringOr returns opts[key] if set, else fallback.
+//
+//	name := optStringOr(opts, "model", "gemma3:27b")
+func optStringOr(opts core.Options, key, fallback string) string {
+	if v := opts.String(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// optBool returns opts[key] as bool.
+//
+//	verbose := optBool(opts, "verbose")
+func optBool(opts core.Options, key string) bool {
+	return opts.Bool(key)
+}
+
+// optInt returns opts[key] as int, falling back to fallback when zero/missing.
+//
+//	port := optInt(opts, "port", 8080)
+func optInt(opts core.Options, key string, fallback int) int {
+	if v := opts.Int(key); v != 0 {
+		return v
+	}
+	return fallback
+}
+
+// optFloat returns opts[key] as float64 via string parse, falling back when missing.
+//
+//	threshold := optFloat(opts, "threshold", 6.0)
+func optFloat(opts core.Options, key string, fallback float64) float64 {
+	s := opts.String(key)
+	if s == "" {
+		return fallback
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+// resultFromError packages a Go error into a core.Result — OK on nil,
+// Value=err + OK=false otherwise. Used by every command Action.
+//
+//	return resultFromError(run(ctx))
+func resultFromError(err error) core.Result {
+	if err != nil {
+		return core.Result{Value: err, OK: false}
+	}
+	return core.Result{OK: true}
 }

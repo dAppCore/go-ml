@@ -3,15 +3,12 @@
 package mcp
 
 import (
-	"dappco.re/go/core"
 	"context"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/inference"
 	"dappco.re/go/core/log"
 	ml "dappco.re/go/core/ml"
-
-	"dappco.re/go/core/inference"
-
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -186,11 +183,7 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	output := MLScoreOutput{}
 
-<<<<<<< HEAD
-	for suite := range splitSeq(suites, ",") {
-=======
 	for _, suite := range core.Split(suites, ",") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		suite = core.Trim(suite)
 		switch suite {
 		case "heuristic":
@@ -220,11 +213,7 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 	probes := ml.CapabilityProbes
 	if input.Categories != "" {
 		cats := make(map[string]bool)
-<<<<<<< HEAD
-		for c := range splitSeq(input.Categories, ",") {
-=======
 		for _, c := range core.Split(input.Categories, ",") {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 			cats[core.Trim(c)] = true
 		}
 		var filtered []ml.Probe
@@ -269,13 +258,8 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	}
 
 	influx := ml.NewInfluxClient(url, db)
-<<<<<<< HEAD
-	var buf core.NewBuilder()
-	if err := ml.PrintStatus(influx, &buf); err != nil {
-=======
 	buf := core.NewBuilder()
 	if err := ml.PrintStatus(influx, buf); err != nil {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
 	}
 

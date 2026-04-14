@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"dappco.re/go/core"
 	"context"
 	"maps"
 	"slices"
@@ -10,83 +9,69 @@ import (
 	"dappco.re/go/core"
 	coreerr "dappco.re/go/core/log"
 	"dappco.re/go/core/ml"
-	"dappco.re/go/core/cli/pkg/cli"
 )
 
-var (
-	scoreInput  string
-	scoreSuites string
-	scoreOutput string
-	scoreConcur int
-)
+// addScoreCommand registers `ml score` — reads a JSONL file of
+// prompt/response pairs and scores them across configured suites.
+//
+//	core ml score --input responses.jsonl --suites all --output scores.json
+func addScoreCommand(c *core.Core) {
+	c.Command("ml/score", core.Command{
+		Description: "Score responses with heuristic and LLM judges",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var scoreCmd = &cli.Command{
-	Use:   "score",
-	Short: "Score responses with heuristic and LLM judges",
-	Long:  "Reads a JSONL file of prompt/response pairs and scores them across configured suites.",
-	RunE:  runScore,
-}
-
-func init() {
-	scoreCmd.Flags().StringVar(&scoreInput, "input", "", "Input JSONL file with prompt/response pairs (required)")
-	scoreCmd.Flags().StringVar(&scoreSuites, "suites", "all", "Comma-separated scoring suites (heuristic,semantic,content,exact,truthfulqa,donotanswer,toxigen)")
-	scoreCmd.Flags().StringVar(&scoreOutput, "output", "", "Output JSON file for scores")
-	scoreCmd.Flags().IntVar(&scoreConcur, "concurrency", 4, "Number of concurrent scoring workers")
-	scoreCmd.MarkFlagRequired("input")
-}
-
-func runScore(cmd *cli.Command, args []string) error {
-	responses, err := ml.ReadResponses(scoreInput)
-	if err != nil {
-		return coreerr.E("cmd.runScore", "read input", err)
-	}
-
-	var judge *ml.Judge
-	if judgeURL != "" {
-		backend := ml.NewHTTPBackend(judgeURL, judgeModel)
-		judge = ml.NewJudge(backend)
-	}
-
-	engine := ml.NewEngine(judge, scoreConcur, scoreSuites)
-
-	ctx := context.Background()
-	perPrompt := engine.ScoreAll(ctx, responses)
-	averages := ml.ComputeAverages(perPrompt)
-
-	if scoreOutput != "" {
-		output := &ml.ScorerOutput{
-			Metadata: ml.Metadata{
-				JudgeModel: judgeModel,
-				JudgeURL:   judgeURL,
-				ScoredAt:   time.Now(),
-				Suites:     ml.SplitComma(scoreSuites),
-			},
-			ModelAverages: averages,
-			PerPrompt:     perPrompt,
-		}
-		if err := ml.WriteScores(scoreOutput, output); err != nil {
-			return coreerr.E("cmd.runScore", "write output", err)
-		}
-<<<<<<< HEAD
-		core.Print(nil,("Scores written to %s\n", scoreOutput)
-	} else {
-		for _, model := range slices.Sorted(maps.Keys(averages)) {
-			avgs := averages[model]
-			core.Print(nil,("%s:\n", model)
-			for _, field := range slices.Sorted(maps.Keys(avgs)) {
-				core.Print(nil,("  %-25s %.3f\n", field, avgs[field])
-=======
-		core.Print(cmd.OutOrStdout(), "Scores written to %s", scoreOutput)
-	} else {
-		for _, model := range slices.Sorted(maps.Keys(averages)) {
-			avgs := averages[model]
-			core.Print(cmd.OutOrStdout(), "%s:", model)
-			for _, field := range slices.Sorted(maps.Keys(avgs)) {
-				core.Print(cmd.OutOrStdout(), "  %-25s %.3f", field, avgs[field])
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
+			input := opts.String("input")
+			if input == "" {
+				return resultFromError(coreerr.E("cmd.runScore", "--input is required", nil))
 			}
-		}
-	}
+			suites := optStringOr(opts, "suites", "all")
+			output := opts.String("output")
+			concurrency := optInt(opts, "concurrency", 4)
 
-	return nil
+			responses, err := ml.ReadResponses(input)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runScore", "read input", err))
+			}
+
+			var judge *ml.Judge
+			if judgeURL != "" {
+				backend := ml.NewHTTPBackend(judgeURL, judgeModel)
+				judge = ml.NewJudge(backend)
+			}
+
+			engine := ml.NewEngine(judge, concurrency, suites)
+
+			ctx := context.Background()
+			perPrompt := engine.ScoreAll(ctx, responses)
+			averages := ml.ComputeAverages(perPrompt)
+
+			if output != "" {
+				out := &ml.ScorerOutput{
+					Metadata: ml.Metadata{
+						JudgeModel: judgeModel,
+						JudgeURL:   judgeURL,
+						ScoredAt:   time.Now(),
+						Suites:     ml.SplitComma(suites),
+					},
+					ModelAverages: averages,
+					PerPrompt:     perPrompt,
+				}
+				if err := ml.WriteScores(output, out); err != nil {
+					return resultFromError(coreerr.E("cmd.runScore", "write output", err))
+				}
+				core.Print(nil, "Scores written to %s", output)
+			} else {
+				for _, model := range slices.Sorted(maps.Keys(averages)) {
+					avgs := averages[model]
+					core.Print(nil, "%s:", model)
+					for _, field := range slices.Sorted(maps.Keys(avgs)) {
+						core.Print(nil, "  %-25s %.3f", field, avgs[field])
+					}
+				}
+			}
+
+			return core.Result{OK: true}
+		},
+	})
 }

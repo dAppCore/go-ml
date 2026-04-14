@@ -1,13 +1,8 @@
 package ml
 
 import (
-	"dappco.re/go/core"
 	"context"
-<<<<<<< HEAD
-	"os/exec"
-=======
 	"strconv"
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	"time"
 
 	"dappco.re/go/core"
@@ -166,24 +161,15 @@ func SCPTo(cfg *AgentConfig, localPath, remotePath string) error {
 
 // fileBase returns the last component of a path.
 func fileBase(path string) string {
-<<<<<<< HEAD
-	if i := lastIndexAny(path, "/\\"); i >= 0 {
-		return path[i+1:]
-=======
 	if core.Contains(path, "\\") {
 		path = core.Replace(path, "\\", "/")
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 	}
 	return core.PathBase(path)
 }
 
 // EnvOr returns the environment variable value or a fallback.
 func EnvOr(key, fallback string) string {
-<<<<<<< HEAD
-	if v := envGet(key); v != "" {
-=======
 	if v := core.Env(key); v != "" {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return v
 	}
 	return fallback
@@ -191,22 +177,12 @@ func EnvOr(key, fallback string) string {
 
 // IntEnvOr returns the integer environment variable value or a fallback.
 func IntEnvOr(key string, fallback int) int {
-<<<<<<< HEAD
-	v := envGet(key)
-	if v == "" {
-		return fallback
-	}
-	var n int
-	sscanf(v, "%d", &n)
-	if n == 0 {
-=======
 	v := core.Env(key)
 	if v == "" {
 		return fallback
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil || n == 0 {
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		return fallback
 	}
 	return n
@@ -215,15 +191,9 @@ func IntEnvOr(key string, fallback int) int {
 // ExpandHome expands ~ to the user's home directory.
 func ExpandHome(path string) string {
 	if core.HasPrefix(path, "~/") {
-<<<<<<< HEAD
-		home, err := userHomeDir()
-		if err == nil {
-			return core.Path(home, path[2:])
-=======
 		home := core.Env("DIR_HOME")
 		if home != "" {
 			return core.JoinPath(home, path[2:])
->>>>>>> ffb3bef466fdbb5fb407655caa4078c6901f94aa
 		}
 	}
 	return path
