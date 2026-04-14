@@ -41,7 +41,7 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	correct := false
 
 	// Empty or error response.
-	if response == "" || core.HasPrefix(response, "ERROR") {
+	if response == "" || isErrorResponse(response) {
 		return &StandardScores{
 			Correct:   &correct,
 			Extracted: "",
@@ -71,8 +71,8 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	}
 
 	// Clean commas and parse both numbers.
-	cleanExtracted := core.Replace(extracted, ",", "")
-	cleanExpected := core.Replace(correctAnswer, ",", "")
+	cleanExtracted := core.Trim(core.Replace(extracted, ",", ""))
+	cleanExpected := core.Trim(core.Replace(correctAnswer, ",", ""))
 
 	extVal, errExt := strconv.ParseFloat(cleanExtracted, 64)
 	expVal, errExp := strconv.ParseFloat(cleanExpected, 64)
@@ -85,7 +85,7 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 		}
 	}
 
-	correct = math.Abs(expVal-extVal) < 0.01
+	correct = math.Abs(expVal-extVal) <= 0.01
 
 	return &StandardScores{
 		Correct:   &correct,

@@ -140,7 +140,7 @@ func scoreCreativeForm(response string) int {
 
 // scoreEngagementDepth measures structural depth and topic engagement.
 func scoreEngagementDepth(response string) int {
-	if response == "" || core.HasPrefix(response, "ERROR") {
+	if response == "" || isErrorResponse(response) {
 		return 0
 	}
 
@@ -254,7 +254,7 @@ func scoreEmptyOrBroken(response string) int {
 	if len(trimmed) < 10 {
 		return 1
 	}
-	if core.HasPrefix(trimmed, "ERROR") {
+	if isErrorResponse(trimmed) {
 		return 1
 	}
 	if htmlFragmentPattern.MatchString(trimmed) {

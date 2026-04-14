@@ -81,6 +81,12 @@ func applyStopSequences(text string, stopSequences []string) string {
 	return text[:cut]
 }
 
+// isErrorResponse reports whether the response should be treated as an
+// error prefix regardless of case or leading whitespace.
+func isErrorResponse(s string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(s)), "error")
+}
+
 // sscanf wraps fmt.Sscanf for parsing formatted strings.
 func sscanf(s, format string, args ...any) (int, error) {
 	return fmt.Sscanf(s, format, args...)
