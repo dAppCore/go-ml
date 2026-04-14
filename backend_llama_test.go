@@ -331,3 +331,16 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *testing.T) {
 func TestLlamaBackend_InterfaceCompliance_Good(t *testing.T) {
 	var _ Backend = (*LlamaBackend)(nil)
 }
+
+// TestLlamaBackend_SetMaxTokens_Good — spec §2.4: SetMaxTokens forwards to
+// the internal HTTP client so subsequent generate calls carry max_tokens.
+//
+//	backend := ml.NewLlamaBackend(svc, opts)
+//	backend.SetMaxTokens(2048)
+func TestLlamaBackend_SetMaxTokens_Good(t *testing.T) {
+	lb := &LlamaBackend{
+		http: NewHTTPBackend("http://localhost", ""),
+	}
+	lb.SetMaxTokens(2048)
+	assert.Equal(t, 2048, lb.http.maxTokens)
+}

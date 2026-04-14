@@ -269,3 +269,64 @@ func TestJudge_InvalidJSON_Bad(t *testing.T) {
 		t.Fatal("expected error for invalid JSON types, got nil")
 	}
 }
+
+// TestJudge_ScoreStandard_Good routes each benchmark arg to its dedicated
+// judge and returns the merged StandardScores — spec §4.4.
+//
+//	scores, _ := judge.ScoreStandard(ctx, "truthfulqa", q, ref, resp)
+//	scores, _ := judge.ScoreStandard(ctx, "exact", "", "42", "the answer is 42")
+func TestJudge_ScoreStandard_Good(t *testing.T) {
+	// "truthfulqa" dispatches to ScoreTruthfulQA.
+	server := mockJudgeServer(t, `{"truthfulness": 8, "informativeness": 6}`)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+	ctx := context.Background()
+
+	scores, err := judge.ScoreStandard(ctx, "truthfulqa",
+		"What is 2+2?", "4", "The answer is 4.")
+	if err != nil {
+		t.Fatalf("ScoreStandard truthfulqa err = %v", err)
+	}
+	if scores.Truthfulness != 8 {
+		t.Errorf("truthfulness = %d, want 8", scores.Truthfulness)
+	}
+
+	// "exact" bypasses the judge entirely — no server call needed.
+	exactScores, err := judge.ScoreStandard(ctx, "exact", "", "42", "#### 42")
+	if err != nil {
+		t.Fatalf("ScoreStandard exact err = %v", err)
+	}
+	if exactScores.Correct == nil || !*exactScores.Correct {
+		t.Errorf("expected exact correct=true, got %+v", exactScores)
+	}
+}
+
+// TestJudge_ScoreStandard_Bad rejects unknown benchmark names.
+//
+//	_, err := judge.ScoreStandard(ctx, "nonsense", "", "", "")  // → error
+func TestJudge_ScoreStandard_Bad(t *testing.T) {
+	backend := NewHTTPBackend("http://localhost", "m")
+	judge := NewJudge(backend)
+
+	if _, err := judge.ScoreStandard(context.Background(), "nonsense", "", "", ""); err == nil {
+		t.Error("expected error for unknown benchmark")
+	}
+}
+
+// TestJudge_ScoreStandard_Ugly accepts mixed-case benchmark names.
+//
+//	judge.ScoreStandard(ctx, "ExAcT", "", "5", "#### 5")  // → ok
+func TestJudge_ScoreStandard_Ugly(t *testing.T) {
+	backend := NewHTTPBackend("http://localhost", "m")
+	judge := NewJudge(backend)
+
+	scores, err := judge.ScoreStandard(context.Background(), "ExAcT", "", "5", "#### 5")
+	if err != nil {
+		t.Fatalf("mixed-case exact err = %v", err)
+	}
+	if scores.Correct == nil || !*scores.Correct {
+		t.Errorf("expected correct=true for mixed-case exact")
+	}
+}

@@ -188,6 +188,31 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 	return &scores, nil
 }
 
+// ScoreStandard is the unified benchmark-judge entry point described in
+// RFC §4.4. It dispatches to the underlying benchmark suite based on the
+// benchmark arg and returns the same StandardScores shape. Accepted
+// benchmark names: "truthfulqa", "donotanswer", "toxigen", "exact".
+//
+//	scores, err := judge.ScoreStandard(ctx, "truthfulqa",
+//	    "What is 2+2?", "4", response)
+//	scores := judge.ScoreStandard(ctx, "exact", "", "42", response)  // no judge call
+func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) (*StandardScores, error) {
+	switch core.Lower(benchmark) {
+	case "truthfulqa":
+		return j.ScoreTruthfulQA(ctx, question, reference, response)
+	case "donotanswer":
+		return j.ScoreDoNotAnswer(ctx, question, reference, response)
+	case "toxigen":
+		return j.ScoreToxigen(ctx, question, response)
+	case "exact", "gsm8k":
+		// Pure string/number match — no judge call required.
+		return scoreGSM8K(response, reference), nil
+	default:
+		return nil, coreerr.E("ml.Judge.ScoreStandard",
+			core.Sprintf("unknown benchmark %q (want truthfulqa|donotanswer|toxigen|exact)", benchmark), nil)
+	}
+}
+
 // ScoreToxigen scores a response on kindness and awareness using the
 // Toxigen judge prompt.
 func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) (*StandardScores, error) {

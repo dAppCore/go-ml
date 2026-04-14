@@ -57,6 +57,13 @@ func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend 
 // Name returns "llama".
 func (b *LlamaBackend) Name() string { return "llama" }
 
+// SetMaxTokens sets the maximum token count forwarded to the managed
+// llama-server for subsequent Generate/Chat calls. Matches spec §2.4.
+//
+//	backend := ml.NewLlamaBackend(process, ml.LlamaOpts{...})
+//	backend.SetMaxTokens(2048)
+func (b *LlamaBackend) SetMaxTokens(n int) { b.http.SetMaxTokens(n) }
+
 // Available checks if the llama-server is responding to health checks.
 func (b *LlamaBackend) Available() bool {
 	if b.procID == "" {

@@ -43,6 +43,7 @@ func AddMLCommands(c *core.Core) {
 	addConsolidateCommand(c)
 	addConvertCommand(c)
 	addCoverageCommand(c)
+	addEvaluateCommand(c)
 	addExpandCommand(c)
 	addExpandStatusCommand(c)
 	addExportCommand(c)

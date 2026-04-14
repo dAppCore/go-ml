@@ -83,6 +83,88 @@ func TestAgent_Influx_Good(t *testing.T) {
 	}
 }
 
+// Spec §8 — ExecuteRemote(ctx, host, port, command) one-shot form.
+// The 3-arg variant builds a transient SSHTransport rather than using the
+// agent's configured transport. We cannot exercise the real SSH binary
+// from a unit test, but we can confirm the argument-count routing is valid
+// and that the 0-arg form is rejected cleanly.
+func TestAgent_ExecuteRemote_Ugly(t *testing.T) {
+	cfg := &AgentConfig{Transport: newFakeTransport()}
+	a := NewAgent(cfg)
+
+	// Zero args — must error, not panic.
+	if _, err := a.ExecuteRemote(context.Background()); err == nil {
+		t.Error("expected error for 0-arg ExecuteRemote")
+	}
+
+	// Two args — neither 1-arg nor 3-arg form; must error.
+	if _, err := a.ExecuteRemote(context.Background(), "host", "port"); err == nil {
+		t.Error("expected error for 2-arg ExecuteRemote")
+	}
+}
+
+// Spec §8 — Evaluate accepts Checkpoint, *Checkpoint or model-path string.
+// With no transport registered, the nil-pointer path must surface a clean
+// error rather than dereferencing.
+func TestAgent_Evaluate_Bad(t *testing.T) {
+	cfg := &AgentConfig{Transport: newFakeTransport()}
+	a := NewAgent(cfg)
+
+	// Nil checkpoint pointer.
+	if err := a.Evaluate(context.Background(), (*Checkpoint)(nil)); err == nil {
+		t.Error("expected error for nil *Checkpoint")
+	}
+
+	// Unsupported target type.
+	if err := a.Evaluate(context.Background(), 42); err == nil {
+		t.Error("expected error for int target")
+	}
+}
+
+// Spec §8 — CollectMetrics accepts optional influxURL override.
+func TestAgent_CollectMetrics_Good(t *testing.T) {
+	cfg := &AgentConfig{
+		WorkDir:   t.TempDir(),
+		InfluxURL: "http://default:8086",
+		InfluxDB:  "test",
+	}
+	a := NewAgent(cfg)
+
+	// Baseline — no override.
+	if err := a.CollectMetrics(context.Background()); err != nil {
+		t.Errorf("CollectMetrics baseline err = %v", err)
+	}
+
+	// Override URL.
+	if err := a.CollectMetrics(context.Background(), "http://override:8086"); err != nil {
+		t.Errorf("CollectMetrics override err = %v", err)
+	}
+}
+
+// Spec §8 — Execute accepts optional config override.
+func TestAgent_Execute_Good(t *testing.T) {
+	cfg := &AgentConfig{
+		OneShot: true,
+		WorkDir: t.TempDir(),
+		// No real SSH host — the OneShot loop returns after discovery fails.
+		M3AdapterBase: "/nonexistent",
+		Transport:     newFakeTransport(),
+	}
+	a := NewAgent(cfg)
+
+	// Default config path — completes promptly because OneShot is set.
+	a.Execute(context.Background())
+
+	// Override config — completes using supplied config.
+	override := &AgentConfig{
+		OneShot:       true,
+		WorkDir:       t.TempDir(),
+		M3AdapterBase: "/also-nonexistent",
+		Transport:     newFakeTransport(),
+	}
+	a.Execute(context.Background(), override)
+}
+
 // ---------------------------------------------------------------------------
 // GGUF — spec §7 wrappers
 // ---------------------------------------------------------------------------
