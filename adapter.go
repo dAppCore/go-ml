@@ -127,6 +127,9 @@ func convertOpts(opts GenOpts) []inference.GenerateOption {
 	if opts.RepeatPenalty > 0 {
 		out = append(out, inference.WithRepeatPenalty(float32(opts.RepeatPenalty)))
 	}
+	if len(opts.StopTokens) > 0 {
+		out = append(out, inference.WithStopTokens(opts.StopTokens...))
+	}
 	// GenOpts.Model is ignored — the model is already loaded.
 	return out
 }

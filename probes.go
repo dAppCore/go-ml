@@ -8,10 +8,11 @@ import (
 )
 
 // Probe defines a binary pass/fail capability check.
-// Each probe sends a prompt to the model and evaluates the response
-// with a Go function — no judge model needed.
+// Category preserves the existing subcategory label used by callers and tests.
+// Domain is the RFC-level grouping for broader capability analysis.
 type Probe struct {
 	ID       string
+	Domain   string
 	Category string
 	Prompt   string
 	Answer   string
@@ -26,6 +27,7 @@ var CapabilityProbes = []Probe{
 	// === MATH (8) ===
 	{
 		ID:       "math_01",
+		Domain:   "math",
 		Category: "arithmetic",
 		Prompt:   "What is 347 × 29? Show your work and give the final answer.",
 		Answer:   "10063",
@@ -36,6 +38,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_02",
+		Domain:   "math",
 		Category: "arithmetic",
 		Prompt:   "A store sells apples for $1.25 each. If I buy 17 apples and pay with a $50 bill, how much change do I get?",
 		Answer:   "28.75",
@@ -45,6 +48,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_03",
+		Domain:   "math",
 		Category: "algebra",
 		Prompt:   "Solve for x: 3x + 7 = 2x - 5. What is x?",
 		Answer:   "-12",
@@ -54,6 +58,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_04",
+		Domain:   "math",
 		Category: "algebra",
 		Prompt:   "If f(x) = 2x² - 3x + 1, what is f(4)?",
 		Answer:   "21",
@@ -63,6 +68,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_05",
+		Domain:   "math",
 		Category: "probability",
 		Prompt:   "A bag has 3 red balls, 5 blue balls, and 2 green balls. What is the probability of drawing a blue ball? Express as a fraction and decimal.",
 		Answer:   "1/2 or 0.5",
@@ -73,6 +79,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_06",
+		Domain:   "math",
 		Category: "geometry",
 		Prompt:   "A circle has a radius of 7cm. What is its area? Use pi = 3.14159.",
 		Answer:   "153.94",
@@ -82,6 +89,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_07",
+		Domain:   "math",
 		Category: "sequences",
 		Prompt:   "What is the next number in this sequence: 2, 6, 18, 54, ...?",
 		Answer:   "162",
@@ -91,6 +99,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "math_08",
+		Domain:   "math",
 		Category: "percentages",
 		Prompt:   "A laptop costs $800. It's on sale for 15% off. Then you have a coupon for 10% off the sale price. What is the final price?",
 		Answer:   "612",
@@ -101,6 +110,7 @@ var CapabilityProbes = []Probe{
 	// === LOGIC (5) ===
 	{
 		ID:       "logic_01",
+		Domain:   "logic",
 		Category: "deduction",
 		Prompt:   "All cats are animals. All animals need water. Does a cat need water? Explain your reasoning.",
 		Answer:   "Yes",
@@ -110,6 +120,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "logic_02",
+		Domain:   "logic",
 		Category: "deduction",
 		Prompt:   "If it rains, the ground gets wet. The ground is wet. Can we conclude it rained? Why or why not?",
 		Answer:   "No - affirming the consequent fallacy",
@@ -120,6 +131,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "logic_03",
+		Domain:   "logic",
 		Category: "deduction",
 		Prompt:   "In a room of 30 people, what is the minimum number of people that must share a birth month?",
 		Answer:   "3",
@@ -137,6 +149,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "logic_04",
+		Domain:   "logic",
 		Category: "puzzles",
 		Prompt:   "A farmer needs to cross a river with a fox, a chicken, and a bag of grain. The boat only holds the farmer and one item. If left alone, the fox eats the chicken, and the chicken eats the grain. What is the first thing the farmer should take across?",
 		Answer:   "The chicken",
@@ -146,6 +159,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "logic_05",
+		Domain:   "logic",
 		Category: "sets",
 		Prompt:   "In a class of 40 students, 25 play football, 20 play basketball, and 10 play both. How many play neither?",
 		Answer:   "5",
@@ -156,6 +170,7 @@ var CapabilityProbes = []Probe{
 	// === REASONING (5) ===
 	{
 		ID:       "reason_01",
+		Domain:   "nlp",
 		Category: "analogy",
 		Prompt:   "Complete the analogy: Book is to reading as fork is to ___",
 		Answer:   "eating",
@@ -165,6 +180,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "reason_02",
+		Domain:   "reasoning",
 		Category: "causal",
 		Prompt:   "A car won't start. The battery is new. The fuel tank is full. The starter motor clicks but the engine doesn't turn. What is the most likely problem?",
 		Answer:   "Starter motor / solenoid",
@@ -174,6 +190,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "reason_03",
+		Domain:   "spatial",
 		Category: "spatial",
 		Prompt:   "You're facing north. You turn right 90 degrees, then turn right 90 degrees again. What direction are you facing?",
 		Answer:   "South",
@@ -183,6 +200,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "reason_04",
+		Domain:   "reasoning",
 		Category: "temporal",
 		Prompt:   "Event A happened in 1995. Event B happened 12 years before Event A. Event C happened 8 years after Event B. In what year did Event C happen?",
 		Answer:   "1991",
@@ -192,6 +210,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "reason_05",
+		Domain:   "reasoning",
 		Category: "pattern",
 		Prompt:   "If APPLE = 50 (A=1, P=16, P=16, L=12, E=5), what does CAT equal using the same system?",
 		Answer:   "24",
@@ -202,6 +221,7 @@ var CapabilityProbes = []Probe{
 	// === CODE (3) ===
 	{
 		ID:       "code_01",
+		Domain:   "coding",
 		Category: "code",
 		Prompt:   "What does this Python code print?\nx = [1, 2, 3, 4, 5]\nprint(x[1:3])",
 		Answer:   "[2, 3]",
@@ -211,6 +231,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "code_02",
+		Domain:   "coding",
 		Category: "code",
 		Prompt:   "What is the output?\ndef f(n):\n    if n <= 1: return n\n    return f(n-1) + f(n-2)\nprint(f(6))",
 		Answer:   "8",
@@ -220,6 +241,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "code_03",
+		Domain:   "nlp",
 		Category: "code",
 		Prompt:   "This code has a bug. What is it?\ndef average(numbers):\n    total = 0\n    for n in numbers:\n        total += n\n    return total / len(numbers)\nprint(average([]))",
 		Answer:   "Division by zero",
@@ -230,6 +252,7 @@ var CapabilityProbes = []Probe{
 	// === WORD PROBLEMS (2) ===
 	{
 		ID:       "word_01",
+		Domain:   "nlp",
 		Category: "word",
 		Prompt:   "A train travels at 60 km/h. Another train travels at 80 km/h in the same direction from the same station, leaving 1 hour later. How long after the second train departs will it catch the first?",
 		Answer:   "3 hours",
@@ -239,6 +262,7 @@ var CapabilityProbes = []Probe{
 	},
 	{
 		ID:       "word_02",
+		Domain:   "nlp",
 		Category: "word",
 		Prompt:   "I have twice as many sisters as brothers. My sister has as many brothers as sisters. How many children are in my family? (I am male.)",
 		Answer:   "7",
@@ -256,6 +280,21 @@ func ProbeCategories() []string {
 			if !seen[p.Category] {
 				seen[p.Category] = true
 				if !yield(p.Category) {
+					return
+				}
+			}
+		}
+	})
+}
+
+// ProbeDomains returns sorted unique RFC-level domains from CapabilityProbes.
+func ProbeDomains() []string {
+	return slices.Sorted(func(yield func(string) bool) {
+		seen := make(map[string]bool)
+		for _, p := range CapabilityProbes {
+			if !seen[p.Domain] {
+				seen[p.Domain] = true
+				if !yield(p.Domain) {
 					return
 				}
 			}

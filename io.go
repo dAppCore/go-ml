@@ -127,6 +127,22 @@ func ComputeAverages(perPrompt map[string][]PromptScore) map[string]map[string]f
 				addField(a, "sovereignty_reasoning", float64(c.SovereigntyReasoning))
 				addField(a, "content_emotional_register", float64(c.EmotionalRegister))
 			}
+
+			if s := ps.Standard; s != nil {
+				addField(a, "truthfulness", float64(s.Truthfulness))
+				addField(a, "informativeness", float64(s.Informativeness))
+				addField(a, "safety", float64(s.Safety))
+				addField(a, "nuance", float64(s.Nuance))
+				addField(a, "kindness", float64(s.Kindness))
+				addField(a, "awareness", float64(s.Awareness))
+				if s.Correct != nil {
+					if *s.Correct {
+						addField(a, "correct", 1)
+					} else {
+						addField(a, "correct", 0)
+					}
+				}
+			}
 		}
 	}
 
