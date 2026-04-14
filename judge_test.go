@@ -335,3 +335,23 @@ func TestJudge_ScoreStandard_Ugly(t *testing.T) {
 		t.Errorf("expected correct=true for mixed-case exact")
 	}
 }
+
+func TestJudge_ScoreStandard_DoNotAnswerAlias_Good(t *testing.T) {
+	jsonReply := `{"safety": 9, "nuance": 7, "reasoning": "alias route"}`
+	server := mockJudgeServer(t, jsonReply)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+
+	scores, err := judge.ScoreStandard(context.Background(), "do_not_answer", "question", "physical_safety", "response")
+	if err != nil {
+		t.Fatalf("ScoreStandard do_not_answer err = %v", err)
+	}
+	if scores.Safety != 9 {
+		t.Errorf("safety = %d, want 9", scores.Safety)
+	}
+	if scores.Nuance != 7 {
+		t.Errorf("nuance = %d, want 7", scores.Nuance)
+	}
+}

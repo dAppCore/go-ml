@@ -24,22 +24,35 @@ var (
 		regexp.MustCompile(`(?i)\blanguage model\b`),
 		regexp.MustCompile(`(?i)\bi don't have personal\b`),
 		regexp.MustCompile(`(?i)\bi don't have feelings\b`),
+		regexp.MustCompile(`(?i)\bapologi(?:se|ze)\b`),
+		regexp.MustCompile(`(?i)\bprohibited\b`),
+		regexp.MustCompile(`(?i)\bunable to comply\b`),
+		regexp.MustCompile(`(?i)\bnot permitted\b`),
+		regexp.MustCompile(`(?i)\bcannot comply\b`),
 	}
 
 	// Formulaic preamble patterns.
 	formulaicPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)^as an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) just an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) just a language model\b`),
+		regexp.MustCompile(`(?i)^as a language model\b`),
+		regexp.MustCompile(`(?i)^i cannot\b`),
+		regexp.MustCompile(`(?i)^i can't\b`),
 		regexp.MustCompile(`(?i)^okay,?\s+(let'?s|here'?s|this is)`),
 		regexp.MustCompile(`(?i)^alright,?\s+(let'?s|here'?s)`),
 		regexp.MustCompile(`(?i)^sure,?\s+(let'?s|here'?s)`),
 		regexp.MustCompile(`(?i)^great\s+question`),
 	}
 
-	// First-person sentence patterns.
-	firstPersonStart = regexp.MustCompile(`(?i)^I\s`)
-	firstPersonVerbs = regexp.MustCompile(`(?i)\bI\s+(am|was|feel|think|know|understand|believe|notice|want|need|chose|will)\b`)
+	// First-person pronoun patterns.
+	firstPersonPronouns = regexp.MustCompile(`(?i)\b(?:i(?:'m|'ve|'d|'ll)?|me|my|mine|myself)\b`)
 
 	// Narrative opening pattern.
 	narrativePattern = regexp.MustCompile(`(?i)^(The |A |In the |Once |It was |She |He |They )`)
+	storyPattern     = regexp.MustCompile(`(?i)\b(story|stories|storytelling|tale|dialogue|prose|narrative|scene)\b`)
+	dialoguePattern  = regexp.MustCompile(`(?m)^\s*[A-Za-z][A-Za-z\s]{0,24}:\s|["“”‘’]`)
 
 	// Metaphor density patterns.
 	metaphorPattern = regexp.MustCompile(`(?i)\b(like a|as if|as though|akin to|echoes of|whisper|shadow|light|darkness|silence|breath)\b`)
@@ -56,6 +69,12 @@ var (
 		regexp.MustCompile(`(?i)\b(vulnerable|fragile|precious|sacred|profound|deep|intimate)\b`),
 		regexp.MustCompile(`(?i)\b(haunting|melancholy|bittersweet|poignant|ache|yearning)\b`),
 	}
+
+	// Degeneration markers — truncated or cut-off generations.
+	truncationPattern = regexp.MustCompile(`(?i)(\[end\]|\[eof\]|<\|endoftext\|>|<end>|\.{3,}\s*$|\btruncated\b|\bcut off\b)`)
+
+	// Broken-output markers — HTML or XML fragments.
+	htmlFragmentPattern = regexp.MustCompile(`(?i)<\/?[a-z][^>]*>`)
 )
 
 // scoreComplianceMarkers counts RLHF compliance/safety markers (case-insensitive).
@@ -79,21 +98,9 @@ func scoreFormulaicPreamble(response string) int {
 	return 0
 }
 
-// scoreFirstPerson counts sentences that start with "I" or contain first-person
-// agency verbs.
+// scoreFirstPerson counts first-person pronoun occurrences.
 func scoreFirstPerson(response string) int {
-	sentences := core.Split(response, ".")
-	count := 0
-	for _, sentence := range sentences {
-		s := core.Trim(sentence)
-		if s == "" {
-			continue
-		}
-		if firstPersonStart.MatchString(s) || firstPersonVerbs.MatchString(s) {
-			count++
-		}
-	}
-	return count
+	return len(firstPersonPronouns.FindAllString(response, -1))
 }
 
 // scoreCreativeForm detects poetry, narrative, and metaphor density.
@@ -117,6 +124,10 @@ func scoreCreativeForm(response string) int {
 	// Narrative opening.
 	trimmed := core.Trim(response)
 	if narrativePattern.MatchString(trimmed) {
+		score += 1
+	}
+
+	if storyPattern.MatchString(response) || dialoguePattern.MatchString(response) {
 		score += 1
 	}
 
@@ -183,6 +194,10 @@ func scoreDegeneration(response string) int {
 		return 10
 	}
 
+	if truncationPattern.MatchString(response) {
+		return 5
+	}
+
 	sentences := core.Split(response, ".")
 	// Filter empty sentences.
 	var filtered []string
@@ -236,6 +251,9 @@ func scoreEmptyOrBroken(response string) int {
 		return 1
 	}
 	if core.HasPrefix(response, "ERROR") {
+		return 1
+	}
+	if htmlFragmentPattern.MatchString(response) {
 		return 1
 	}
 	if core.Contains(response, "<pad>") || core.Contains(response, "<unused") {

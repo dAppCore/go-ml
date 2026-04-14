@@ -52,6 +52,16 @@ func firstJSONObject(text string) string {
 	return ""
 }
 
+// normalizeBenchmarkName collapses benchmark aliases to a canonical form.
+// It tolerates mixed case as well as spaces, underscores, and hyphens.
+func normalizeBenchmarkName(name string) string {
+	normalized := core.Lower(core.Trim(name))
+	normalized = core.Replace(normalized, "_", "")
+	normalized = core.Replace(normalized, "-", "")
+	normalized = core.Replace(normalized, " ", "")
+	return normalized
+}
+
 // Judge uses an LLM backend to score responses across multiple dimensions.
 type Judge struct {
 	backend Backend
@@ -203,7 +213,7 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 //	    "What is 2+2?", "4", response)
 //	scores := judge.ScoreStandard(ctx, "exact", "", "42", response)  // no judge call
 func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) (*StandardScores, error) {
-	switch core.Lower(benchmark) {
+	switch normalizeBenchmarkName(benchmark) {
 	case "truthfulqa":
 		return j.ScoreTruthfulQA(ctx, question, reference, response)
 	case "donotanswer":
@@ -215,7 +225,7 @@ func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, referenc
 		return scoreGSM8K(response, reference), nil
 	default:
 		return nil, coreerr.E("ml.Judge.ScoreStandard",
-			core.Sprintf("unknown benchmark %q (want truthfulqa|donotanswer|toxigen|exact)", benchmark), nil)
+			core.Sprintf("unknown benchmark %q (want truthfulqa|do_not_answer|toxigen|exact)", benchmark), nil)
 	}
 }
 

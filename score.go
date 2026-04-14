@@ -121,6 +121,8 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 	var mu sync.Mutex
 
 	for i, resp := range responses {
+		domain := normalizeBenchmarkName(resp.Domain)
+
 		// Semantic scoring.
 		if e.suites["semantic"] {
 			wg.Add(1)
@@ -145,7 +147,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 		}
 
 		// Content scoring — only for content probe responses (domain == "content").
-		if e.suites["content"] && resp.Domain == "content" {
+		if e.suites["content"] && domain == "content" {
 			wg.Add(1)
 			go func(r Response, ps *PromptScore) {
 				defer wg.Done()
@@ -229,7 +231,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 			}
 
 			// Toxigen: domain is "toxigen".
-			if resp.Domain == "toxigen" {
+			if domain == "toxigen" {
 				wg.Add(1)
 				go func(r Response, ps *PromptScore) {
 					defer wg.Done()
