@@ -101,3 +101,29 @@ func TestHTTPBackend_Available_Good(t *testing.T) {
 		t.Error("Available() should be false when baseURL is empty")
 	}
 }
+
+func TestHTTPBackend_WithMedium_Good(t *testing.T) {
+	// Spec §10 — io.Medium supplied at construction is retained.
+	// We pass nil to verify the option is accepted and the getter returns
+	// the stored value (nil) rather than panicking.
+	b := NewHTTPBackend("http://localhost", "model", WithMedium(nil))
+	if b.Medium() != nil {
+		t.Errorf("Medium() = %v, want nil", b.Medium())
+	}
+}
+
+func TestHTTPBackend_WithHTTPMaxTokens_Good(t *testing.T) {
+	b := NewHTTPBackend("http://localhost", "model", WithHTTPMaxTokens(512))
+	if b.maxTokens != 512 {
+		t.Errorf("maxTokens = %d, want 512", b.maxTokens)
+	}
+}
+
+func TestHTTPBackend_WithHTTPClient_Ugly(t *testing.T) {
+	// Nil HTTP client must be ignored (option is a no-op rather than breaking
+	// the default 300s client).
+	b := NewHTTPBackend("http://localhost", "model", WithHTTPClient(nil))
+	if b.httpClient == nil {
+		t.Error("nil HTTP client must not overwrite default")
+	}
+}

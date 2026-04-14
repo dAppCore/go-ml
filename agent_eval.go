@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"log"
 
 	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
@@ -81,7 +80,7 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		OllamaDeleteModel(cfg.JudgeURL, tempModel)
 	}()
 
-	log.Printf("Fetching adapter from M3 (%s)...", cp.Filename)
+	core.Print(nil, "Fetching adapter from M3 (%s)...", cp.Filename)
 	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
 	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 	localSF := core.JoinPath(localAdapterDir, cp.Filename)
@@ -164,7 +163,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		coreio.Local.DeleteAll(peftDir)
 	}()
 
-	log.Println("Fetching adapter from M3...")
+	core.Print(nil, "Fetching adapter from M3...")
 	remoteSF := core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename)
 	remoteCfg := core.Sprintf("%s/adapter_config.json", cp.RemoteDir)
 
@@ -177,7 +176,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		return coreerr.E("ml.processWithConversion", "scp config", err)
 	}
 
-	log.Println("Converting MLX to PEFT format...")
+	core.Print(nil, "Converting MLX to PEFT format...")
 	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
 		return coreerr.E("ml.processWithConversion", "convert adapter", err)
@@ -371,7 +370,7 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 		if scanner.Scan() {
 			var resp probeRunnerResponse
 			if r := core.JSONUnmarshalString(string(scanner.Bytes()), &resp); !r.OK {
-				log.Printf("  [content:%s] parse error: %v", probe.ID, r.Value.(error))
+				core.Print(nil, "  [content:%s] parse error: %v", probe.ID, r.Value.(error))
 				continue
 			} else if resp.Error != "" {
 				core.Print(nil,"  [content:%s] ERROR: %s", probe.ID, resp.Error)

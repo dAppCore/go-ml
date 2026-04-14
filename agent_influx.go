@@ -2,7 +2,6 @@ package ml
 
 import (
 	"context"
-	"log"
 	"maps"
 	"slices"
 	"time"
@@ -235,7 +234,7 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 	}
 	f.Write([]byte(core.Concat(core.JSONMarshalString(entry), "\n")))
-	log.Printf("Buffered results to %s", bufPath)
+	core.Print(nil, "Buffered results to %s", bufPath)
 }
 
 // ReplayInfluxBuffer retries pushing buffered results to InfluxDB.

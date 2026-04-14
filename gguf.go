@@ -12,7 +12,32 @@ import (
 	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core/mlx"
 )
+
+// GGUFInfo re-exports mlx.GGUFInfo so ml consumers can inspect GGUF
+// metadata without importing the MLX package directly.
+type GGUFInfo = mlx.GGUFInfo
+
+// DiscoveredModel re-exports mlx.DiscoveredModel for discovery results.
+type DiscoveredModel = mlx.DiscoveredModel
+
+// ReadGGUFInfo reads GGUF header metadata from a model file or directory.
+//
+//	info, err := ml.ReadGGUFInfo("/models/gemma-3-1b.gguf")
+//	// info.Architecture == "gemma3", info.NumLayers, info.QuantBits
+func ReadGGUFInfo(modelPath string) (GGUFInfo, error) {
+	return mlx.ReadGGUFInfo(modelPath)
+}
+
+// DiscoverModels walks a directory and returns all loadable models found
+// (both safetensors directories and standalone GGUF files).
+//
+//	models := ml.DiscoverModels("/Volumes/Data/lem/models")
+//	// []DiscoveredModel{{Path, ModelType, QuantBits, Format}, ...}
+func DiscoverModels(basePath string) []DiscoveredModel {
+	return mlx.DiscoverModels(basePath)
+}
 
 // GGUF format constants.
 const (

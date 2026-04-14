@@ -2,7 +2,6 @@ package ml
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"dappco.re/go/core"
@@ -124,7 +123,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 		line := core.JSONMarshalString(out)
 		if _, err := f.Write([]byte(core.Concat(line, "\n"))); err != nil {
-			log.Printf("[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
+			core.Print(nil, "[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
 			continue
 		}
 

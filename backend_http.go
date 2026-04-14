@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
 
@@ -16,6 +17,42 @@ type HTTPBackend struct {
 	model      string
 	maxTokens  int
 	httpClient *http.Client
+	medium     coreio.Medium
+}
+
+// HTTPOption configures an HTTPBackend at construction time.
+//
+//	b := ml.NewHTTPBackend("http://localhost:11434", "llama3",
+//	    ml.WithHTTPClient(myClient),
+//	    ml.WithMedium(io.S3("models.lthn.io")),
+//	)
+type HTTPOption func(*HTTPBackend)
+
+// WithHTTPClient overrides the default net/http.Client used for requests.
+func WithHTTPClient(client *http.Client) HTTPOption {
+	return func(b *HTTPBackend) {
+		if client != nil {
+			b.httpClient = client
+		}
+	}
+}
+
+// WithMedium attaches an io.Medium so model artefacts (LoRA adapters,
+// GGUF blobs, streamed responses) can be loaded or staged from any
+// supported backend (local disk, S3, in-memory, etc.).
+//
+//	b := ml.NewHTTPBackend(url, model, ml.WithMedium(io.S3("models.lthn.io")))
+func WithMedium(medium coreio.Medium) HTTPOption {
+	return func(b *HTTPBackend) {
+		b.medium = medium
+	}
+}
+
+// WithHTTPMaxTokens sets the default maximum token count for requests.
+func WithHTTPMaxTokens(n int) HTTPOption {
+	return func(b *HTTPBackend) {
+		b.maxTokens = n
+	}
 }
 
 // chatRequest is the request body for /v1/chat/completions.
@@ -45,15 +82,28 @@ func (e *retryableError) Error() string { return e.err.Error() }
 func (e *retryableError) Unwrap() error { return e.err }
 
 // NewHTTPBackend creates an HTTPBackend for the given base URL and model.
-func NewHTTPBackend(baseURL, model string) *HTTPBackend {
-	return &HTTPBackend{
+// Additional options configure the HTTP client, default max tokens, or an
+// io.Medium used for staging model artefacts.
+//
+//	b := ml.NewHTTPBackend("http://localhost:11434", "llama3")
+//	b := ml.NewHTTPBackend(url, model, ml.WithMedium(io.S3("models.lthn.io")))
+func NewHTTPBackend(baseURL, model string, opts ...HTTPOption) *HTTPBackend {
+	b := &HTTPBackend{
 		baseURL: baseURL,
 		model:   model,
 		httpClient: &http.Client{
 			Timeout: 300 * time.Second,
 		},
 	}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
+
+// Medium returns the io.Medium configured via WithMedium, or nil if none
+// was supplied.
+func (b *HTTPBackend) Medium() coreio.Medium { return b.medium }
 
 // Name returns "http".
 func (b *HTTPBackend) Name() string { return "http" }
