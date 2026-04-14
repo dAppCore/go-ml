@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"runtime"
 
 	"dappco.re/go/core"
 	coreio "dappco.re/go/core/io"
@@ -95,16 +96,16 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		return coreerr.E("ml.processMLXNative", "scp config", err)
 	}
 
-	core.Print(nil,"Converting MLX → PEFT format...")
+	core.Print(nil, "Converting MLX → PEFT format...")
 	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
 		return coreerr.E("ml.processMLXNative", "convert adapter", err)
 	}
 
-	core.Print(nil,"Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
+	core.Print(nil, "Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
 	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
 		return coreerr.E("ml.processMLXNative", "ollama create", err)
 	}
-	core.Print(nil,"Ollama model %s ready", tempModel)
+	core.Print(nil, "Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
 
 	results, fullResponses := RunCapabilityProbesFull(ctx, probeBackend, func(probeID, category string, passed bool, response string, correct, total int) {
@@ -119,15 +120,15 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 			passedInt, cp.Iteration, ts,
 		)
 		if err := influx.WriteLp([]string{line}); err != nil {
-			core.Print(nil,"  [%s] InfluxDB stream failed: %v", probeID, err)
+			core.Print(nil, "  [%s] InfluxDB stream failed: %v", probeID, err)
 		}
 	})
 
-	core.Print(nil,"Capability: %s -- %.1f%% (%d/%d)",
+	core.Print(nil, "Capability: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
 	if err := PushCapabilitySummary(influx, cp, results); err != nil {
-		core.Print(nil,"InfluxDB summary push failed, buffering: %v", err)
+		core.Print(nil, "InfluxDB summary push failed, buffering: %v", err)
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
@@ -135,10 +136,10 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 	judgeBackend := NewHTTPBackend(cfg.JudgeURL, cfg.JudgeModel)
 	judge := NewJudge(judgeBackend)
 
-	core.Print(nil,"Judging %d capability responses (0-10 quality scoring)...", len(fullResponses))
+	core.Print(nil, "Judging %d capability responses (0-10 quality scoring)...", len(fullResponses))
 	ScoreCapabilityAndPush(ctx, judge, influx, cp, fullResponses)
 
-	core.Print(nil,"Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
+	core.Print(nil, "Running %d content probes (0-10 judge scoring)...", len(ContentProbes))
 	contentResponses := RunContentProbesViaAPI(ctx, probeBackend)
 	if len(contentResponses) > 0 {
 		contentRunID := core.Replace(cp.RunID, "-capability-", "-content-")
@@ -182,7 +183,7 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 		return coreerr.E("ml.processWithConversion", "convert adapter", err)
 	}
 
-	core.Print(nil,"Running %d capability probes...", len(CapabilityProbes))
+	core.Print(nil, "Running %d capability probes...", len(CapabilityProbes))
 	modelName := cfg.Model
 	if modelName == "" {
 		modelName = cp.ModelTag
@@ -191,11 +192,11 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 
 	results := RunCapabilityProbes(ctx, backend)
 
-	core.Print(nil,"Result: %s -- %.1f%% (%d/%d)",
+	core.Print(nil, "Result: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
 	if err := PushCapabilityResults(influx, cp, results); err != nil {
-		core.Print(nil,"InfluxDB push failed, buffering: %v", err)
+		core.Print(nil, "InfluxDB push failed, buffering: %v", err)
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
@@ -216,12 +217,13 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	for _, probe := range CapabilityProbes {
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		if err != nil {
-			core.Print(nil,"  [%s] ERROR: %v", probe.ID, err)
+			core.Print(nil, "  [%s] ERROR: %v", probe.ID, err)
 			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: err.Error()}
 			total++
 			cat := results.ByCategory[probe.Category]
 			cat.Total++
 			results.ByCategory[probe.Category] = cat
+			runtime.GC()
 			continue
 		}
 
@@ -249,7 +251,8 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 		if passed {
 			status = "PASS"
 		}
-		core.Print(nil,"  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
+		core.Print(nil, "  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
+		runtime.GC()
 	}
 
 	if total > 0 {
@@ -277,7 +280,7 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
 		response := res.Text
 		if err != nil {
-			core.Print(nil,"  [%s] ERROR: %v", probe.ID, err)
+			core.Print(nil, "  [%s] ERROR: %v", probe.ID, err)
 			response = core.Sprintf("ERROR: %v", err)
 		}
 
@@ -314,11 +317,12 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 		if passed {
 			status = "PASS"
 		}
-		core.Print(nil,"  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
+		core.Print(nil, "  [%s] %s (expected: %s)", probe.ID, status, probe.Answer)
 
 		if onProbe != nil {
 			onProbe(probe.ID, probe.Category, passed, stored, correct, total)
 		}
+		runtime.GC()
 	}
 
 	if total > 0 {
@@ -337,17 +341,19 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	for _, probe := range ContentProbes {
 		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
 		if err != nil {
-			core.Print(nil,"  [content:%s] ERROR: %v", probe.ID, err)
+			core.Print(nil, "  [content:%s] ERROR: %v", probe.ID, err)
+			runtime.GC()
 			continue
 		}
 
 		reply := StripThinkBlocks(res.Text)
-		core.Print(nil,"  [content:%s] got %d chars", probe.ID, len(reply))
+		core.Print(nil, "  [content:%s] got %d chars", probe.ID, len(reply))
 
 		responses = append(responses, ContentResponse{
 			Probe:    probe,
 			Response: reply,
 		})
+		runtime.GC()
 	}
 
 	return responses
@@ -371,25 +377,29 @@ func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []C
 			var resp probeRunnerResponse
 			if r := core.JSONUnmarshalString(string(scanner.Bytes()), &resp); !r.OK {
 				core.Print(nil, "  [content:%s] parse error: %v", probe.ID, r.Value.(error))
+				runtime.GC()
 				continue
 			} else if resp.Error != "" {
-				core.Print(nil,"  [content:%s] ERROR: %s", probe.ID, resp.Error)
+				core.Print(nil, "  [content:%s] ERROR: %s", probe.ID, resp.Error)
+				runtime.GC()
 				continue
 			} else {
 				response = resp.Response
 			}
 		} else {
-			core.Print(nil,"  [content:%s] no response from runner", probe.ID)
+			core.Print(nil, "  [content:%s] no response from runner", probe.ID)
+			runtime.GC()
 			continue
 		}
 
 		response = StripThinkBlocks(response)
-		core.Print(nil,"  [content:%s] got %d chars", probe.ID, len(response))
+		core.Print(nil, "  [content:%s] got %d chars", probe.ID, len(response))
 
 		responses = append(responses, ContentResponse{
 			Probe:    probe,
 			Response: response,
 		})
+		runtime.GC()
 	}
 
 	return responses

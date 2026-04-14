@@ -22,6 +22,7 @@ import (
 // Metrics; HTTP and subprocess backends leave it nil.
 type Result struct {
 	Text    string
+	Content string `json:"-"`
 	Metrics *inference.GenerateMetrics
 }
 
@@ -79,5 +80,15 @@ type StreamingBackend interface {
 func DefaultGenOpts() GenOpts {
 	return GenOpts{
 		Temperature: 0.1,
+	}
+}
+
+// newResult keeps the legacy Text field and the RFC-facing Content alias in
+// sync for all backend returns.
+func newResult(text string, metrics *inference.GenerateMetrics) Result {
+	return Result{
+		Text:    text,
+		Content: text,
+		Metrics: metrics,
 	}
 }

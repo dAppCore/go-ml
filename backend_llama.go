@@ -38,8 +38,42 @@ type LlamaOpts struct {
 }
 
 // NewLlamaBackend creates a backend that manages a llama-server process.
-// The process is not started until Start() is called.
-func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend {
+//
+// The constructor accepts the current process-service form used by the codebase
+// as well as the RFC's simpler model-path form:
+//
+//	NewLlamaBackend(processSvc, LlamaOpts{ModelPath: "model.gguf"})
+//	NewLlamaBackend("model.gguf")
+func NewLlamaBackend(args ...any) *LlamaBackend {
+	var processSvc *process.Service
+	opts := LlamaOpts{}
+
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case *process.Service:
+			processSvc = v
+		case LlamaOpts:
+			if v.LlamaPath != "" {
+				opts.LlamaPath = v.LlamaPath
+			}
+			if v.ModelPath != "" {
+				opts.ModelPath = v.ModelPath
+			}
+			if v.LoraPath != "" {
+				opts.LoraPath = v.LoraPath
+			}
+			if v.Port != 0 {
+				opts.Port = v.Port
+			}
+		case string:
+			if opts.ModelPath == "" {
+				opts.ModelPath = v
+			}
+		case nil:
+			// Allow the existing nil placeholder used by tests and callers.
+		}
+	}
+
 	if opts.Port == 0 {
 		opts.Port = 18090
 	}

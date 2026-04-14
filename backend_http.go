@@ -175,7 +175,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 
 		result, err := b.doRequest(ctx, body)
 		if err == nil {
-			return Result{Text: applyStopSequences(result, opts.StopSequences)}, nil
+			return newResult(applyStopSequences(result, opts.StopSequences), nil), nil
 		}
 		lastErr = err
 

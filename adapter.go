@@ -40,9 +40,9 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 	}
 	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: text}, err
+		return newResult(text, nil), err
 	}
-	return Result{Text: text, Metrics: metricsPtr(a.model)}, nil
+	return newResult(text, metricsPtr(a.model)), nil
 }
 
 // Chat sends a multi-turn conversation to the underlying TextModel and collects
@@ -56,9 +56,9 @@ func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts Ge
 	}
 	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: text}, err
+		return newResult(text, nil), err
 	}
-	return Result{Text: text, Metrics: metricsPtr(a.model)}, nil
+	return newResult(text, metricsPtr(a.model)), nil
 }
 
 // GenerateStream forwards each generated token's text to the callback.
