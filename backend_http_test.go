@@ -54,6 +54,25 @@ func TestHTTPBackend_Generate_Bad(t *testing.T) {
 	}
 }
 
+func TestHTTPBackend_StopSequences_Good(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := chatResponse{
+			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "hello STOP world"}}},
+		}
+		mustWriteJSONResponse(t, w, resp)
+	}))
+	defer srv.Close()
+
+	b := NewHTTPBackend(srv.URL, "test-model")
+	result, err := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if result.Text != "hello " {
+		t.Errorf("got %q, want %q", result.Text, "hello ")
+	}
+}
+
 func TestHTTPBackend_Retry_Ugly(t *testing.T) {
 	attempts := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

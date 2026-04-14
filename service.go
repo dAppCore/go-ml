@@ -124,7 +124,9 @@ func (s *Service) DefaultBackend() Backend {
 
 // Backends returns the names of all registered backends.
 func (s *Service) Backends() []string {
-	return slices.Collect(s.BackendsIter())
+	names := slices.Collect(s.BackendsIter())
+	slices.Sort(names)
+	return names
 }
 
 // BackendsIter returns an iterator over the names of all registered backends.

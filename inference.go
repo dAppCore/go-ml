@@ -46,11 +46,12 @@ type Backend interface {
 type GenOpts struct {
 	Temperature   float64
 	MaxTokens     int
-	Model         string  // override model for this request
-	TopK          int     // top-k sampling (0 = disabled)
-	TopP          float64 // nucleus sampling threshold (0 = disabled)
-	RepeatPenalty float64 // repetition penalty (0 = disabled, 1.0 = no penalty)
-	StopTokens    []int32 // token IDs that terminate generation early
+	Model         string   // override model for this request
+	TopK          int      // top-k sampling (0 = disabled)
+	TopP          float64  // nucleus sampling threshold (0 = disabled)
+	RepeatPenalty float64  // repetition penalty (0 = disabled, 1.0 = no penalty)
+	StopTokens    []int32  // token IDs that terminate generation early
+	StopSequences []string // literal substrings that terminate generation early
 }
 
 // Message is a type alias for inference.Message, providing backward compatibility.

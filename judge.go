@@ -13,12 +13,18 @@ import (
 // Returns "" if no JSON object is found.
 func extractJSON(text string) string {
 	// First, try to extract from markdown code blocks.
-	codeBlockRe := regexp.MustCompile("(?s)```(?:json)?\\s*\\n?(\\{.*?\\})\\s*\\n?```")
+	codeBlockRe := regexp.MustCompile("(?s)```(?:json)?\\s*\\n?(.*?)\\s*\\n?```")
 	if m := codeBlockRe.FindStringSubmatch(text); len(m) > 1 {
-		return core.Trim(m[1])
+		if raw := firstJSONObject(m[1]); raw != "" {
+			return core.Trim(raw)
+		}
 	}
 
-	// Find the first { and its matching }.
+	return firstJSONObject(text)
+}
+
+// firstJSONObject finds the first balanced JSON object in text.
+func firstJSONObject(text string) string {
 	start := -1
 	for i := 0; i < len(text); i++ {
 		if text[i] == '{' {

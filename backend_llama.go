@@ -66,7 +66,11 @@ func (b *LlamaBackend) Name() string { return "llama" }
 //
 //	backend := ml.NewLlamaBackend(process, ml.LlamaOpts{...})
 //	backend.SetMaxTokens(2048)
-func (b *LlamaBackend) SetMaxTokens(n int) { b.http.SetMaxTokens(n) }
+func (b *LlamaBackend) SetMaxTokens(n int) {
+	if b.http != nil {
+		b.http.SetMaxTokens(n)
+	}
+}
 
 // LoadModel satisfies inference.Backend by wrapping the managed llama-server
 // as an inference.TextModel. The path argument is ignored — the GGUF path is
@@ -78,6 +82,9 @@ func (b *LlamaBackend) SetMaxTokens(n int) { b.http.SetMaxTokens(n) }
 //	    fmt.Print(tok.Text)
 //	}
 func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
+	if b.http == nil {
+		return nil, log.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil)
+	}
 	return NewLlamaTextModel(b), nil
 }
 
@@ -98,6 +105,10 @@ func (b *LlamaBackend) Available() bool {
 
 // Start launches the llama-server process.
 func (b *LlamaBackend) Start(ctx context.Context) error {
+	if b.processSvc == nil {
+		return log.E("ml.LlamaBackend.Start", "process service not configured", nil)
+	}
+
 	args := []string{
 		"-m", b.modelPath,
 		"--port", core.Sprintf("%d", b.port),
@@ -133,6 +144,9 @@ func (b *LlamaBackend) Stop() error {
 	if b.procID == "" {
 		return nil
 	}
+	if b.processSvc == nil {
+		return log.E("ml.LlamaBackend.Stop", "process service not configured", nil)
+	}
 	return b.processSvc.Kill(b.procID)
 }
 
@@ -141,6 +155,9 @@ func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts
 	if !b.Available() {
 		return Result{}, log.E("ml.LlamaBackend.Generate", "llama-server not available", nil)
 	}
+	if b.http == nil {
+		return Result{}, log.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil)
+	}
 	return b.http.Generate(ctx, prompt, opts)
 }
 
@@ -148,6 +165,9 @@ func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts
 func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	if !b.Available() {
 		return Result{}, log.E("ml.LlamaBackend.Chat", "llama-server not available", nil)
+	}
+	if b.http == nil {
+		return Result{}, log.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil)
 	}
 	return b.http.Chat(ctx, messages, opts)
 }

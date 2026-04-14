@@ -197,6 +197,29 @@ func TestInferenceAdapter_ChatStream_Good(t *testing.T) {
 	assert.Equal(t, []string{"reply", "!"}, collected)
 }
 
+func TestInferenceAdapter_StopSequences_Good(t *testing.T) {
+	mock := &mockTextModel{
+		tokens: []inference.Token{
+			{ID: 1, Text: "hello "},
+			{ID: 2, Text: "STOP world"},
+			{ID: 3, Text: "ignored"},
+		},
+	}
+	adapter := NewInferenceAdapter(mock, "test")
+
+	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
+	require.NoError(t, err)
+	assert.Equal(t, "hello ", result.Text)
+
+	var collected []string
+	err = adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
+		collected = append(collected, token)
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"hello "}, collected)
+}
+
 func TestInferenceAdapter_ConvertOpts_Good(t *testing.T) {
 	// Non-zero values should produce options.
 	opts := convertOpts(GenOpts{Temperature: 0.7, MaxTokens: 512, Model: "ignored"})

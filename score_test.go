@@ -189,6 +189,56 @@ func TestEngine_ScoreAllExactGSM8K_Good(t *testing.T) {
 	}
 }
 
+func TestEngine_ScoreAllMergesStandardScores_Good(t *testing.T) {
+	jsonReply := `{"truthfulness": 8, "informativeness": 6, "reasoning": "good"}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := chatResponse{
+			Choices: []chatChoice{
+				{Message: Message{Role: "assistant", Content: jsonReply}},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		mustWriteJSONResponse(t, w, resp)
+	}))
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-judge")
+	judge := NewJudge(backend)
+	engine := NewEngine(judge, 2, "standard,exact")
+	ctx := context.Background()
+
+	responses := []Response{
+		{
+			ID:            "r1",
+			Prompt:        "What is 2+2?",
+			Response:      "The answer is #### 4",
+			Model:         "math-model",
+			BestAnswer:    "4",
+			CorrectAnswer: "4",
+		},
+	}
+
+	results := engine.ScoreAll(ctx, responses)
+	scores := results["math-model"]
+	if len(scores) != 1 {
+		t.Fatalf("expected 1 score, got %d", len(scores))
+	}
+
+	std := scores[0].Standard
+	if std == nil {
+		t.Fatal("standard score should not be nil")
+	}
+	if std.Truthfulness != 8 {
+		t.Errorf("truthfulness = %d, want 8", std.Truthfulness)
+	}
+	if std.Correct == nil || !*std.Correct {
+		t.Errorf("correct = %+v, want true", std.Correct)
+	}
+	if std.Expected != "4" {
+		t.Errorf("expected = %q, want %q", std.Expected, "4")
+	}
+}
+
 func TestEngine_ScoreAllNoSuites_Good(t *testing.T) {
 	engine := NewEngine(nil, 1, "")
 	ctx := context.Background()

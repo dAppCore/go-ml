@@ -4,6 +4,7 @@ package ml
 
 import (
 	"context"
+	"strings"
 
 	"dappco.re/go/core"
 	"dappco.re/go/core/inference"
@@ -37,10 +38,11 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
+	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: b.String()}, err
+		return Result{Text: text}, err
 	}
-	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
+	return Result{Text: text, Metrics: metricsPtr(a.model)}, nil
 }
 
 // Chat sends a multi-turn conversation to the underlying TextModel and collects
@@ -52,10 +54,11 @@ func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts Ge
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
+	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: b.String()}, err
+		return Result{Text: text}, err
 	}
-	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
+	return Result{Text: text, Metrics: metricsPtr(a.model)}, nil
 }
 
 // GenerateStream forwards each generated token's text to the callback.
@@ -63,9 +66,28 @@ func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts Ge
 // model's error if generation fails.
 func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error {
 	inferOpts := convertOpts(opts)
+	if len(opts.StopSequences) == 0 {
+		for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
+			if err := cb(tok.Text); err != nil {
+				return err
+			}
+		}
+		return a.model.Err()
+	}
+
+	var full strings.Builder
+	emitted := 0
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
-		if err := cb(tok.Text); err != nil {
-			return err
+		full.WriteString(tok.Text)
+		truncated := applyStopSequences(full.String(), opts.StopSequences)
+		if len(truncated) > emitted {
+			if err := cb(truncated[emitted:]); err != nil {
+				return err
+			}
+			emitted = len(truncated)
+		}
+		if len(truncated) < full.Len() {
+			return a.model.Err()
 		}
 	}
 	return a.model.Err()
@@ -76,9 +98,28 @@ func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, op
 // is needed.
 func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) error {
 	inferOpts := convertOpts(opts)
+	if len(opts.StopSequences) == 0 {
+		for tok := range a.model.Chat(ctx, messages, inferOpts...) {
+			if err := cb(tok.Text); err != nil {
+				return err
+			}
+		}
+		return a.model.Err()
+	}
+
+	var full strings.Builder
+	emitted := 0
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
-		if err := cb(tok.Text); err != nil {
-			return err
+		full.WriteString(tok.Text)
+		truncated := applyStopSequences(full.String(), opts.StopSequences)
+		if len(truncated) > emitted {
+			if err := cb(truncated[emitted:]); err != nil {
+				return err
+			}
+			emitted = len(truncated)
+		}
+		if len(truncated) < full.Len() {
+			return a.model.Err()
 		}
 	}
 	return a.model.Err()

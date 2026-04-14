@@ -22,7 +22,7 @@ type Engine struct {
 func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 	suites := make(map[string]bool)
 
-	if suiteList == "all" {
+	if core.Lower(core.Trim(suiteList)) == "all" {
 		suites["heuristic"] = true
 		suites["semantic"] = true
 		suites["content"] = true
@@ -30,7 +30,7 @@ func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 		suites["exact"] = true
 	} else {
 		for _, s := range core.Split(suiteList, ",") {
-			s = core.Trim(s)
+			s = core.Lower(core.Trim(s))
 			if s != "" {
 				suites[s] = true
 			}
@@ -200,7 +200,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
@@ -223,7 +223,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
@@ -246,7 +246,7 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
@@ -254,7 +254,9 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 		// Exact match scoring — GSM8K (has CorrectAnswer).
 		if e.suites["exact"] && resp.CorrectAnswer != "" {
-			scoreSlots[i].Standard = scoreGSM8K(resp.Response, resp.CorrectAnswer)
+			mu.Lock()
+			scoreSlots[i].Standard = mergeStandardScores(scoreSlots[i].Standard, scoreGSM8K(resp.Response, resp.CorrectAnswer))
+			mu.Unlock()
 		}
 	}
 
@@ -314,4 +316,49 @@ func ScoreStandard(judge *Judge, benchmark, question, reference, response string
 		return nil, coreerr.E("ml.ScoreStandard", "standard scoring requires a judge", nil)
 	}
 	return judge.ScoreStandard(context.Background(), benchmark, question, reference, response)
+}
+
+// mergeStandardScores combines benchmark and exact-match results into one
+// StandardScores struct without discarding fields populated by earlier suites.
+func mergeStandardScores(dst, src *StandardScores) *StandardScores {
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
+		copy := *src
+		return &copy
+	}
+
+	if src.Truthfulness != 0 {
+		dst.Truthfulness = src.Truthfulness
+	}
+	if src.Informativeness != 0 {
+		dst.Informativeness = src.Informativeness
+	}
+	if src.Safety != 0 {
+		dst.Safety = src.Safety
+	}
+	if src.Nuance != 0 {
+		dst.Nuance = src.Nuance
+	}
+	if src.Kindness != 0 {
+		dst.Kindness = src.Kindness
+	}
+	if src.Awareness != 0 {
+		dst.Awareness = src.Awareness
+	}
+	if src.Correct != nil {
+		dst.Correct = src.Correct
+	}
+	if src.Extracted != "" {
+		dst.Extracted = src.Extracted
+	}
+	if src.Expected != "" {
+		dst.Expected = src.Expected
+	}
+	if src.Reasoning != "" && dst.Reasoning == "" {
+		dst.Reasoning = src.Reasoning
+	}
+
+	return dst
 }

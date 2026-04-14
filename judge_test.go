@@ -29,6 +29,11 @@ func TestJudge_ExtractJSON_Good(t *testing.T) {
 			want:  `{"a":1}`,
 		},
 		{
+			name:  "nested code block",
+			input: "prefix ```json\n{\"outer\": {\"inner\": 1}, \"val\": 2}\n``` suffix",
+			want:  `{"outer": {"inner": 1}, "val": 2}`,
+		},
+		{
 			name:  "markdown code block no lang",
 			input: "text ```\n{\"b\":2}\n``` end",
 			want:  `{"b":2}`,

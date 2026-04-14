@@ -61,6 +61,26 @@ func replaceAll(s, old, new string) string {
 	return strings.ReplaceAll(s, old, new)
 }
 
+// applyStopSequences truncates text at the first occurrence of any stop
+// sequence. Empty stop sequences are ignored.
+func applyStopSequences(text string, stopSequences []string) string {
+	if text == "" || len(stopSequences) == 0 {
+		return text
+	}
+
+	cut := len(text)
+	for _, stop := range stopSequences {
+		if stop == "" {
+			continue
+		}
+		if idx := strings.Index(text, stop); idx >= 0 && idx < cut {
+			cut = idx
+		}
+	}
+
+	return text[:cut]
+}
+
 // sscanf wraps fmt.Sscanf for parsing formatted strings.
 func sscanf(s, format string, args ...any) (int, error) {
 	return fmt.Sscanf(s, format, args...)
