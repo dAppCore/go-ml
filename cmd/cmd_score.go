@@ -52,7 +52,7 @@ func addScoreCommand(c *core.Core) {
 						JudgeModel: judgeModel,
 						JudgeURL:   judgeURL,
 						ScoredAt:   time.Now(),
-						Suites:     ml.SplitComma(suites),
+						Suites:     engine.SuiteNames(),
 					},
 					ModelAverages: averages,
 					PerPrompt:     perPrompt,
