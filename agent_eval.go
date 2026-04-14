@@ -359,6 +359,14 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	return responses
 }
 
+// RunContentProbes runs content probes via a backend.
+//
+// Deprecated: use RunContentProbesViaAPI. This alias remains for the older
+// architecture/docs references that still use the shorter name.
+func RunContentProbes(ctx context.Context, backend Backend) []ContentResponse {
+	return RunContentProbesViaAPI(ctx, backend)
+}
+
 // RunContentProbesViaRunner sends content probes through an SSH probe runner.
 func RunContentProbesViaRunner(stdin io.WriteCloser, scanner *bufio.Scanner) []ContentResponse {
 	var responses []ContentResponse

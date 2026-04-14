@@ -5,6 +5,10 @@ package ml
 import (
 	"context"
 	"testing"
+
+	"dappco.re/go/core"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
@@ -121,6 +125,31 @@ func TestAgent_Evaluate_Bad(t *testing.T) {
 	}
 }
 
+func TestAgent_ResolveCheckpointTarget_String_Good(t *testing.T) {
+	ft := newFakeTransport()
+	base := "/data/training"
+
+	ft.On("ls -d "+base+"/adapters-* 2>/dev/null",
+		base+"/adapters-27b\n", nil)
+	ft.On("ls -d "+base+"/adapters-27b/gemma-3-* 2>/dev/null", "", core.NewError("no match"))
+	ft.On("ls "+base+"/adapters-27b/*_adapters.safetensors 2>/dev/null",
+		base+"/adapters-27b/0001000_adapters.safetensors\n", nil)
+
+	a := NewAgent(&AgentConfig{
+		M3AdapterBase: base,
+		Transport:     ft,
+	})
+
+	cp, err := a.resolveCheckpointTarget(context.Background(), base+"/adapters-27b")
+	require.NoError(t, err)
+	assert.Equal(t, base+"/adapters-27b", cp.RemoteDir)
+	assert.Equal(t, "adapters-27b", cp.Dirname)
+	assert.Equal(t, "0001000_adapters.safetensors", cp.Filename)
+	assert.Equal(t, "gemma-3-27b", cp.ModelTag)
+	assert.NotEmpty(t, cp.Label)
+	assert.NotEmpty(t, cp.RunID)
+}
+
 // Spec §8 — CollectMetrics accepts optional influxURL override.
 func TestAgent_CollectMetrics_Good(t *testing.T) {
 	cfg := &AgentConfig{
@@ -163,6 +192,37 @@ func TestAgent_Execute_Good(t *testing.T) {
 		Transport:     newFakeTransport(),
 	}
 	a.Execute(context.Background(), override)
+}
+
+// ---------------------------------------------------------------------------
+// Content probes — spec compatibility alias
+// ---------------------------------------------------------------------------
+
+type contentProbeBackend struct {
+	prompts []string
+}
+
+func (b *contentProbeBackend) Generate(_ context.Context, prompt string, _ GenOpts) (Result, error) {
+	b.prompts = append(b.prompts, prompt)
+	return newResult("content", nil), nil
+}
+
+func (b *contentProbeBackend) Chat(_ context.Context, _ []Message, _ GenOpts) (Result, error) {
+	return newResult("content", nil), nil
+}
+
+func (b *contentProbeBackend) Name() string    { return "content" }
+func (b *contentProbeBackend) Available() bool { return true }
+
+func TestRunContentProbesAlias_Good(t *testing.T) {
+	backend := &contentProbeBackend{}
+
+	responses := RunContentProbes(context.Background(), backend)
+	require.Len(t, responses, len(ContentProbes))
+	require.Len(t, backend.prompts, len(ContentProbes))
+	assert.Equal(t, ContentProbes[0].Prompt, backend.prompts[0])
+	assert.Equal(t, ContentProbes[0].ID, responses[0].Probe.ID)
+	assert.Equal(t, "content", responses[0].Response)
 }
 
 // ---------------------------------------------------------------------------

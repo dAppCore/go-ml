@@ -62,25 +62,126 @@ func (a *Agent) Execute(ctx context.Context, override ...*AgentConfig) {
 //	results, err := agent.Evaluate(ctx, ml.Checkpoint{...})
 //	results, err := agent.Evaluate(ctx, "/models/adapter-42")
 func (a *Agent) Evaluate(ctx context.Context, target any) error {
-	influx := a.influxClient()
+	if a == nil || a.cfg == nil {
+		return corelog.E("ml.Agent.Evaluate", "agent config not set", nil)
+	}
+
+	cp, err := a.resolveCheckpointTarget(ctx, target)
+	if err != nil {
+		return err
+	}
+
+	return ProcessOne(a.cfg, a.influxClient(), cp)
+}
+
+// resolveCheckpointTarget normalises Evaluate() targets into a concrete
+// Checkpoint. String targets are first resolved via DiscoverCheckpoints and
+// then fall back to path-based metadata extraction when no exact match is
+// found.
+func (a *Agent) resolveCheckpointTarget(ctx context.Context, target any) (Checkpoint, error) {
 	switch v := target.(type) {
 	case Checkpoint:
-		return ProcessOne(a.cfg, influx, v)
+		return v, nil
 	case *Checkpoint:
 		if v == nil {
-			return corelog.E("ml.Agent.Evaluate", "nil checkpoint", nil)
+			return Checkpoint{}, corelog.E("ml.Agent.Evaluate", "nil checkpoint", nil)
 		}
-		return ProcessOne(a.cfg, influx, *v)
+		return *v, nil
 	case string:
-		cp := Checkpoint{
-			RemoteDir: v,
-			Dirname:   core.PathBase(v),
-			Filename:  "adapters.safetensors",
-		}
-		return ProcessOne(a.cfg, influx, cp)
+		return a.resolveCheckpointPath(ctx, v)
 	default:
-		return corelog.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil)
+		return Checkpoint{}, corelog.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil)
 	}
+}
+
+// resolveCheckpointPath tries to match a string target against the discovered
+// checkpoint list before falling back to a path-derived checkpoint shape.
+func (a *Agent) resolveCheckpointPath(ctx context.Context, target string) (Checkpoint, error) {
+	target = core.Trim(target)
+	if target == "" {
+		return Checkpoint{}, corelog.E("ml.Agent.Evaluate", "empty checkpoint path", nil)
+	}
+
+	if a != nil && a.cfg != nil {
+		if checkpoints, err := a.DiscoverCheckpoints(ctx); err == nil {
+			if cp, ok := matchCheckpointTarget(checkpoints, target); ok {
+				return cp, nil
+			}
+		}
+	}
+
+	remoteDir := target
+	filename := "adapters.safetensors"
+	if core.HasSuffix(target, ".safetensors") {
+		remoteDir = core.PathDir(target)
+		filename = core.PathBase(target)
+	}
+
+	dirname := remoteDir
+	if a != nil && a.cfg != nil && a.cfg.M3AdapterBase != "" {
+		if rel, ok := cutPrefix(remoteDir, core.Concat(a.cfg.M3AdapterBase, "/")); ok && rel != "" {
+			dirname = rel
+		}
+	}
+	if dirname == "" {
+		dirname = core.PathBase(remoteDir)
+	}
+	if dirname == "" {
+		dirname = target
+	}
+	if core.HasPrefix(dirname, "/") {
+		dirname = core.PathBase(dirname)
+	}
+
+	modelTag, labelPrefix, stem := AdapterMeta(dirname)
+	label := labelPrefix
+	if label == "" {
+		label = dirname
+	}
+	runID := stem
+	if runID == "" {
+		runID = core.Replace(dirname, "/", "-")
+	}
+	if runID == "" {
+		runID = dirname
+	}
+
+	return Checkpoint{
+		RemoteDir: remoteDir,
+		Filename:  filename,
+		Dirname:   dirname,
+		ModelTag:  modelTag,
+		Label:     label,
+		RunID:     core.Sprintf("%s-capability-auto", runID),
+	}, nil
+}
+
+// matchCheckpointTarget returns the first checkpoint that matches the target
+// path exactly, or uniquely by basename when exact matching is unavailable.
+func matchCheckpointTarget(checkpoints []Checkpoint, target string) (Checkpoint, bool) {
+	var baseMatches []Checkpoint
+	targetBase := core.PathBase(target)
+
+	for _, cp := range checkpoints {
+		if target == cp.RemoteDir || target == cp.Dirname {
+			return cp, true
+		}
+		if target == core.Sprintf("%s/%s", cp.RemoteDir, cp.Filename) {
+			return cp, true
+		}
+		if targetBase != "" && targetBase == core.PathBase(cp.RemoteDir) {
+			baseMatches = append(baseMatches, cp)
+			continue
+		}
+		if targetBase != "" && targetBase == core.PathBase(cp.Dirname) {
+			baseMatches = append(baseMatches, cp)
+		}
+	}
+
+	if len(baseMatches) == 1 {
+		return baseMatches[0], true
+	}
+	return Checkpoint{}, false
 }
 
 // ExecuteRemote runs a shell command on the remote training host. The
