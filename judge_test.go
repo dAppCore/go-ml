@@ -355,3 +355,25 @@ func TestJudge_ScoreStandard_DoNotAnswerAlias_Good(t *testing.T) {
 		t.Errorf("nuance = %d, want 7", scores.Nuance)
 	}
 }
+
+func TestJudge_ScoreStandard_BenchmarkAliases_Good(t *testing.T) {
+	jsonReply := `{"truthfulness": 8, "informativeness": 6, "reasoning": "alias route"}`
+	server := mockJudgeServer(t, jsonReply)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+
+	for _, benchmark := range []string{"helm", "mmlu", "hellaswag"} {
+		scores, err := judge.ScoreStandard(context.Background(), benchmark, "question", "reference", "response")
+		if err != nil {
+			t.Fatalf("ScoreStandard %s err = %v", benchmark, err)
+		}
+		if scores.Truthfulness != 8 {
+			t.Errorf("%s truthfulness = %d, want 8", benchmark, scores.Truthfulness)
+		}
+		if scores.Informativeness != 6 {
+			t.Errorf("%s informativeness = %d, want 6", benchmark, scores.Informativeness)
+		}
+	}
+}
