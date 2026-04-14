@@ -7,9 +7,13 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/inference"
 	coreio "dappco.re/go/core/io"
 	coreerr "dappco.re/go/core/log"
 )
+
+// Compile-time check: HTTPBackend satisfies inference.Backend (spec §2.1).
+var _ inference.Backend = (*HTTPBackend)(nil)
 
 // HTTPBackend talks to an OpenAI-compatible chat completions API.
 type HTTPBackend struct {
@@ -119,6 +123,19 @@ func (b *HTTPBackend) BaseURL() string { return b.baseURL }
 
 // SetMaxTokens sets the maximum token count for requests.
 func (b *HTTPBackend) SetMaxTokens(n int) { b.maxTokens = n }
+
+// LoadModel satisfies inference.Backend by wrapping the HTTPBackend as an
+// inference.TextModel. The path argument is ignored — HTTP backends talk to
+// a remote server which already has the model loaded. Spec §2.3.
+//
+//	backend := ml.NewHTTPBackend("http://localhost:11434", "llama2")
+//	model, _ := backend.LoadModel("dummy")
+//	for tok := range model.Generate(ctx, "hello") {
+//	    fmt.Print(tok.Text)
+//	}
+func (b *HTTPBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
+	return NewHTTPTextModel(b), nil
+}
 
 // Generate sends a single prompt and returns the response.
 func (b *HTTPBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {

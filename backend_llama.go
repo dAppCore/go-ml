@@ -6,9 +6,13 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/core/inference"
 	"dappco.re/go/core/log"
 	"dappco.re/go/core/process"
 )
+
+// Compile-time check: LlamaBackend satisfies inference.Backend (spec §2.1).
+var _ inference.Backend = (*LlamaBackend)(nil)
 
 // LlamaBackend manages a llama-server process and delegates HTTP calls to it.
 type LlamaBackend struct {
@@ -63,6 +67,19 @@ func (b *LlamaBackend) Name() string { return "llama" }
 //	backend := ml.NewLlamaBackend(process, ml.LlamaOpts{...})
 //	backend.SetMaxTokens(2048)
 func (b *LlamaBackend) SetMaxTokens(n int) { b.http.SetMaxTokens(n) }
+
+// LoadModel satisfies inference.Backend by wrapping the managed llama-server
+// as an inference.TextModel. The path argument is ignored — the GGUF path is
+// supplied at construction time via LlamaOpts.ModelPath. Spec §2.4.
+//
+//	backend := ml.NewLlamaBackend(svc, ml.LlamaOpts{ModelPath: "model.gguf"})
+//	model, _ := backend.LoadModel("dummy")
+//	for tok := range model.Generate(ctx, "hello") {
+//	    fmt.Print(tok.Text)
+//	}
+func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
+	return NewLlamaTextModel(b), nil
+}
 
 // Available checks if the llama-server is responding to health checks.
 func (b *LlamaBackend) Available() bool {
