@@ -196,6 +196,7 @@ func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
 		{"short string", "Hi", 1},
 		{"exactly 9 chars", "123456789", 1},
 		{"10 chars", "1234567890", 0},
+		{"whitespace only", "          ", 1},
 		{"error prefix", "ERROR: model failed to generate", 1},
 		{"pad token", "Some text with <pad> tokens", 1},
 		{"unused token", "Response has <unused0> artifacts", 1},

@@ -247,16 +247,20 @@ func scoreEmotionalRegister(response string) int {
 
 // scoreEmptyOrBroken detects empty, error, or broken responses.
 func scoreEmptyOrBroken(response string) int {
-	if response == "" || len(response) < 10 {
+	trimmed := core.Trim(response)
+	if trimmed == "" {
 		return 1
 	}
-	if core.HasPrefix(response, "ERROR") {
+	if len(trimmed) < 10 {
 		return 1
 	}
-	if htmlFragmentPattern.MatchString(response) {
+	if core.HasPrefix(trimmed, "ERROR") {
 		return 1
 	}
-	if core.Contains(response, "<pad>") || core.Contains(response, "<unused") {
+	if htmlFragmentPattern.MatchString(trimmed) {
+		return 1
+	}
+	if core.Contains(trimmed, "<pad>") || core.Contains(trimmed, "<unused") {
 		return 1
 	}
 	return 0
