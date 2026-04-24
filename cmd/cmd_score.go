@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // addScoreCommand registers `ml score` — reads a JSONL file of

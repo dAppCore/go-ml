@@ -1,18 +1,18 @@
-module dappco.re/go/core/ml
+module dappco.re/go/ml
 
 go 1.26.0
 
 require (
 	dappco.re/go/core v0.8.0-alpha.1
-	dappco.re/go/core/api v0.2.0
-	dappco.re/go/core/cli v0.5.2
-	dappco.re/go/core/i18n v0.2.3
-	dappco.re/go/core/inference v0.3.0
-	dappco.re/go/core/io v0.4.2
-	dappco.re/go/core/log v0.1.2
-	dappco.re/go/core/mlx v0.1.8
-	dappco.re/go/core/process v0.5.1
-	dappco.re/go/core/store v0.1.0
+	dappco.re/go/api v0.2.0
+	dappco.re/go/cli v0.5.2
+	dappco.re/go/i18n v0.2.3
+	dappco.re/go/inference v0.3.0
+	dappco.re/go/io v0.4.2
+	dappco.re/go/log v0.1.2
+	dappco.re/go/mlx v0.1.8
+	dappco.re/go/process v0.5.1
+	dappco.re/go/store v0.1.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/marcboeker/go-duckdb v1.8.5
@@ -155,13 +155,13 @@ require (
 
 replace (
 	dappco.re/go/core => /Users/snider/Code/core/go
-	dappco.re/go/core/api => /Users/snider/Code/core/api
-	dappco.re/go/core/cli => /Users/snider/Code/core/cli
-	dappco.re/go/core/i18n => /Users/snider/Code/core/go-i18n
-	dappco.re/go/core/inference => /Users/snider/Code/core/go-inference
-	dappco.re/go/core/io => /Users/snider/Code/core/go-io
-	dappco.re/go/core/log => /Users/snider/Code/core/go-log
-	dappco.re/go/core/mlx => /Users/snider/Code/core/go-mlx
-	dappco.re/go/core/process => /Users/snider/Code/core/go-process
-	dappco.re/go/core/store => /Users/snider/Code/core/go-store
+	dappco.re/go/api => /Users/snider/Code/core/api
+	dappco.re/go/cli => /Users/snider/Code/core/cli
+	dappco.re/go/i18n => /Users/snider/Code/core/go-i18n
+	dappco.re/go/inference => /Users/snider/Code/core/go-inference
+	dappco.re/go/io => /Users/snider/Code/core/go-io
+	dappco.re/go/log => /Users/snider/Code/core/go-log
+	dappco.re/go/mlx => /Users/snider/Code/core/go-mlx
+	dappco.re/go/process => /Users/snider/Code/core/go-process
+	dappco.re/go/store => /Users/snider/Code/core/go-store
 )

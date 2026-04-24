@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/cli/pkg/cli"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"dappco.re/go/core/mlx"
+	"dappco.re/go/cli/pkg/cli"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/mlx"
 )
 
 var abCmd = &cli.Command{

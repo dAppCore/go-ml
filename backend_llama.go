@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/inference"
-	"dappco.re/go/core/log"
-	"dappco.re/go/core/process"
+	"dappco.re/go/inference"
+	"dappco.re/go/log"
+	"dappco.re/go/process"
 )
 
 // Compile-time check: LlamaBackend satisfies inference.Backend (spec §2.1).

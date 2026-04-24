@@ -7,8 +7,8 @@ import (
 	"io/fs"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	goexec "dappco.re/go/core/process/exec"
+	coreio "dappco.re/go/io"
+	goexec "dappco.re/go/process/exec"
 )
 
 // ImportConfig holds options for the import-all operation.

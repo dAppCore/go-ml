@@ -6,9 +6,9 @@ import (
 	"context"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/inference"
-	"dappco.re/go/core/log"
-	ml "dappco.re/go/core/ml"
+	"dappco.re/go/inference"
+	"dappco.re/go/log"
+	ml "dappco.re/go/ml"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

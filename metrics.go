@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/store"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
 // PushMetrics queries golden_set stats from DuckDB and writes them to InfluxDB

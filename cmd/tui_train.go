@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/cli/pkg/cli"
+	"dappco.re/go/cli/pkg/cli"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

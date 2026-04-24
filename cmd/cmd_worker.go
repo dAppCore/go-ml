@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/ml"
+	"dappco.re/go/ml"
 )
 
 // addWorkerCommand registers `ml worker` — polls the LEM API for tasks, runs

@@ -7,8 +7,8 @@ import (
 	"runtime"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // ProbeResult holds the result of running all probes against a checkpoint.

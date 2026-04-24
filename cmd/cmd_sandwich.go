@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/cli/pkg/cli"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	"dappco.re/go/cli/pkg/cli"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 var sandwichCmd = &cli.Command{

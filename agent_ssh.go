@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	goexec "dappco.re/go/core/process/exec"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	goexec "dappco.re/go/process/exec"
 )
 
 // RemoteTransport abstracts remote command execution and file transfer.

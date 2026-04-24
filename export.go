@@ -5,8 +5,8 @@ import (
 	"math/rand"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // ChatMessage is a single message in the chat training format.

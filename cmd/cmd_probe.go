@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // addProbeCommand registers `ml probe` — runs 23 capability probes and 6

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 	_ "github.com/marcboeker/go-duckdb"
 )
 

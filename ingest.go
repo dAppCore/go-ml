@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.

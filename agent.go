@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"dappco.re/go/core"
-	corelog "dappco.re/go/core/log"
+	corelog "dappco.re/go/log"
 )
 
 // Agent orchestrates model evaluation and fleet training. It wraps the

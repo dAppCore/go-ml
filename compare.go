@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 )
 
 // RunCompare reads two score files and prints a comparison table for each

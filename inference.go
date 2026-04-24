@@ -14,7 +14,7 @@ package ml
 import (
 	"context"
 
-	"dappco.re/go/core/inference"
+	"dappco.re/go/inference"
 )
 
 // Result holds the response text and optional inference metrics.

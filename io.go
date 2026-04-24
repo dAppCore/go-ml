@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // ReadResponses reads a JSONL file and returns a slice of Response structs.

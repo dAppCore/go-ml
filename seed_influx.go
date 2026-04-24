@@ -4,8 +4,8 @@ import (
 	"io"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/store"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
 // SeedInfluxConfig holds options for the SeedInflux migration.

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"dappco.re/go/core"
-	goapi "dappco.re/go/core/api"
-	mlapi "dappco.re/go/core/ml/api"
+	goapi "dappco.re/go/api"
+	mlapi "dappco.re/go/ml/api"
 	"github.com/gin-gonic/gin"
 )
 

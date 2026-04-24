@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 )
 
 // extractJSON extracts the first JSON object {...} from text.

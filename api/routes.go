@@ -7,8 +7,8 @@ package api
 import (
 	"net/http"
 
-	goapi "dappco.re/go/core/api"
-	"dappco.re/go/core/ml"
+	goapi "dappco.re/go/api"
+	"dappco.re/go/ml"
 	"github.com/gin-gonic/gin"
 )
 

@@ -10,9 +10,9 @@ import (
 	"strconv"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/mlx"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/mlx"
 )
 
 // GGUFInfo re-exports mlx.GGUFInfo so ml consumers can inspect GGUF

@@ -7,9 +7,9 @@ package ml
 import (
 	"log/slog"
 
-	"dappco.re/go/core/inference"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/mlx" // registers "metal" backend via init() + Set*Limit
+	"dappco.re/go/inference"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/mlx" // registers "metal" backend via init() + Set*Limit
 )
 
 // SetMLXMemoryLimits applies Metal cache and memory hard limits before the

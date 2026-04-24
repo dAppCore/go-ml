@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 )
 
 // Engine orchestrates concurrent scoring across multiple suites.

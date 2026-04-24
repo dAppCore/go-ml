@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.

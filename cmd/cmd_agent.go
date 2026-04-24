@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	"dappco.re/go/core/ml"
+	"dappco.re/go/ml"
 )
 
 // addAgentCommand registers `ml agent` — polls M3 for unscored LoRA

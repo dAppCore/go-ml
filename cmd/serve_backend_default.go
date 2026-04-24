@@ -2,7 +2,7 @@
 
 package cmd
 
-import "dappco.re/go/core/ml"
+import "dappco.re/go/ml"
 
 // createServeBackend returns the default HTTP backend for non-MLX builds.
 //

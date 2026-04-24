@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	"dappco.re/go/core/ml"
+	"dappco.re/go/ml"
 )
 
 // addConsolidateCommand registers `ml consolidate` — pulls JSONL responses

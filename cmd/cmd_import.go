@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/store"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
 // addImportCommand registers `ml import-all` — imports golden set, training

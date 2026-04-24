@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // addServeCommand registers `ml serve` — starts an HTTP server serving

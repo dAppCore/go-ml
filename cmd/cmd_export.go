@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"dappco.re/go/core/store"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
 // addExportCommand registers `ml export` — reads golden set from DuckDB,

@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"dappco.re/go/core/store"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
 // addExpandCommand registers `ml expand` — reads pending expansion prompts

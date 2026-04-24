@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"dappco.re/go/core/store"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
 // addCoverageCommand registers `ml coverage` — queries seeds by region and

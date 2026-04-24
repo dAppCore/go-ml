@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/cli/pkg/cli"
-	"dappco.re/go/core/inference"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	ml "dappco.re/go/core/ml"
-	"dappco.re/go/core/mlx"
+	"dappco.re/go/cli/pkg/cli"
+	"dappco.re/go/inference"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	ml "dappco.re/go/ml"
+	"dappco.re/go/mlx"
 )
 
 var trainCmd = &cli.Command{

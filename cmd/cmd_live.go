@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // targetTotal is the target size of the golden set used for progress display.

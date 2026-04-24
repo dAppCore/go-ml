@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"dappco.re/go/core"
-	"dappco.re/go/core/inference"
-	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/inference"
+	coreerr "dappco.re/go/log"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	"dappco.re/go/core/store"
+	coreio "dappco.re/go/io"
+	"dappco.re/go/store"
 )
 
 // bufferEntry is a JSONL-buffered result for when InfluxDB is down.

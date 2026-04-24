@@ -4,9 +4,9 @@ import (
 	"io"
 
 	"dappco.re/go/core"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/store"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
 // ApproveConfig holds options for the approve operation.

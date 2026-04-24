@@ -5,8 +5,8 @@ package cmd
 import (
 	"log/slog"
 
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // createServeBackend returns the MLX backend when available, falling back to
