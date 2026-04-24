@@ -4,15 +4,15 @@ go 1.26.0
 
 require (
 	dappco.re/go/core v0.8.0-alpha.1
-	dappco.re/go/api v0.2.0
-	dappco.re/go/cli v0.5.2
-	dappco.re/go/i18n v0.2.3
-	dappco.re/go/inference v0.3.0
-	dappco.re/go/io v0.4.2
-	dappco.re/go/log v0.1.2
-	dappco.re/go/mlx v0.1.8
-	dappco.re/go/process v0.5.1
-	dappco.re/go/store v0.1.0
+	dappco.re/go/api v0.8.0-alpha.1
+	dappco.re/go/cli v0.8.0-alpha.1
+	dappco.re/go/i18n v0.8.0-alpha.1
+	dappco.re/go/inference v0.8.0-alpha.1
+	dappco.re/go/io v0.8.0-alpha.1
+	dappco.re/go/log v0.8.0-alpha.1
+	dappco.re/go/mlx v0.8.0-alpha.1
+	dappco.re/go/process v0.8.0-alpha.1
+	dappco.re/go/store v0.8.0-alpha.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/marcboeker/go-duckdb v1.8.5
