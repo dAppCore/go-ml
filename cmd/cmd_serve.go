@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"dappco.re/go/core"
+	"dappco.re/go/inference"
 	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
@@ -82,21 +83,7 @@ func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxReq
 	mux.HandleFunc("POST /v1/completions", handleCompletion(backend, streamer, canStream, &activeRequests, maxTokens, timeoutSec, maxRequests))
 	mux.HandleFunc("POST /v1/chat/completions", handleChat(backend, streamer, canStream, &activeRequests, maxTokens, timeoutSec, maxRequests, maxContext))
 
-	mux.HandleFunc("GET /v1/models", func(w http.ResponseWriter, r *http.Request) {
-		resp := struct {
-			Object string `json:"object"`
-			Data   []struct {
-				ID string `json:"id"`
-			} `json:"data"`
-		}{
-			Object: "list",
-			Data: []struct {
-				ID string `json:"id"`
-			}{{ID: backend.Name()}},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		writeJSON(w, resp)
-	})
+	registerModelRoutes(mux, backend)
 
 	// Serve the lem-chat UI at root — same origin, no CORS needed
 	mux.HandleFunc("GET /chat.js", func(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +143,98 @@ func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxReq
 		}
 		return err
 	}
+}
+
+// registerModelRoutes exposes the OpenAI-compatible model list and the
+// CoreGO richer model-info endpoint used by GUI hosts.
+func registerModelRoutes(mux *http.ServeMux, backend ml.Backend) {
+	mux.HandleFunc("GET /v1/models", func(w http.ResponseWriter, r *http.Request) {
+		resp := struct {
+			Object string `json:"object"`
+			Data   []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}{
+			Object: "list",
+			Data: []struct {
+				ID string `json:"id"`
+			}{{ID: backend.Name()}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		writeJSON(w, resp)
+	})
+
+	mux.HandleFunc("GET /v1/models/{id}/info", handleModelInfo(backend))
+}
+
+// handleModelInfo returns metadata for the single model loaded by this server.
+func handleModelInfo(backend ml.Backend) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id != backend.Name() {
+			http.NotFound(w, r)
+			return
+		}
+
+		resp := modelInfoForBackend(backend)
+		w.Header().Set("Content-Type", "application/json")
+		writeJSON(w, resp)
+	}
+}
+
+// modelInfoResponse is the JSON shape expected by LEM's runtime dashboard.
+type modelInfoResponse struct {
+	ID                  string  `json:"id"`
+	Architecture        string  `json:"architecture,omitempty"`
+	VocabSize           int     `json:"vocab_size,omitempty"`
+	NumLayers           int     `json:"num_layers,omitempty"`
+	HiddenSize          int     `json:"hidden_size,omitempty"`
+	QuantBits           int     `json:"quant_bits,omitempty"`
+	QuantGroup          int     `json:"quant_group,omitempty"`
+	PrefillTokensPerSec float64 `json:"prefill_tokens_per_sec,omitempty"`
+	DecodeTokensPerSec  float64 `json:"decode_tokens_per_sec,omitempty"`
+	PeakMemoryBytes     uint64  `json:"peak_memory_bytes,omitempty"`
+	ActiveMemoryBytes   uint64  `json:"active_memory_bytes,omitempty"`
+}
+
+// modelInfoForBackend extracts rich metadata from native inference-backed
+// servers, falling back to an ID-only response for legacy backend wrappers.
+func modelInfoForBackend(backend ml.Backend) modelInfoResponse {
+	resp := modelInfoResponse{ID: backend.Name()}
+	model := modelForBackend(backend)
+	if model == nil {
+		return resp
+	}
+
+	info := model.Info()
+	metrics := model.Metrics()
+
+	resp.Architecture = info.Architecture
+	resp.VocabSize = info.VocabSize
+	resp.NumLayers = info.NumLayers
+	resp.HiddenSize = info.HiddenSize
+	resp.QuantBits = info.QuantBits
+	resp.QuantGroup = info.QuantGroup
+	resp.PrefillTokensPerSec = metrics.PrefillTokensPerSec
+	resp.DecodeTokensPerSec = metrics.DecodeTokensPerSec
+	resp.PeakMemoryBytes = metrics.PeakMemoryBytes
+	resp.ActiveMemoryBytes = metrics.ActiveMemoryBytes
+	return resp
+}
+
+func modelForBackend(backend ml.Backend) inference.TextModel {
+	if provider, ok := backend.(interface{ Model() inference.TextModel }); ok {
+		return provider.Model()
+	}
+	if loader, ok := backend.(interface {
+		LoadModel(string, ...inference.LoadOption) (inference.TextModel, error)
+	}); ok {
+		model, err := loader.LoadModel("")
+		if err == nil {
+			return model
+		}
+	}
+	return nil
 }
 
 // handleCompletion returns an HTTP handler for /v1/completions.
