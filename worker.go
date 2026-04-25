@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"bytes"
 	"net/http"
 	"runtime"
 	"time"
@@ -232,7 +231,7 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 
 	data := []byte(core.JSONMarshalString(reqBody))
 
-	req, err := http.NewRequest("POST", cfg.InferURL+"/v1/chat/completions", bytes.NewReader(data))
+	req, err := http.NewRequest("POST", cfg.InferURL+"/v1/chat/completions", core.NewBuffer(data))
 	if err != nil {
 		return "", err
 	}
@@ -320,7 +319,7 @@ func apiDelete(cfg *WorkerConfig, path string, data map[string]any) ([]byte, err
 func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]byte, error) {
 	jsonData := []byte(core.JSONMarshalString(data))
 
-	req, err := http.NewRequest(method, cfg.APIBase+path, bytes.NewReader(jsonData))
+	req, err := http.NewRequest(method, cfg.APIBase+path, core.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
@@ -378,10 +377,10 @@ func ReadKeyFile() string {
 // SplitComma splits a comma-separated string into trimmed parts.
 func SplitComma(s string) []string {
 	var result []string
-	for part := range bytes.SplitSeq([]byte(s), []byte(",")) {
-		trimmed := bytes.TrimSpace(part)
+	for _, part := range core.Split(s, ",") {
+		trimmed := core.Trim(part)
 		if len(trimmed) > 0 {
-			result = append(result, string(trimmed))
+			result = append(result, trimmed)
 		}
 	}
 	return result

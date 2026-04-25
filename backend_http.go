@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"time"
@@ -192,7 +191,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) (string, error) {
 	url := b.baseURL + "/v1/chat/completions"
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, core.NewBuffer(body))
 	if err != nil {
 		return "", coreerr.E("ml.HTTPBackend.doRequest", "create request", err)
 	}

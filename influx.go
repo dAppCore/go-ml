@@ -1,8 +1,6 @@
 package ml
 
 import (
-	"bytes"
-	"io"
 	"net/http"
 	"time"
 
@@ -69,7 +67,7 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := readAll(resp.Body)
 		return coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
@@ -87,7 +85,7 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 
 	url := c.url + "/api/v3/query_sql"
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, url, core.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "create query request", err)
 	}
