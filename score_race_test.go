@@ -4,7 +4,6 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -34,7 +33,7 @@ func TestScoreAll_ConcurrentSemantic_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: semanticJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -84,7 +83,7 @@ func TestScoreAll_ConcurrentMixedSuites_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: allJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -144,7 +143,7 @@ func TestScoreAll_SemaphoreBoundary_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: semanticJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -238,7 +237,7 @@ func TestScoreAll_MultiModelConcurrent_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: semanticJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 

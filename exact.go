@@ -4,7 +4,8 @@ import (
 	"math"
 	"regexp"
 	"strconv"
-	"strings"
+
+	"dappco.re/go/core"
 )
 
 // Pre-compiled regex patterns for GSM8K answer extraction.
@@ -16,13 +17,31 @@ var (
 	lastNumber = regexp.MustCompile(`(?:^|[\s=])(-?[\d,]+(?:\.\d+)?)`)
 )
 
+// ScoreExact returns 1.0 when the response matches the correct answer after
+// GSM8K-style numeric extraction, 0.0 otherwise. Strings are compared after
+// trimming whitespace; numbers are compared within an epsilon of 0.01.
+//
+//	score := ml.ScoreExact("The answer is 42", "42")   // 1.0
+//	score := ml.ScoreExact("I don't know", "42")       // 0.0
+func ScoreExact(response, correctAnswer string) float64 {
+	std := scoreGSM8K(response, correctAnswer)
+	if std.Correct != nil && *std.Correct {
+		return 1.0
+	}
+	// Fall back to plain string equality when numeric extraction fails.
+	if core.Trim(response) != "" && core.Trim(response) == core.Trim(correctAnswer) {
+		return 1.0
+	}
+	return 0.0
+}
+
 // scoreGSM8K extracts a numeric answer from a model response and compares
 // it to the correct answer using exact match (within epsilon of 0.01).
 func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	correct := false
 
 	// Empty or error response.
-	if response == "" || strings.HasPrefix(response, "ERROR") {
+	if response == "" || isErrorResponse(response) {
 		return &StandardScores{
 			Correct:   &correct,
 			Extracted: "",
@@ -52,8 +71,8 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 	}
 
 	// Clean commas and parse both numbers.
-	cleanExtracted := strings.ReplaceAll(extracted, ",", "")
-	cleanExpected := strings.ReplaceAll(correctAnswer, ",", "")
+	cleanExtracted := core.Trim(core.Replace(extracted, ",", ""))
+	cleanExpected := core.Trim(core.Replace(correctAnswer, ",", ""))
 
 	extVal, errExt := strconv.ParseFloat(cleanExtracted, 64)
 	expVal, errExp := strconv.ParseFloat(cleanExpected, 64)
@@ -66,7 +85,7 @@ func scoreGSM8K(response, correctAnswer string) *StandardScores {
 		}
 	}
 
-	correct = math.Abs(expVal-extVal) < 0.01
+	correct = math.Abs(expVal-extVal) <= 0.01
 
 	return &StandardScores{
 		Correct:   &correct,

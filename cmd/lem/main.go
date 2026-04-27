@@ -6,8 +6,8 @@
 package main
 
 import (
-	"dappco.re/go/core/ml/cmd"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/ml/cmd"
+	"dappco.re/go/cli/pkg/cli"
 )
 
 func main() {

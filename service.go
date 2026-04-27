@@ -2,13 +2,12 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"iter"
 	"slices"
 	"sync"
 
 	"dappco.re/go/core"
-	coreerr "dappco.re/go/core/log"
+	coreerr "dappco.re/go/log"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.
@@ -125,7 +124,9 @@ func (s *Service) DefaultBackend() Backend {
 
 // Backends returns the names of all registered backends.
 func (s *Service) Backends() []string {
-	return slices.Collect(s.BackendsIter())
+	names := slices.Collect(s.BackendsIter())
+	slices.Sort(names)
+	return names
 }
 
 // BackendsIter returns an iterator over the names of all registered backends.
@@ -158,7 +159,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return Result{}, coreerr.E("ml.Service.Generate", fmt.Sprintf("no backend available (requested: %q)", backendName), nil)
+		return Result{}, coreerr.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil)
 	}
 	return b.Generate(ctx, prompt, opts)
 }

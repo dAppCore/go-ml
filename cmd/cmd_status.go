@@ -1,55 +1,52 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
-var statusCmd = &cli.Command{
-	Use:   "status",
-	Short: "Show training and generation progress",
-	Long:  "Queries InfluxDB for training status, loss, and generation progress. Optionally shows DuckDB table counts.",
-	RunE:  runStatus,
-}
+// addStatusCommand registers `ml status` — queries InfluxDB for training
+// status, loss, and generation progress. Optionally shows DuckDB table counts.
+//
+//	core ml status --db lem.duckdb --influx http://10.69.69.165:8181
+func addStatusCommand(c *core.Core) {
+	c.Command("ml/status", core.Command{
+		Description: "Show training and generation progress",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-func runStatus(cmd *cli.Command, args []string) error {
-	influx := ml.NewInfluxClient(influxURL, influxDB)
+			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	if err := ml.PrintStatus(influx, os.Stdout); err != nil {
-		return coreerr.E("cmd.runStatus", "status", err)
-	}
-
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-
-	if path != "" {
-		db, err := ml.OpenDB(path)
-		if err != nil {
-			return coreerr.E("cmd.runStatus", "open db", err)
-		}
-		defer db.Close()
-
-		counts, err := db.TableCounts()
-		if err != nil {
-			return coreerr.E("cmd.runStatus", "table counts", err)
-		}
-
-		fmt.Println()
-		fmt.Println("DuckDB:")
-		order := []string{"golden_set", "expansion_prompts", "seeds", "training_examples",
-			"prompts", "gemini_responses", "benchmark_questions", "benchmark_results", "validations"}
-		for _, table := range order {
-			if count, ok := counts[table]; ok {
-				fmt.Fprintf(os.Stdout, "  %-22s %6d rows\n", table, count)
+			if err := ml.PrintStatus(influx, nil); err != nil {
+				return resultFromError(coreerr.E("cmd.runStatus", "status", err))
 			}
-		}
-	}
 
-	return nil
+			if dbPath != "" {
+				db, err := store.OpenDuckDB(dbPath)
+				if err != nil {
+					return resultFromError(coreerr.E("cmd.runStatus", "open db", err))
+				}
+				defer db.Close()
+
+				counts, err := db.TableCounts()
+				if err != nil {
+					return resultFromError(coreerr.E("cmd.runStatus", "table counts", err))
+				}
+
+				core.Print(nil, "")
+				core.Print(nil, "DuckDB:")
+				order := []string{"golden_set", "expansion_prompts", "seeds", "training_examples",
+					"prompts", "gemini_responses", "benchmark_questions", "benchmark_results", "validations"}
+				for _, table := range order {
+					if count, ok := counts[table]; ok {
+						core.Print(nil, "  %-22s %6d rows", table, count)
+					}
+				}
+			}
+
+			return core.Result{OK: true}
+		},
+	})
 }

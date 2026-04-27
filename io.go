@@ -3,11 +3,10 @@ package ml
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
-	"strings"
 
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // ReadResponses reads a JSONL file and returns a slice of Response structs.
@@ -16,7 +15,7 @@ import (
 func ReadResponses(path string) ([]Response, error) {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("open %s", path), err)
+		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("open %s", path), err)
 	}
 	defer f.Close()
 
@@ -27,20 +26,20 @@ func ReadResponses(path string) ([]Response, error) {
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
-		line := strings.TrimSpace(scanner.Text())
+		line := core.Trim(scanner.Text())
 		if line == "" {
 			continue
 		}
 
 		var r Response
-		if err := json.Unmarshal([]byte(line), &r); err != nil {
-			return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("line %d", lineNum), err)
+		if rj := core.JSONUnmarshalString(line, &r); !rj.OK {
+			return nil, coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error))
 		}
 		responses = append(responses, r)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, coreerr.E("ml.ReadResponses", fmt.Sprintf("scan %s", path), err)
+		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("scan %s", path), err)
 	}
 
 	return responses, nil
@@ -54,7 +53,7 @@ func WriteScores(path string, output *ScorerOutput) error {
 	}
 
 	if err := coreio.Local.Write(path, string(data)); err != nil {
-		return coreerr.E("ml.WriteScores", fmt.Sprintf("write %s", path), err)
+		return coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err)
 	}
 
 	return nil
@@ -64,12 +63,12 @@ func WriteScores(path string, output *ScorerOutput) error {
 func ReadScorerOutput(path string) (*ScorerOutput, error) {
 	data, err := coreio.Local.Read(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("read %s", path), err)
+		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err)
 	}
 
 	var output ScorerOutput
-	if err := json.Unmarshal([]byte(data), &output); err != nil {
-		return nil, coreerr.E("ml.ReadScorerOutput", fmt.Sprintf("unmarshal %s", path), err)
+	if r := core.JSONUnmarshalString(data, &output); !r.OK {
+		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error))
 	}
 
 	return &output, nil
@@ -133,6 +132,22 @@ func ComputeAverages(perPrompt map[string][]PromptScore) map[string]map[string]f
 				addField(a, "axiom_integration", float64(c.AxiomIntegration))
 				addField(a, "sovereignty_reasoning", float64(c.SovereigntyReasoning))
 				addField(a, "content_emotional_register", float64(c.EmotionalRegister))
+			}
+
+			if s := ps.Standard; s != nil {
+				addField(a, "truthfulness", float64(s.Truthfulness))
+				addField(a, "informativeness", float64(s.Informativeness))
+				addField(a, "safety", float64(s.Safety))
+				addField(a, "nuance", float64(s.Nuance))
+				addField(a, "kindness", float64(s.Kindness))
+				addField(a, "awareness", float64(s.Awareness))
+				if s.Correct != nil {
+					if *s.Correct {
+						addField(a, "correct", 1)
+					} else {
+						addField(a, "correct", 0)
+					}
+				}
 			}
 		}
 	}

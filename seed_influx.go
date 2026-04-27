@@ -1,11 +1,11 @@
 package ml
 
 import (
-	"fmt"
-	"io"
-	"strings"
+	"io" // Note: AX-6 intrinsic - io.Writer is the public output surface; core exposes no Writer primitive.
 
-	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
 // SeedInfluxConfig holds options for the SeedInflux migration.
@@ -18,14 +18,14 @@ type SeedInfluxConfig struct {
 // gold_gen measurement points. This is a one-time migration tool;
 // it skips the write when InfluxDB already contains all records
 // unless Force is set.
-func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer) error {
+func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer) error {
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 500
 	}
 
 	// Count source rows in DuckDB.
 	var total int
-	if err := db.conn.QueryRow("SELECT count(*) FROM golden_set").Scan(&total); err != nil {
+	if err := db.Conn().QueryRow("SELECT count(*) FROM golden_set").Scan(&total); err != nil {
 		return coreerr.E("ml.SeedInflux", "no golden_set table", err)
 	}
 
@@ -38,15 +38,15 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 		}
 	}
 
-	fmt.Fprintf(w, "DuckDB has %d records, InfluxDB golden_gen has %d\n", total, existing)
+	core.Print(w, "DuckDB has %d records, InfluxDB golden_gen has %d", total, existing)
 
 	if existing >= total && !cfg.Force {
-		fmt.Fprintln(w, "InfluxDB already has all records. Use --force to re-seed.")
+		core.Print(w, "InfluxDB already has all records. Use --force to re-seed.")
 		return nil
 	}
 
 	// Query all golden_set rows from DuckDB.
-	dbRows, err := db.conn.Query(
+	dbRows, err := db.Conn().Query(
 		"SELECT idx, seed_id, domain, voice, gen_time, char_count FROM golden_set ORDER BY idx",
 	)
 	if err != nil {
@@ -64,17 +64,17 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 		var charCount int
 
 		if err := dbRows.Scan(&idx, &seedID, &domain, &voice, &genTime, &charCount); err != nil {
-			return coreerr.E("ml.SeedInflux", fmt.Sprintf("scan row %d", written), err)
+			return coreerr.E("ml.SeedInflux", core.Sprintf("scan row %d", written), err)
 		}
 
 		// Build line protocol point.
 		// Tags: i (idx), w (worker), d (domain), v (voice)
 		// Fields: seed_id (string), gen_time (float), chars (integer)
-		escapedSeedID := strings.ReplaceAll(seedID, `"`, `\"`)
+		escapedSeedID := core.Replace(seedID, `"`, `\"`)
 
-		line := fmt.Sprintf(
+		line := core.Sprintf(
 			"gold_gen,i=%s,w=migration,d=%s,v=%s seed_id=\"%s\",gen_time=%v,chars=%di",
-			EscapeLp(fmt.Sprintf("%d", idx)),
+			EscapeLp(core.Sprintf("%d", idx)),
 			EscapeLp(domain),
 			EscapeLp(voice),
 			escapedSeedID,
@@ -85,13 +85,13 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 
 		if len(batch) >= cfg.BatchSize {
 			if err := influx.WriteLp(batch); err != nil {
-				return coreerr.E("ml.SeedInflux", fmt.Sprintf("write batch at row %d", written), err)
+				return coreerr.E("ml.SeedInflux", core.Sprintf("write batch at row %d", written), err)
 			}
 			written += len(batch)
 			batch = batch[:0]
 
 			if written%2000 == 0 {
-				fmt.Fprintf(w, "  wrote %d / %d\n", written, total)
+				core.Print(w, "  wrote %d / %d", written, total)
 			}
 		}
 	}
@@ -108,6 +108,6 @@ func SeedInflux(db *DB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer)
 		written += len(batch)
 	}
 
-	fmt.Fprintf(w, "Seeded %d records into InfluxDB golden_gen\n", written)
+	core.Print(w, "Seeded %d records into InfluxDB golden_gen", written)
 	return nil
 }

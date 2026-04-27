@@ -2,9 +2,10 @@ package ml
 
 import (
 	"cmp"
-	"fmt"
 	"io"
 	"slices"
+
+	"dappco.re/go/core"
 )
 
 // trainingRow holds deduplicated training status + loss for a single model.
@@ -61,48 +62,48 @@ func PrintStatus(influx *InfluxClient, w io.Writer) error {
 	golden := dedupeGeneration(goldenRows)
 	expansion := dedupeGeneration(expansionRows)
 
-	fmt.Fprintln(w, "Training:")
+	fprintf(w, "%s\n", "Training:")
 	if len(training) == 0 {
-		fmt.Fprintln(w, "  (no data)")
+		fprintf(w, "%s\n", "  (no data)")
 	} else {
 		for _, tr := range training {
-			progress := fmt.Sprintf("%d/%d", tr.iteration, tr.totalIters)
-			pct := fmt.Sprintf("%.1f%%", tr.pct)
+			progress := core.Sprintf("%d/%d", tr.iteration, tr.totalIters)
+			pct := core.Sprintf("%.1f%%", tr.pct)
 			if tr.hasLoss {
-				fmt.Fprintf(w, "  %-13s %-9s %9s %7s  loss=%.3f\n",
+				fprintf(w, "  %-13s %-9s %9s %7s  loss=%.3f\n",
 					tr.model, tr.status, progress, pct, tr.loss)
 			} else {
-				fmt.Fprintf(w, "  %-13s %-9s %9s %7s\n",
+				fprintf(w, "  %-13s %-9s %9s %7s\n",
 					tr.model, tr.status, progress, pct)
 			}
 		}
 	}
 
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Generation:")
+	core.Print(w, "")
+	fprintf(w, "%s\n", "Generation:")
 
 	hasGenData := false
 
 	if len(golden) > 0 {
 		hasGenData = true
 		for _, g := range golden {
-			progress := fmt.Sprintf("%d/%d", g.completed, g.target)
-			pct := fmt.Sprintf("%.1f%%", g.pct)
-			fmt.Fprintf(w, "  %-13s %11s %7s  (%s)\n", "golden", progress, pct, g.worker)
+			progress := core.Sprintf("%d/%d", g.completed, g.target)
+			pct := core.Sprintf("%.1f%%", g.pct)
+			fprintf(w, "  %-13s %11s %7s  (%s)\n", "golden", progress, pct, g.worker)
 		}
 	}
 
 	if len(expansion) > 0 {
 		hasGenData = true
 		for _, g := range expansion {
-			progress := fmt.Sprintf("%d/%d", g.completed, g.target)
-			pct := fmt.Sprintf("%.1f%%", g.pct)
-			fmt.Fprintf(w, "  %-13s %11s %7s  (%s)\n", "expansion", progress, pct, g.worker)
+			progress := core.Sprintf("%d/%d", g.completed, g.target)
+			pct := core.Sprintf("%.1f%%", g.pct)
+			fprintf(w, "  %-13s %11s %7s  (%s)\n", "expansion", progress, pct, g.worker)
 		}
 	}
 
 	if !hasGenData {
-		fmt.Fprintln(w, "  (no data)")
+		fprintf(w, "%s\n", "  (no data)")
 	}
 
 	return nil

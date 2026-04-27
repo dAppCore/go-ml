@@ -4,12 +4,11 @@ package ml
 
 import (
 	"context"
-	"errors"
 	"iter"
 	"testing"
 
-	"forge.lthn.ai/core/go-inference"
-
+	"dappco.re/go/core"
+	"dappco.re/go/inference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,11 +49,11 @@ func (m *mockTextModel) BatchGenerate(_ context.Context, _ []string, _ ...infere
 	panic("BatchGenerate not used by adapter")
 }
 
-func (m *mockTextModel) ModelType() string              { return m.modelType }
-func (m *mockTextModel) Info() inference.ModelInfo       { return inference.ModelInfo{} }
+func (m *mockTextModel) ModelType() string                  { return m.modelType }
+func (m *mockTextModel) Info() inference.ModelInfo          { return inference.ModelInfo{} }
 func (m *mockTextModel) Metrics() inference.GenerateMetrics { return inference.GenerateMetrics{} }
-func (m *mockTextModel) Err() error                     { return m.err }
-func (m *mockTextModel) Close() error                   { m.closed = true; return nil }
+func (m *mockTextModel) Err() error                         { return m.err }
+func (m *mockTextModel) Close() error                       { m.closed = true; return nil }
 
 // --- Tests ---
 
@@ -89,7 +88,7 @@ func TestInferenceAdapter_Generate_ModelError_Bad(t *testing.T) {
 		tokens: []inference.Token{
 			{ID: 1, Text: "partial"},
 		},
-		err: errors.New("out of memory"),
+		err: core.NewError("out of memory"),
 	}
 	adapter := NewInferenceAdapter(mock, "test")
 
@@ -122,7 +121,7 @@ func TestInferenceAdapter_GenerateStream_Good(t *testing.T) {
 }
 
 func TestInferenceAdapter_GenerateStream_CallbackError_Bad(t *testing.T) {
-	callbackErr := errors.New("client disconnected")
+	callbackErr := core.NewError("client disconnected")
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "one"},
@@ -196,6 +195,29 @@ func TestInferenceAdapter_ChatStream_Good(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"reply", "!"}, collected)
+}
+
+func TestInferenceAdapter_StopSequences_Good(t *testing.T) {
+	mock := &mockTextModel{
+		tokens: []inference.Token{
+			{ID: 1, Text: "hello "},
+			{ID: 2, Text: "STOP world"},
+			{ID: 3, Text: "ignored"},
+		},
+	}
+	adapter := NewInferenceAdapter(mock, "test")
+
+	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
+	require.NoError(t, err)
+	assert.Equal(t, "hello ", result.Text)
+
+	var collected []string
+	err = adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
+		collected = append(collected, token)
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"hello "}, collected)
 }
 
 func TestInferenceAdapter_ConvertOpts_Good(t *testing.T) {

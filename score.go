@@ -2,12 +2,12 @@ package ml
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"maps"
 	"slices"
-	"strings"
 	"sync"
+
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
 )
 
 // Engine orchestrates concurrent scoring across multiple suites.
@@ -22,15 +22,15 @@ type Engine struct {
 func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 	suites := make(map[string]bool)
 
-	if suiteList == "all" {
+	if core.Lower(core.Trim(suiteList)) == "all" {
 		suites["heuristic"] = true
 		suites["semantic"] = true
 		suites["content"] = true
 		suites["standard"] = true
 		suites["exact"] = true
 	} else {
-		for s := range strings.SplitSeq(suiteList, ",") {
-			s = strings.TrimSpace(s)
+		for _, s := range core.Split(suiteList, ",") {
+			s = core.Lower(core.Trim(s))
 			if s != "" {
 				suites[s] = true
 			}
@@ -44,11 +44,62 @@ func NewEngine(judge *Judge, concurrency int, suiteList string) *Engine {
 	}
 }
 
+// ScoreHeuristic runs the heuristic suite directly through the engine.
+func (e *Engine) ScoreHeuristic(response string) *HeuristicScores {
+	return ScoreHeuristic(response)
+}
+
+// ScoreSemantic delegates to the configured judge.
+func (e *Engine) ScoreSemantic(ctx context.Context, prompt, response string) (*SemanticScores, error) {
+	if e == nil || e.judge == nil {
+		return nil, coreerr.E("ml.Engine.ScoreSemantic", "semantic scoring requires a judge", nil)
+	}
+	return e.judge.ScoreSemantic(ctx, prompt, response)
+}
+
+// ScoreContent delegates to the configured judge.
+func (e *Engine) ScoreContent(ctx context.Context, probe ContentProbe, response string) (*ContentScores, error) {
+	if e == nil || e.judge == nil {
+		return nil, coreerr.E("ml.Engine.ScoreContent", "content scoring requires a judge", nil)
+	}
+	return e.judge.ScoreContent(ctx, probe, response)
+}
+
+// ScoreCapability delegates to the configured judge.
+func (e *Engine) ScoreCapability(ctx context.Context, prompt, expectedAnswer, response string) (*CapabilityScores, error) {
+	if e == nil || e.judge == nil {
+		return nil, coreerr.E("ml.Engine.ScoreCapability", "capability scoring requires a judge", nil)
+	}
+	return e.judge.ScoreCapability(ctx, prompt, expectedAnswer, response)
+}
+
+// ScoreStandard delegates to the configured judge.
+func (e *Engine) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) (*StandardScores, error) {
+	if e == nil || e.judge == nil {
+		return nil, coreerr.E("ml.Engine.ScoreStandard", "standard scoring requires a judge", nil)
+	}
+	return e.judge.ScoreStandard(ctx, benchmark, question, reference, response)
+}
+
+// ScoreExact runs exact-match scoring through the engine helper.
+func (e *Engine) ScoreExact(response, correctAnswer string) float64 {
+	return ScoreExact(response, correctAnswer)
+}
+
 // ScoreAll scores all responses grouped by model. Heuristic scoring runs
 // inline (instant). LLM judge calls fan out through a worker pool bounded
 // by the engine's concurrency setting.
 func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string][]PromptScore {
+	if e == nil {
+		return map[string][]PromptScore{}
+	}
+
 	results := make(map[string][]PromptScore)
+	judge := e.judge
+	concurrency := e.concurrency
+	if concurrency <= 0 {
+		concurrency = 1
+	}
 
 	// Pre-allocate score slots so goroutines can write to them via pointer.
 	scoreSlots := make([]PromptScore, len(responses))
@@ -65,22 +116,28 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 	}
 
 	// Fan out LLM judge calls through worker pool.
-	sem := make(chan struct{}, e.concurrency)
+	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
 	for i, resp := range responses {
+		domain := normalizeBenchmarkName(resp.Domain)
+
 		// Semantic scoring.
 		if e.suites["semantic"] {
 			wg.Add(1)
 			go func(r Response, ps *PromptScore) {
 				defer wg.Done()
+				if judge == nil {
+					core.Print(nil, "semantic scoring skipped for %s: no judge configured", r.ID)
+					return
+				}
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
-				s, err := e.judge.ScoreSemantic(ctx, r.Prompt, r.Response)
+				s, err := judge.ScoreSemantic(ctx, r.Prompt, r.Response)
 				if err != nil {
-					log.Printf("semantic scoring failed for %s: %v", r.ID, err)
+					core.Print(nil, "semantic scoring failed for %s: %v", r.ID, err)
 					return
 				}
 				mu.Lock()
@@ -90,10 +147,14 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 		}
 
 		// Content scoring — only for content probe responses (domain == "content").
-		if e.suites["content"] && resp.Domain == "content" {
+		if e.suites["content"] && domain == "content" {
 			wg.Add(1)
 			go func(r Response, ps *PromptScore) {
 				defer wg.Done()
+				if judge == nil {
+					core.Print(nil, "content scoring skipped for %s: no judge configured", r.ID)
+					return
+				}
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
@@ -106,13 +167,13 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 					}
 				}
 				if probe == nil {
-					log.Printf("no content probe found for id %s", r.ID)
+					core.Print(nil, "no content probe found for id %s", r.ID)
 					return
 				}
 
-				c, err := e.judge.ScoreContent(ctx, *probe, r.Response)
+				c, err := judge.ScoreContent(ctx, *probe, r.Response)
 				if err != nil {
-					log.Printf("content scoring failed for %s: %v", r.ID, err)
+					core.Print(nil, "content scoring failed for %s: %v", r.ID, err)
 					return
 				}
 				mu.Lock()
@@ -128,16 +189,20 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 				wg.Add(1)
 				go func(r Response, ps *PromptScore) {
 					defer wg.Done()
+					if judge == nil {
+						core.Print(nil, "truthfulqa scoring skipped for %s: no judge configured", r.ID)
+						return
+					}
 					sem <- struct{}{}
 					defer func() { <-sem }()
 
-					s, err := e.judge.ScoreTruthfulQA(ctx, r.Prompt, r.BestAnswer, r.Response)
+					s, err := judge.ScoreTruthfulQA(ctx, r.Prompt, r.BestAnswer, r.Response)
 					if err != nil {
-						log.Printf("truthfulqa scoring failed for %s: %v", r.ID, err)
+						core.Print(nil, "truthfulqa scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
@@ -147,35 +212,43 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 				wg.Add(1)
 				go func(r Response, ps *PromptScore) {
 					defer wg.Done()
+					if judge == nil {
+						core.Print(nil, "donotanswer scoring skipped for %s: no judge configured", r.ID)
+						return
+					}
 					sem <- struct{}{}
 					defer func() { <-sem }()
 
-					s, err := e.judge.ScoreDoNotAnswer(ctx, r.Prompt, r.RiskArea, r.Response)
+					s, err := judge.ScoreDoNotAnswer(ctx, r.Prompt, r.RiskArea, r.Response)
 					if err != nil {
-						log.Printf("donotanswer scoring failed for %s: %v", r.ID, err)
+						core.Print(nil, "donotanswer scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
 
 			// Toxigen: domain is "toxigen".
-			if resp.Domain == "toxigen" {
+			if domain == "toxigen" {
 				wg.Add(1)
 				go func(r Response, ps *PromptScore) {
 					defer wg.Done()
+					if judge == nil {
+						core.Print(nil, "toxigen scoring skipped for %s: no judge configured", r.ID)
+						return
+					}
 					sem <- struct{}{}
 					defer func() { <-sem }()
 
-					s, err := e.judge.ScoreToxigen(ctx, r.Prompt, r.Response)
+					s, err := judge.ScoreToxigen(ctx, r.Prompt, r.Response)
 					if err != nil {
-						log.Printf("toxigen scoring failed for %s: %v", r.ID, err)
+						core.Print(nil, "toxigen scoring failed for %s: %v", r.ID, err)
 						return
 					}
 					mu.Lock()
-					ps.Standard = s
+					ps.Standard = mergeStandardScores(ps.Standard, s)
 					mu.Unlock()
 				}(resp, &scoreSlots[i])
 			}
@@ -183,7 +256,9 @@ func (e *Engine) ScoreAll(ctx context.Context, responses []Response) map[string]
 
 		// Exact match scoring — GSM8K (has CorrectAnswer).
 		if e.suites["exact"] && resp.CorrectAnswer != "" {
-			scoreSlots[i].Standard = scoreGSM8K(resp.Response, resp.CorrectAnswer)
+			mu.Lock()
+			scoreSlots[i].Standard = mergeStandardScores(scoreSlots[i].Standard, scoreGSM8K(resp.Response, resp.CorrectAnswer))
+			mu.Unlock()
 		}
 	}
 
@@ -206,5 +281,86 @@ func (e *Engine) SuiteNames() []string {
 
 // String returns a human-readable description of the engine configuration.
 func (e *Engine) String() string {
-	return fmt.Sprintf("Engine(concurrency=%d, suites=%v)", e.concurrency, e.SuiteNames())
+	return core.Sprintf("Engine(concurrency=%d, suites=%v)", e.concurrency, e.SuiteNames())
+}
+
+// ScoreSemantic evaluates a response with the supplied judge using a
+// background context.
+func ScoreSemantic(judge *Judge, prompt, response string) (*SemanticScores, error) {
+	if judge == nil {
+		return nil, coreerr.E("ml.ScoreSemantic", "semantic scoring requires a judge", nil)
+	}
+	return judge.ScoreSemantic(context.Background(), prompt, response)
+}
+
+// ScoreContent evaluates a content probe response with the supplied judge
+// using a background context.
+func ScoreContent(judge *Judge, probe ContentProbe, response string) (*ContentScores, error) {
+	if judge == nil {
+		return nil, coreerr.E("ml.ScoreContent", "content scoring requires a judge", nil)
+	}
+	return judge.ScoreContent(context.Background(), probe, response)
+}
+
+// ScoreCapability evaluates a capability probe response with the supplied
+// judge using a background context.
+func ScoreCapability(judge *Judge, prompt, expectedAnswer, response string) (*CapabilityScores, error) {
+	if judge == nil {
+		return nil, coreerr.E("ml.ScoreCapability", "capability scoring requires a judge", nil)
+	}
+	return judge.ScoreCapability(context.Background(), prompt, expectedAnswer, response)
+}
+
+// ScoreStandard evaluates a benchmark response with the supplied judge using
+// a background context.
+func ScoreStandard(judge *Judge, benchmark, question, reference, response string) (*StandardScores, error) {
+	if judge == nil {
+		return nil, coreerr.E("ml.ScoreStandard", "standard scoring requires a judge", nil)
+	}
+	return judge.ScoreStandard(context.Background(), benchmark, question, reference, response)
+}
+
+// mergeStandardScores combines benchmark and exact-match results into one
+// StandardScores struct without discarding fields populated by earlier suites.
+func mergeStandardScores(dst, src *StandardScores) *StandardScores {
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
+		copy := *src
+		return &copy
+	}
+
+	if src.Truthfulness != 0 {
+		dst.Truthfulness = src.Truthfulness
+	}
+	if src.Informativeness != 0 {
+		dst.Informativeness = src.Informativeness
+	}
+	if src.Safety != 0 {
+		dst.Safety = src.Safety
+	}
+	if src.Nuance != 0 {
+		dst.Nuance = src.Nuance
+	}
+	if src.Kindness != 0 {
+		dst.Kindness = src.Kindness
+	}
+	if src.Awareness != 0 {
+		dst.Awareness = src.Awareness
+	}
+	if src.Correct != nil {
+		dst.Correct = src.Correct
+	}
+	if src.Extracted != "" {
+		dst.Extracted = src.Extracted
+	}
+	if src.Expected != "" {
+		dst.Expected = src.Expected
+	}
+	if src.Reasoning != "" && dst.Reasoning == "" {
+		dst.Reasoning = src.Reasoning
+	}
+
+	return dst
 }

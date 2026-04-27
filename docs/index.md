@@ -86,7 +86,7 @@ svc.Engine()
 
 ## REST API
 
-The `api` sub-package provides Gin-based REST endpoints:
+The `api` sub-package provides Gin-based REST endpoints. See [HTTP API](api.md) for the full endpoint reference, including the standalone `ml serve` server.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -114,6 +114,7 @@ scores := engine.ScoreAll(ctx, responses)
 
 ## Further Reading
 
+- [HTTP API](api.md) -- `ml serve` endpoints, `api/` RouteGroup contract, auth notes, curl examples
 - [Scoring Engine](scoring.md) -- Heuristic analysis, LLM judge, probes, benchmarks
 - [Backends](backends.md) -- HTTP, llama.cpp, MLX, and the inference adapter
 - [Training Pipeline](training.md) -- Data export, LoRA conversion, adapter management

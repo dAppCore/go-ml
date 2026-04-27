@@ -1,40 +1,30 @@
 package cmd
 
 import (
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
-var (
-	publishInputDir string
-	publishRepo     string
-	publishPublic   bool
-	publishToken    string
-	publishDryRun   bool
-)
-
-var publishCmd = &cli.Command{
-	Use:   "publish",
-	Short: "Upload Parquet dataset to HuggingFace Hub",
-	Long:  "Uploads train/valid/test Parquet files and an optional dataset card to a HuggingFace dataset repository.",
-	RunE:  runPublish,
-}
-
-func init() {
-	publishCmd.Flags().StringVar(&publishInputDir, "input-dir", "", "Directory containing Parquet files (required)")
-	publishCmd.Flags().StringVar(&publishRepo, "repo", "lthn/LEM-golden-set", "HuggingFace dataset repo ID")
-	publishCmd.Flags().BoolVar(&publishPublic, "public", false, "Make dataset public")
-	publishCmd.Flags().StringVar(&publishToken, "token", "", "HuggingFace API token (defaults to HF_TOKEN env)")
-	publishCmd.Flags().BoolVar(&publishDryRun, "dry-run", false, "Show what would be uploaded without uploading")
-	_ = publishCmd.MarkFlagRequired("input-dir")
-}
-
-func runPublish(cmd *cli.Command, args []string) error {
-	return ml.Publish(ml.PublishConfig{
-		InputDir: publishInputDir,
-		Repo:     publishRepo,
-		Public:   publishPublic,
-		Token:    publishToken,
-		DryRun:   publishDryRun,
-	}, cmd.OutOrStdout())
+// addPublishCommand registers `ml publish` — uploads train/valid/test Parquet
+// files and an optional dataset card to a HuggingFace dataset repository.
+//
+//	core ml publish --input-dir ./parquet --repo lthn/LEM-golden-set --public
+func addPublishCommand(c *core.Core) {
+	c.Command("ml/publish", core.Command{
+		Description: "Upload Parquet dataset to HuggingFace Hub",
+		Action: func(opts core.Options) core.Result {
+			inputDir := opts.String("input-dir")
+			if inputDir == "" {
+				return resultFromError(coreerr.E("cmd.runPublish", "--input-dir is required", nil))
+			}
+			return resultFromError(store.Publish(store.PublishConfig{
+				InputDir: inputDir,
+				Repo:     optStringOr(opts, "repo", "lthn/LEM-golden-set"),
+				Public:   opts.Bool("public"),
+				Token:    opts.String("token"),
+				DryRun:   opts.Bool("dry-run"),
+			}, nil))
+		},
+	})
 }

@@ -2,11 +2,10 @@ package ml
 
 import (
 	"database/sql"
-	"fmt"
 
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
 	_ "github.com/marcboeker/go-duckdb"
-
-	coreerr "dappco.re/go/core/log"
 )
 
 // DB wraps a DuckDB connection.
@@ -20,11 +19,11 @@ type DB struct {
 func OpenDB(path string) (*DB, error) {
 	conn, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
 	if err != nil {
-		return nil, coreerr.E("ml.OpenDB", fmt.Sprintf("open duckdb %s", path), err)
+		return nil, coreerr.E("ml.OpenDB", core.Sprintf("open duckdb %s", path), err)
 	}
 	if err := conn.Ping(); err != nil {
 		conn.Close()
-		return nil, coreerr.E("ml.OpenDB", fmt.Sprintf("ping duckdb %s", path), err)
+		return nil, coreerr.E("ml.OpenDB", core.Sprintf("ping duckdb %s", path), err)
 	}
 	return &DB{conn: conn, path: path}, nil
 }
@@ -33,11 +32,11 @@ func OpenDB(path string) (*DB, error) {
 func OpenDBReadWrite(path string) (*DB, error) {
 	conn, err := sql.Open("duckdb", path)
 	if err != nil {
-		return nil, coreerr.E("ml.OpenDBReadWrite", fmt.Sprintf("open duckdb %s", path), err)
+		return nil, coreerr.E("ml.OpenDBReadWrite", core.Sprintf("open duckdb %s", path), err)
 	}
 	if err := conn.Ping(); err != nil {
 		conn.Close()
-		return nil, coreerr.E("ml.OpenDBReadWrite", fmt.Sprintf("ping duckdb %s", path), err)
+		return nil, coreerr.E("ml.OpenDBReadWrite", core.Sprintf("ping duckdb %s", path), err)
 	}
 	return &DB{conn: conn, path: path}, nil
 }
@@ -136,7 +135,7 @@ func (db *DB) QueryExpansionPrompts(status string, limit int) ([]ExpansionPrompt
 	query += " ORDER BY priority, idx"
 
 	if limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", limit)
+		query += core.Sprintf(" LIMIT %d", limit)
 	}
 
 	rows, err := db.conn.Query(query, args...)
@@ -174,7 +173,7 @@ func (db *DB) CountExpansionPrompts() (total int, pending int, err error) {
 func (db *DB) UpdateExpansionStatus(idx int64, status string) error {
 	_, err := db.conn.Exec("UPDATE expansion_prompts SET status = ? WHERE idx = ?", status, idx)
 	if err != nil {
-		return coreerr.E("ml.DB.UpdateExpansionStatus", fmt.Sprintf("update expansion_prompt %d", idx), err)
+		return coreerr.E("ml.DB.UpdateExpansionStatus", core.Sprintf("update expansion_prompt %d", idx), err)
 	}
 	return nil
 }
@@ -213,13 +212,13 @@ func (db *DB) QueryRows(query string, args ...any) ([]map[string]any, error) {
 
 // EnsureScoringTables creates the scoring tables if they don't exist.
 func (db *DB) EnsureScoringTables() {
-	db.conn.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+	db.conn.Exec(core.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		model TEXT, run_id TEXT, label TEXT, iteration INTEGER,
 		correct INTEGER, total INTEGER, accuracy DOUBLE,
 		scored_at TIMESTAMP DEFAULT current_timestamp,
 		PRIMARY KEY (run_id, label)
 	)`, TableCheckpointScores))
-	db.conn.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+	db.conn.Exec(core.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		model TEXT, run_id TEXT, label TEXT, probe_id TEXT,
 		passed BOOLEAN, response TEXT, iteration INTEGER,
 		scored_at TIMESTAMP DEFAULT current_timestamp,
@@ -250,7 +249,7 @@ func (db *DB) TableCounts() (map[string]int, error) {
 	counts := make(map[string]int)
 	for _, t := range tables {
 		var count int
-		err := db.conn.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", t)).Scan(&count)
+		err := db.conn.QueryRow(core.Sprintf("SELECT COUNT(*) FROM %s", t)).Scan(&count)
 		if err != nil {
 			continue
 		}

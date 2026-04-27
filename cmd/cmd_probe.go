@@ -2,66 +2,59 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
-var (
-	probeOutput string
-)
+// addProbeCommand registers `ml probe` — runs 23 capability probes and 6
+// content probes against an OpenAI-compatible API.
+//
+//	core ml probe --api-url http://localhost:8090 --model gemma3:27b --output probes.json
+func addProbeCommand(c *core.Core) {
+	c.Command("ml/probe", core.Command{
+		Description: "Run capability and content probes against a model",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var probeCmd = &cli.Command{
-	Use:   "probe",
-	Short: "Run capability and content probes against a model",
-	Long:  "Runs 23 capability probes and 6 content probes against an OpenAI-compatible API.",
-	RunE:  runProbe,
-}
+			if apiURL == "" {
+				return resultFromError(coreerr.E("cmd.runProbe", "--api-url is required", nil))
+			}
 
-func init() {
-	probeCmd.Flags().StringVar(&probeOutput, "output", "", "Output JSON file for probe results")
-}
+			model := modelName
+			if model == "" {
+				model = "default"
+			}
+			output := opts.String("output")
 
-func runProbe(cmd *cli.Command, args []string) error {
-	if apiURL == "" {
-		return coreerr.E("cmd.runProbe", "--api-url is required", nil)
-	}
+			ctx := context.Background()
+			backend := ml.NewHTTPBackend(apiURL, model)
 
-	model := modelName
-	if model == "" {
-		model = "default"
-	}
+			core.Print(nil, "Running %d capability probes against %s...", len(ml.CapabilityProbes), apiURL)
+			results := ml.RunCapabilityProbes(ctx, backend)
 
-	ctx := context.Background()
-	backend := ml.NewHTTPBackend(apiURL, model)
+			core.Print(nil, "")
+			core.Print(nil, "Results: %.1f%% (%d/%d)", results.Accuracy, results.Correct, results.Total)
 
-	fmt.Printf("Running %d capability probes against %s...\n", len(ml.CapabilityProbes), apiURL)
-	results := ml.RunCapabilityProbes(ctx, backend)
+			for cat, data := range results.ByCategory {
+				catAcc := 0.0
+				if data.Total > 0 {
+					catAcc = float64(data.Correct) / float64(data.Total) * 100
+				}
+				core.Print(nil, "  %-20s %d/%d (%.0f%%)", cat, data.Correct, data.Total, catAcc)
+			}
 
-	fmt.Printf("\nResults: %.1f%% (%d/%d)\n", results.Accuracy, results.Correct, results.Total)
+			if output != "" {
+				if err := coreio.Local.Write(output, core.JSONMarshalString(results)); err != nil {
+					return resultFromError(coreerr.E("cmd.runProbe", "write output", err))
+				}
+				core.Print(nil, "")
+				core.Print(nil, "Results written to %s", output)
+			}
 
-	for cat, data := range results.ByCategory {
-		catAcc := 0.0
-		if data.Total > 0 {
-			catAcc = float64(data.Correct) / float64(data.Total) * 100
-		}
-		fmt.Printf("  %-20s %d/%d (%.0f%%)\n", cat, data.Correct, data.Total, catAcc)
-	}
-
-	if probeOutput != "" {
-		data, err := json.MarshalIndent(results, "", "  ")
-		if err != nil {
-			return coreerr.E("cmd.runProbe", "marshal results", err)
-		}
-		if err := coreio.Local.Write(probeOutput, string(data)); err != nil {
-			return coreerr.E("cmd.runProbe", "write output", err)
-		}
-		fmt.Printf("\nResults written to %s\n", probeOutput)
-	}
-
-	return nil
+			return core.Result{OK: true}
+		},
+	})
 }

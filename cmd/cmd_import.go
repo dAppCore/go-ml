@@ -1,58 +1,44 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
-
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
-var importCmd = &cli.Command{
-	Use:   "import-all",
-	Short: "Import all LEM data into DuckDB",
-	Long:  "Imports golden set, training examples, benchmark results, benchmark questions, and seeds into DuckDB from M3 and local files.",
-	RunE:  runImportAll,
-}
+// addImportCommand registers `ml import-all` — imports golden set, training
+// examples, benchmark results, benchmark questions, and seeds into DuckDB
+// from M3 and local files.
+//
+//	core ml import-all --db lem.duckdb --data-dir /Volumes/Data/lem
+func addImportCommand(c *core.Core) {
+	c.Command("ml/import-all", core.Command{
+		Description: "Import all LEM data into DuckDB",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var (
-	importSkipM3  bool
-	importDataDir string
-	importM3Host  string
-)
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runImportAll", "--db or LEM_DB required", nil))
+			}
 
-func init() {
-	importCmd.Flags().BoolVar(&importSkipM3, "skip-m3", false, "Skip pulling data from M3")
-	importCmd.Flags().StringVar(&importDataDir, "data-dir", "", "Local data directory (defaults to db directory)")
-	importCmd.Flags().StringVar(&importM3Host, "m3-host", "m3", "M3 SSH host alias")
-}
+			dataDir := opts.String("data-dir")
+			if dataDir == "" {
+				dataDir = core.PathDir(dbPath)
+			}
 
-func runImportAll(cmd *cli.Command, args []string) error {
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runImportAll", "--db or LEM_DB required", nil)
-	}
+			db, err := store.OpenDuckDBReadWrite(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runImportAll", "open db", err))
+			}
+			defer db.Close()
 
-	dataDir := importDataDir
-	if dataDir == "" {
-		dataDir = filepath.Dir(path)
-	}
+			cfg := store.ImportConfig{
+				SkipM3:  opts.Bool("skip-m3"),
+				DataDir: dataDir,
+				M3Host:  optStringOr(opts, "m3-host", "m3"),
+			}
 
-	db, err := ml.OpenDBReadWrite(path)
-	if err != nil {
-		return coreerr.E("cmd.runImportAll", "open db", err)
-	}
-	defer db.Close()
-
-	cfg := ml.ImportConfig{
-		SkipM3:  importSkipM3,
-		DataDir: dataDir,
-		M3Host:  importM3Host,
-	}
-
-	return ml.ImportAll(db, cfg, cmd.OutOrStdout())
+			return resultFromError(store.ImportAll(db, cfg, nil))
+		},
+	})
 }

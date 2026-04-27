@@ -1,8 +1,9 @@
 package ml
 
 import (
-	"strings"
 	"time"
+
+	"dappco.re/go/core"
 )
 
 // ----- Scoring epoch & timing -----
@@ -143,12 +144,14 @@ var ModelFamilies = []struct {
 
 // AdapterMeta maps an adapter directory name to (model_tag, label_prefix, run_id_stem).
 func AdapterMeta(dirname string) (string, string, string) {
-	name := strings.TrimPrefix(dirname, "adapters-")
+	name := core.TrimPrefix(dirname, "adapters-")
 
 	for _, fam := range ModelFamilies {
-		if after, ok := strings.CutPrefix(name, fam.DirPrefix); ok {
-			variant := after
-			variant = strings.TrimLeft(variant, "-")
+		if core.HasPrefix(name, fam.DirPrefix) {
+			variant := name[len(fam.DirPrefix):]
+			for len(variant) > 0 && variant[0] == '-' {
+				variant = variant[1:]
+			}
 			if variant == "" {
 				variant = "base"
 			}
@@ -156,7 +159,7 @@ func AdapterMeta(dirname string) (string, string, string) {
 			if variant == "base" {
 				short = fam.Short
 			}
-			stem := strings.ReplaceAll(name, "/", "-")
+			stem := core.Replace(name, "/", "-")
 			return fam.Tag, short, stem
 		}
 	}
@@ -166,4 +169,20 @@ func AdapterMeta(dirname string) (string, string, string) {
 		short = short[:10]
 	}
 	return name, short, name
+}
+
+// cutPrefix returns s without the leading prefix and reports whether it was found.
+func cutPrefix(s, prefix string) (string, bool) {
+	if core.HasPrefix(s, prefix) {
+		return s[len(prefix):], true
+	}
+	return s, false
+}
+
+// trimLeft removes leading characters in cutset from s.
+func trimLeft(s, cutset string) string {
+	for len(s) > 0 && core.Contains(cutset, s[:1]) {
+		s = s[1:]
+	}
+	return s
 }

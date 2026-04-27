@@ -1,41 +1,30 @@
 package cmd
 
 import (
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	"dappco.re/go/ml"
 )
 
-var (
-	consolidateM3Host    string
-	consolidateRemoteDir string
-	consolidatePattern   string
-	consolidateOutputDir string
-	consolidateMergedOut string
-)
+// addConsolidateCommand registers `ml consolidate` — pulls JSONL responses
+// from an M3 host over SSH/SCP, merges them by idx, dedupes, and writes a
+// single merged JSONL output.
+//
+//	core ml consolidate --m3-host m3 --pattern "gold*.jsonl" --output ./responses
+func addConsolidateCommand(c *core.Core) {
+	c.Command("ml/consolidate", core.Command{
+		Description: "Pull and merge response JSONL files from M3",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var consolidateCmd = &cli.Command{
-	Use:   "consolidate",
-	Short: "Pull and merge response JSONL files from M3",
-	Long:  "Pulls JSONL response files from M3 via SSH/SCP, merges them by idx, deduplicates, and writes a single merged JSONL output.",
-	RunE:  runConsolidate,
-}
+			cfg := ml.ConsolidateConfig{
+				M3Host:    optStringOr(opts, "m3-host", "m3"),
+				RemoteDir: optStringOr(opts, "remote", "/Volumes/Data/lem/responses"),
+				Pattern:   optStringOr(opts, "pattern", "gold*.jsonl"),
+				OutputDir: opts.String("output"),
+				MergedOut: opts.String("merged"),
+			}
 
-func init() {
-	consolidateCmd.Flags().StringVar(&consolidateM3Host, "m3-host", "m3", "M3 SSH host")
-	consolidateCmd.Flags().StringVar(&consolidateRemoteDir, "remote", "/Volumes/Data/lem/responses", "Remote response directory")
-	consolidateCmd.Flags().StringVar(&consolidatePattern, "pattern", "gold*.jsonl", "File glob pattern")
-	consolidateCmd.Flags().StringVar(&consolidateOutputDir, "output", "", "Local output directory (default: responses)")
-	consolidateCmd.Flags().StringVar(&consolidateMergedOut, "merged", "", "Merged output path (default: gold-merged.jsonl in parent of output dir)")
-}
-
-func runConsolidate(cmd *cli.Command, args []string) error {
-	cfg := ml.ConsolidateConfig{
-		M3Host:    consolidateM3Host,
-		RemoteDir: consolidateRemoteDir,
-		Pattern:   consolidatePattern,
-		OutputDir: consolidateOutputDir,
-		MergedOut: consolidateMergedOut,
-	}
-
-	return ml.Consolidate(cfg, cmd.OutOrStdout())
+			return resultFromError(ml.Consolidate(cfg, nil))
+		},
+	})
 }

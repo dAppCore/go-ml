@@ -1,23 +1,22 @@
-//go:build darwin && arm64 && !nomlx
+//go:build darwin && arm64 && !nomlx && cliv1
 
 package cmd
 
 import (
 	"cmp"
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"math"
 	"runtime"
 	"slices"
 	"time"
 
-	"dappco.re/go/core/i18n/reversal"
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	"dappco.re/go/cli/pkg/cli"
+	"dappco.re/go/i18n/reversal"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
 // grammarScore holds grammar v3 quality signals derived from a GrammarImprint.
@@ -230,7 +229,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	baselineResponses := make(map[string]string)
 	for i, p := range prompts {
 		slog.Info("benchmark: baseline",
-			"prompt", fmt.Sprintf("%d/%d", i+1, len(prompts)),
+			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
 		res, err := baselineBackend.Generate(context.Background(), p.prompt, opts)
@@ -260,7 +259,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	trainedResponses := make(map[string]string)
 	for i, p := range prompts {
 		slog.Info("benchmark: trained",
-			"prompt", fmt.Sprintf("%d/%d", i+1, len(prompts)),
+			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
 		res, err := trainedBackend.Generate(context.Background(), p.prompt, opts)
@@ -377,39 +376,35 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	}
 
 	// Write output
-	data, err := json.MarshalIndent(summary, "", "  ")
-	if err != nil {
-		return coreerr.E("cmd.runBenchmark", "marshal output", err)
-	}
-	if err := coreio.Local.Write(benchmarkOutput, string(data)); err != nil {
+	if err := coreio.Local.Write(benchmarkOutput, core.JSONMarshalString(summary)); err != nil {
 		return coreerr.E("cmd.runBenchmark", "write output", err)
 	}
 
 	// Print summary
-	fmt.Println()
-	fmt.Println("=== Benchmark Results ===")
-	fmt.Printf("Baseline:  %s\n", benchmarkBaseline)
-	fmt.Printf("Trained:   %s\n", benchmarkTrained)
-	fmt.Printf("Prompts:   %d\n", len(results))
-	fmt.Println()
-	fmt.Println("--- LEK Heuristic ---")
-	fmt.Printf("Avg LEK (baseline): %+.2f\n", summary.AvgBaselineLEK)
-	fmt.Printf("Avg LEK (trained):  %+.2f\n", summary.AvgTrainedLEK)
-	fmt.Printf("Avg Delta:          %+.2f\n", summary.AvgDelta)
-	fmt.Println()
-	fmt.Println("--- Grammar v3 ---")
-	fmt.Printf("Avg Composite (baseline): %.2f\n", summary.AvgBaselineGrammar)
-	fmt.Printf("Avg Composite (trained):  %.2f\n", summary.AvgTrainedGrammar)
-	fmt.Printf("Avg Grammar Uplift:       %+.2f\n", summary.AvgGrammarUplift)
-	fmt.Printf("Avg Echo (baseline):      %.3f\n", summary.AvgBaselineEcho)
-	fmt.Printf("Avg Echo (trained):       %.3f\n", summary.AvgTrainedEcho)
-	fmt.Printf("Sycophancy detected:      %d (%.0f%%)\n", sycophancyCount, float64(sycophancyCount)/n*100)
-	fmt.Println()
-	fmt.Printf("Improved:   %d (%.0f%%)\n", improved, float64(improved)/n*100)
-	fmt.Printf("Regressed:  %d (%.0f%%)\n", regressed, float64(regressed)/n*100)
-	fmt.Printf("Unchanged:  %d (%.0f%%)\n", unchanged, float64(unchanged)/n*100)
-	fmt.Printf("Duration:   %s\n", summary.Duration)
-	fmt.Printf("Output:     %s\n", benchmarkOutput)
+	core.Print(nil, "")
+	core.Print(nil, "=== Benchmark Results ===")
+	core.Print(nil, "Baseline:  %s", benchmarkBaseline)
+	core.Print(nil, "Trained:   %s", benchmarkTrained)
+	core.Print(nil, "Prompts:   %d", len(results))
+	core.Print(nil, "")
+	core.Print(nil, "--- LEK Heuristic ---")
+	core.Print(nil, "Avg LEK (baseline): %+.2f", summary.AvgBaselineLEK)
+	core.Print(nil, "Avg LEK (trained):  %+.2f", summary.AvgTrainedLEK)
+	core.Print(nil, "Avg Delta:          %+.2f", summary.AvgDelta)
+	core.Print(nil, "")
+	core.Print(nil, "--- Grammar v3 ---")
+	core.Print(nil, "Avg Composite (baseline): %.2f", summary.AvgBaselineGrammar)
+	core.Print(nil, "Avg Composite (trained):  %.2f", summary.AvgTrainedGrammar)
+	core.Print(nil, "Avg Grammar Uplift:       %+.2f", summary.AvgGrammarUplift)
+	core.Print(nil, "Avg Echo (baseline):      %.3f", summary.AvgBaselineEcho)
+	core.Print(nil, "Avg Echo (trained):       %.3f", summary.AvgTrainedEcho)
+	core.Print(nil, "Sycophancy detected:      %d (%.0f%%)", sycophancyCount, float64(sycophancyCount)/n*100)
+	core.Print(nil, "")
+	core.Print(nil, "Improved:   %d (%.0f%%)", improved, float64(improved)/n*100)
+	core.Print(nil, "Regressed:  %d (%.0f%%)", regressed, float64(regressed)/n*100)
+	core.Print(nil, "Unchanged:  %d (%.0f%%)", unchanged, float64(unchanged)/n*100)
+	core.Print(nil, "Duration:   %s", summary.Duration)
+	core.Print(nil, "Output:     %s", benchmarkOutput)
 
 	return nil
 }
@@ -437,7 +432,7 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 	}
 
 	var seeds []seedPrompt
-	if json.Unmarshal([]byte(data), &seeds) == nil && len(seeds) > 0 {
+	if r := core.JSONUnmarshalString(data, &seeds); r.OK && len(seeds) > 0 {
 		prompts := make([]benchPrompt, len(seeds))
 		for i, s := range seeds {
 			prompts[i] = benchPrompt{id: s.ID, prompt: s.Prompt}
@@ -461,7 +456,7 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		seen[r.Prompt] = true
 		id := r.ID
 		if id == "" {
-			id = fmt.Sprintf("P%03d", len(prompts)+1)
+			id = core.Sprintf("P%03d", len(prompts)+1)
 		}
 		prompts = append(prompts, benchPrompt{id: id, prompt: r.Prompt})
 	}

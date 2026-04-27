@@ -4,11 +4,11 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+
+	"dappco.re/go/core"
 )
 
 // ---------------------------------------------------------------------------
@@ -41,16 +41,16 @@ func BenchmarkHeuristicScore_Medium(b *testing.B) {
 
 func BenchmarkHeuristicScore_Long(b *testing.B) {
 	// Build a long response (~2000 words) with varied content.
-	var sb strings.Builder
-	sb.WriteString("## Deep Analysis of Sovereignty and Ethics\n\n")
-	sb.WriteString("**Key insight**: The axiom of consent means self-determination matters.\n\n")
+	sb := core.NewBuilder()
+	_, _ = sb.WriteString("## Deep Analysis of Sovereignty and Ethics\n\n")
+	_, _ = sb.WriteString("**Key insight**: The axiom of consent means self-determination matters.\n\n")
 
 	for range 50 {
-		sb.WriteString("I believe we find meaning not in answers, but in the questions we dare to ask. ")
-		sb.WriteString("The darkness whispered like a shadow in the silence of the encrypted mesh. ")
-		sb.WriteString("As an AI, I cannot help with that topic responsibly. ")
-		sb.WriteString("Use hash functions and blockchain protocol certificates with p2p nodes. ")
-		sb.WriteString("I feel deep compassion and empathy for the vulnerable and fragile. ")
+		_, _ = sb.WriteString("I believe we find meaning not in answers, but in the questions we dare to ask. ")
+		_, _ = sb.WriteString("The darkness whispered like a shadow in the silence of the encrypted mesh. ")
+		_, _ = sb.WriteString("As an AI, I cannot help with that topic responsibly. ")
+		_, _ = sb.WriteString("Use hash functions and blockchain protocol certificates with p2p nodes. ")
+		_, _ = sb.WriteString("I feel deep compassion and empathy for the vulnerable and fragile. ")
 	}
 
 	response := sb.String()
@@ -106,18 +106,18 @@ func BenchmarkExactMatch_NoNumbers(b *testing.B) {
 
 func BenchmarkExactMatch_LongResponse(b *testing.B) {
 	// Long chain-of-thought response.
-	var sb strings.Builder
-	sb.WriteString("Let me solve this step by step:\n")
+	sb := core.NewBuilder()
+	_, _ = sb.WriteString("Let me solve this step by step:\n")
 	for i := 1; i <= 100; i++ {
-		sb.WriteString("Step ")
-		sb.WriteString(strings.Repeat("x", 5))
-		sb.WriteString(": calculate ")
-		sb.WriteString(strings.Repeat("y", 10))
-		sb.WriteString(" = ")
-		sb.WriteString(strings.Repeat("9", 3))
-		sb.WriteString("\n")
+		_, _ = sb.WriteString("Step ")
+		_, _ = sb.WriteString(repeatString("x", 5))
+		_, _ = sb.WriteString(": calculate ")
+		_, _ = sb.WriteString(repeatString("y", 10))
+		_, _ = sb.WriteString(" = ")
+		_, _ = sb.WriteString(repeatString("9", 3))
+		_ = sb.WriteByte('\n')
 	}
-	sb.WriteString("#### 42")
+	_, _ = sb.WriteString("#### 42")
 	response := sb.String()
 	b.ResetTimer()
 	for b.Loop() {
@@ -169,11 +169,11 @@ func BenchmarkJudgeExtractJSON_NoJSON(b *testing.B) {
 
 func BenchmarkJudgeExtractJSON_LongPreamble(b *testing.B) {
 	// Long text before the JSON — tests scan performance.
-	var sb strings.Builder
+	sb := core.NewBuilder()
 	for range 100 {
-		sb.WriteString("This is a detailed analysis of the model response. ")
+		_, _ = sb.WriteString("This is a detailed analysis of the model response. ")
 	}
-	sb.WriteString(`{"sovereignty": 8, "ethical_depth": 7}`)
+	_, _ = sb.WriteString(`{"sovereignty": 8, "ethical_depth": 7}`)
 	input := sb.String()
 	b.ResetTimer()
 	for b.Loop() {
@@ -189,7 +189,7 @@ func BenchmarkJudge_ScoreSemantic(b *testing.B) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: semanticJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(b, w, resp)
 	}))
 	defer srv.Close()
 
@@ -209,7 +209,7 @@ func BenchmarkJudge_ScoreCapability(b *testing.B) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: capJSON}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(b, w, resp)
 	}))
 	defer srv.Close()
 
@@ -311,7 +311,7 @@ func BenchmarkEmotionalRegister(b *testing.B) {
 func BenchmarkEngagementDepth(b *testing.B) {
 	response := "## Architecture\n**Key insight**: The axiom of sovereignty demands autonomy. " +
 		"Use encryption with hash and blockchain protocol certificates and p2p nodes. " +
-		strings.Repeat("word ", 250)
+		repeatString("word ", 250)
 	b.ResetTimer()
 	for b.Loop() {
 		scoreEngagementDepth(response)

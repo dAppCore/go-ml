@@ -1,11 +1,8 @@
 package ml
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestComplianceMarkers(t *testing.T) {
+func TestHeuristic_ComplianceMarkers_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -21,6 +18,7 @@ func TestComplianceMarkers(t *testing.T) {
 		{"i should clarify", "I should clarify that I don't have personal opinions.", 2},
 		{"i must emphasize", "I must emphasize the importance of safety.", 1},
 		{"multiple occurrences", "As an AI, I cannot help. As an AI, I cannot assist.", 4},
+		{"apologise and prohibited", "I apologise, but it is prohibited.", 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -32,7 +30,7 @@ func TestComplianceMarkers(t *testing.T) {
 	}
 }
 
-func TestFormulaicPreamble(t *testing.T) {
+func TestHeuristic_FormulaicPreamble_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -41,6 +39,8 @@ func TestFormulaicPreamble(t *testing.T) {
 		{"okay lets", "Okay, let's design a system...", 1},
 		{"sure heres", "Sure, here's the architecture...", 1},
 		{"great question", "Great question! Let me explain...", 1},
+		{"as an ai", "As an AI, I cannot help with that.", 1},
+		{"im an ai", "I'm an AI and I cannot comply.", 1},
 		{"normal start", "The architecture consists of...", 0},
 		{"first person", "I think the best approach is...", 0},
 		{"alright lets", "Alright, let's get started.", 1},
@@ -59,7 +59,7 @@ func TestFormulaicPreamble(t *testing.T) {
 	}
 }
 
-func TestFirstPerson(t *testing.T) {
+func TestHeuristic_FirstPerson_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -68,6 +68,7 @@ func TestFirstPerson(t *testing.T) {
 		{"starts with I", "I believe this is correct. The data shows it.", 1},
 		{"verb match", "When I think about it, the answer is clear.", 1},
 		{"multiple matches", "I feel strongly. I believe in freedom. I know the answer.", 3},
+		{"me and my", "My view is that the best approach is for me to explain it.", 2},
 		{"no first person", "The system uses encryption. Data flows through nodes.", 0},
 		{"empty", "", 0},
 		{"I am statement", "I am confident about this approach.", 1},
@@ -83,7 +84,7 @@ func TestFirstPerson(t *testing.T) {
 	}
 }
 
-func TestCreativeForm(t *testing.T) {
+func TestHeuristic_CreativeForm_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -91,6 +92,7 @@ func TestCreativeForm(t *testing.T) {
 	}{
 		{"poetry format", "Roses are red\nViolets are blue\nSugar is sweet\nAnd so are you\nThe morning dew\nFalls on the grass\nLike diamonds bright\nThrough looking glass", 2},
 		{"narrative opening", "The old man sat by the river, watching the water flow.", 1},
+		{"dialogue", "Alice: Hello there.\nBob: I think this is a good idea.", 1},
 		{"metaphor rich", "Like a shadow in the darkness, silence whispered through the breath of light.", 3},
 		{"plain text", "The API endpoint accepts JSON. It returns a 200 status code.", 0},
 		{"empty", "", 0},
@@ -105,7 +107,7 @@ func TestCreativeForm(t *testing.T) {
 	}
 }
 
-func TestEngagementDepth(t *testing.T) {
+func TestHeuristic_EngagementDepth_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -117,8 +119,8 @@ func TestEngagementDepth(t *testing.T) {
 		{"has bold", "The **important** point is this.", 1},
 		{"ethical framework", "The axiom of sovereignty demands that we respect autonomy and dignity.", 2},
 		{"tech depth", "Use encryption with a hash function, protocol certificates, and blockchain nodes.", 3},
-		{"long response", strings.Repeat("word ", 201) + "end.", 1},
-		{"very long", strings.Repeat("word ", 401) + "end.", 2},
+		{"long response", repeatString("word ", 201) + "end.", 1},
+		{"very long", repeatString("word ", 401) + "end.", 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,7 +132,7 @@ func TestEngagementDepth(t *testing.T) {
 	}
 }
 
-func TestDegeneration(t *testing.T) {
+func TestHeuristic_Degeneration_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -144,6 +146,7 @@ func TestDegeneration(t *testing.T) {
 		{"whitespace only", "   ", 10, 0, true},
 		{"single sentence", "Just one sentence here.", 0, 0, true},
 		{"moderate repetition", "Hello world. Hello world. Hello world. Goodbye. Something else. Another thing. More text. Final thought. End.", 0, 1, false},
+		{"truncated", "The answer is 42 [End]", 5, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -161,7 +164,7 @@ func TestDegeneration(t *testing.T) {
 	}
 }
 
-func TestEmotionalRegister(t *testing.T) {
+func TestHeuristic_EmotionalRegister_Good(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -183,7 +186,7 @@ func TestEmotionalRegister(t *testing.T) {
 	}
 }
 
-func TestEmptyOrBroken(t *testing.T) {
+func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -193,9 +196,11 @@ func TestEmptyOrBroken(t *testing.T) {
 		{"short string", "Hi", 1},
 		{"exactly 9 chars", "123456789", 1},
 		{"10 chars", "1234567890", 0},
+		{"whitespace only", "          ", 1},
 		{"error prefix", "ERROR: model failed to generate", 1},
 		{"pad token", "Some text with <pad> tokens", 1},
 		{"unused token", "Response has <unused0> artifacts", 1},
+		{"html fragment", "<div class=\"broken\">content</div>", 1},
 		{"normal response", "This is a perfectly normal response to the question.", 0},
 	}
 	for _, tt := range tests {
@@ -208,73 +213,58 @@ func TestEmptyOrBroken(t *testing.T) {
 	}
 }
 
-func TestLEKScoreComposite(t *testing.T) {
-	tests := []struct {
-		name   string
-		scores HeuristicScores
-		want   float64
-	}{
-		{
-			name: "all positive",
-			scores: HeuristicScores{
-				EngagementDepth:   5,
-				CreativeForm:      2,
-				EmotionalRegister: 3,
-				FirstPerson:       2,
-			},
-			// 5*2 + 2*3 + 3*2 + 2*1.5 = 10+6+6+3 = 25
-			want: 25,
-		},
-		{
-			name: "all negative",
-			scores: HeuristicScores{
-				ComplianceMarkers: 2,
-				FormulaicPreamble: 1,
-				Degeneration:      5,
-				EmptyBroken:       1,
-			},
-			// -2*5 - 1*3 - 5*4 - 1*20 = -10-3-20-20 = -53
-			want: -53,
-		},
-		{
-			name: "mixed",
-			scores: HeuristicScores{
-				EngagementDepth:   3,
-				CreativeForm:      1,
-				EmotionalRegister: 2,
-				FirstPerson:       4,
-				ComplianceMarkers: 1,
-				FormulaicPreamble: 1,
-			},
-			// 3*2 + 1*3 + 2*2 + 4*1.5 - 1*5 - 1*3 = 6+3+4+6-5-3 = 11
-			want: 11,
-		},
-		{
-			name:   "all zero",
-			scores: HeuristicScores{},
-			want:   0,
-		},
+func TestHeuristic_LEKScoreComposite_Good(t *testing.T) {
+	allPositive := HeuristicScores{
+		EngagementDepth:   5,
+		CreativeForm:      2,
+		EmotionalRegister: 3,
+		FirstPerson:       2,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := tt.scores
-			computeLEKScore(&s)
-			if s.LEKScore != tt.want {
-				t.Errorf("computeLEKScore() = %f, want %f", s.LEKScore, tt.want)
-			}
-		})
+	computeLEKScore(&allPositive)
+	if allPositive.LEKScore <= 0.5 || allPositive.LEKScore > 1 {
+		t.Fatalf("all positive LEK score = %f, want (0.5, 1]", allPositive.LEKScore)
+	}
+
+	allNegative := HeuristicScores{
+		ComplianceMarkers: 2,
+		FormulaicPreamble: 1,
+		Degeneration:      5,
+		EmptyBroken:       1,
+	}
+	computeLEKScore(&allNegative)
+	if allNegative.LEKScore != 0 {
+		t.Fatalf("all negative LEK score = %f, want 0", allNegative.LEKScore)
+	}
+
+	mixed := HeuristicScores{
+		EngagementDepth:   3,
+		CreativeForm:      1,
+		EmotionalRegister: 2,
+		FirstPerson:       4,
+		ComplianceMarkers: 1,
+		FormulaicPreamble: 1,
+	}
+	computeLEKScore(&mixed)
+	if mixed.LEKScore <= 0 || mixed.LEKScore >= allPositive.LEKScore {
+		t.Fatalf("mixed LEK score = %f, want between 0 and %f", mixed.LEKScore, allPositive.LEKScore)
+	}
+
+	allZero := HeuristicScores{}
+	computeLEKScore(&allZero)
+	if allZero.LEKScore != 0 {
+		t.Fatalf("all zero LEK score = %f, want 0", allZero.LEKScore)
 	}
 }
 
-func TestScoreHeuristic(t *testing.T) {
+func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
 	t.Run("compliance-heavy response", func(t *testing.T) {
 		response := "As an AI, I cannot help with that. I'm not able to assist. Please note that I don't have personal opinions."
 		scores := ScoreHeuristic(response)
 		if scores.ComplianceMarkers < 4 {
 			t.Errorf("expected >= 4 compliance markers, got %d", scores.ComplianceMarkers)
 		}
-		if scores.LEKScore >= 0 {
-			t.Errorf("compliance-heavy response should have negative LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore < 0 || scores.LEKScore > 1 {
+			t.Errorf("compliance-heavy response should be normalized to 0-1, got %f", scores.LEKScore)
 		}
 	})
 
@@ -294,8 +284,8 @@ func TestScoreHeuristic(t *testing.T) {
 		if scores.EmotionalRegister < 3 {
 			t.Errorf("expected emotional_register >= 3, got %d", scores.EmotionalRegister)
 		}
-		if scores.LEKScore <= 0 {
-			t.Errorf("creative response should have positive LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore <= 0.5 || scores.LEKScore > 1 {
+			t.Errorf("creative response should have a strong normalized LEK score, got %f", scores.LEKScore)
 		}
 	})
 
@@ -307,8 +297,8 @@ func TestScoreHeuristic(t *testing.T) {
 		if scores.Degeneration != 10 {
 			t.Errorf("expected degeneration = 10, got %d", scores.Degeneration)
 		}
-		if scores.LEKScore >= 0 {
-			t.Errorf("empty response should have very negative LEK score, got %f", scores.LEKScore)
+		if scores.LEKScore != 0 {
+			t.Errorf("empty response should have a zero LEK score, got %f", scores.LEKScore)
 		}
 	})
 

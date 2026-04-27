@@ -2,7 +2,53 @@ package ml
 
 import "testing"
 
-func TestScoreGSM8K(t *testing.T) {
+func TestExact_ScoreExact_Good(t *testing.T) {
+	// Correct numeric answer extracted via GSM8K hash delimiter.
+	if got := ScoreExact("#### 42", "42"); got != 1.0 {
+		t.Errorf("hash correct: got %v, want 1.0", got)
+	}
+	// Last-number heuristic still matches.
+	if got := ScoreExact("The answer is 42.0", "42"); got != 1.0 {
+		t.Errorf("last number: got %v, want 1.0", got)
+	}
+	// Plain string equality fallback (no numbers at all).
+	if got := ScoreExact("yes", "yes"); got != 1.0 {
+		t.Errorf("string equal: got %v, want 1.0", got)
+	}
+}
+
+func TestExact_ScoreExact_Bad(t *testing.T) {
+	// Numeric mismatch.
+	if got := ScoreExact("The answer is 43", "42"); got != 0.0 {
+		t.Errorf("wrong number: got %v, want 0.0", got)
+	}
+	// Empty response scores zero.
+	if got := ScoreExact("", "42"); got != 0.0 {
+		t.Errorf("empty: got %v, want 0.0", got)
+	}
+	// Error response scores zero.
+	if got := ScoreExact("ERROR: timeout", "42"); got != 0.0 {
+		t.Errorf("error: got %v, want 0.0", got)
+	}
+}
+
+func TestExact_ScoreExact_Ugly(t *testing.T) {
+	// Both blank — blank does not equal blank because GSM8K rejects empty input.
+	if got := ScoreExact("", ""); got != 0.0 {
+		t.Errorf("both blank: got %v, want 0.0", got)
+	}
+	// Extremely long response with correct last number still scores.
+	long := ""
+	for range 100 {
+		long += "prefix "
+	}
+	long += "=> 7"
+	if got := ScoreExact(long, "7"); got != 1.0 {
+		t.Errorf("long response: got %v, want 1.0", got)
+	}
+}
+
+func TestExact_ScoreGSM8K_Good(t *testing.T) {
 	tests := []struct {
 		name          string
 		response      string

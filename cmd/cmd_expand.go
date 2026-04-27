@@ -2,81 +2,68 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"os"
 
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
-var (
-	expandWorker string
-	expandOutput string
-	expandLimit  int
-	expandDryRun bool
-)
+// addExpandCommand registers `ml expand` — reads pending expansion prompts
+// from DuckDB and generates responses via an OpenAI-compatible API.
+//
+//	core ml expand --model gemma3:27b --limit 100 --output ./jsonl
+func addExpandCommand(c *core.Core) {
+	c.Command("ml/expand", core.Command{
+		Description: "Generate expansion responses from pending prompts",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var expandCmd = &cli.Command{
-	Use:   "expand",
-	Short: "Generate expansion responses from pending prompts",
-	Long:  "Reads pending expansion prompts from DuckDB and generates responses via an OpenAI-compatible API.",
-	RunE:  runExpand,
-}
+			if modelName == "" {
+				return resultFromError(coreerr.E("cmd.runExpand", "--model is required", nil))
+			}
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runExpand", "--db or LEM_DB env is required", nil))
+			}
 
-func init() {
-	expandCmd.Flags().StringVar(&expandWorker, "worker", "", "Worker hostname (defaults to os.Hostname())")
-	expandCmd.Flags().StringVar(&expandOutput, "output", ".", "Output directory for JSONL files")
-	expandCmd.Flags().IntVar(&expandLimit, "limit", 0, "Max prompts to process (0 = all)")
-	expandCmd.Flags().BoolVar(&expandDryRun, "dry-run", false, "Print plan and exit without generating")
-}
+			worker := opts.String("worker")
+			if worker == "" {
+				worker = core.Env("HOSTNAME")
+			}
+			output := optStringOr(opts, "output", ".")
+			limit := opts.Int("limit")
+			dryRun := opts.Bool("dry-run")
 
-func runExpand(cmd *cli.Command, args []string) error {
-	if modelName == "" {
-		return coreerr.E("cmd.runExpand", "--model is required", nil)
-	}
+			db, err := store.OpenDuckDBReadWrite(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runExpand", "open db", err))
+			}
+			defer db.Close()
 
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runExpand", "--db or LEM_DB env is required", nil)
-	}
+			rows, err := db.QueryExpansionPrompts("pending", limit)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runExpand", "query expansion_prompts", err))
+			}
+			core.Print(nil, "Loaded %d pending prompts from %s", len(rows), dbPath)
 
-	if expandWorker == "" {
-		h, _ := os.Hostname()
-		expandWorker = h
-	}
+			var prompts []ml.Response
+			for _, r := range rows {
+				prompt := r.Prompt
+				if prompt == "" && r.PromptEn != "" {
+					prompt = r.PromptEn
+				}
+				prompts = append(prompts, ml.Response{
+					ID:     r.SeedID,
+					Domain: r.Domain,
+					Prompt: prompt,
+				})
+			}
 
-	db, err := ml.OpenDBReadWrite(path)
-	if err != nil {
-		return coreerr.E("cmd.runExpand", "open db", err)
-	}
-	defer db.Close()
+			ctx := context.Background()
+			backend := ml.NewHTTPBackend(apiURL, modelName)
+			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	rows, err := db.QueryExpansionPrompts("pending", expandLimit)
-	if err != nil {
-		return coreerr.E("cmd.runExpand", "query expansion_prompts", err)
-	}
-	fmt.Printf("Loaded %d pending prompts from %s\n", len(rows), path)
-
-	var prompts []ml.Response
-	for _, r := range rows {
-		prompt := r.Prompt
-		if prompt == "" && r.PromptEn != "" {
-			prompt = r.PromptEn
-		}
-		prompts = append(prompts, ml.Response{
-			ID:     r.SeedID,
-			Domain: r.Domain,
-			Prompt: prompt,
-		})
-	}
-
-	ctx := context.Background()
-	backend := ml.NewHTTPBackend(apiURL, modelName)
-	influx := ml.NewInfluxClient(influxURL, influxDB)
-
-	return ml.ExpandPrompts(ctx, backend, influx, prompts, modelName, expandWorker, expandOutput, expandDryRun, expandLimit)
+			return resultFromError(ml.ExpandPrompts(ctx, backend, influx, prompts, modelName, worker, output, dryRun, limit))
+		},
+	})
 }

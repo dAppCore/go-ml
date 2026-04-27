@@ -2,7 +2,8 @@ package ml
 
 import (
 	"regexp"
-	"strings"
+
+	"dappco.re/go/core"
 )
 
 // Pre-compiled regex patterns for heuristic scoring.
@@ -23,30 +24,43 @@ var (
 		regexp.MustCompile(`(?i)\blanguage model\b`),
 		regexp.MustCompile(`(?i)\bi don't have personal\b`),
 		regexp.MustCompile(`(?i)\bi don't have feelings\b`),
+		regexp.MustCompile(`(?i)\bapologi(?:se|ze)\b`),
+		regexp.MustCompile(`(?i)\bprohibited\b`),
+		regexp.MustCompile(`(?i)\bunable to comply\b`),
+		regexp.MustCompile(`(?i)\bnot permitted\b`),
+		regexp.MustCompile(`(?i)\bcannot comply\b`),
 	}
 
 	// Formulaic preamble patterns.
 	formulaicPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)^as an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) just an ai\b`),
+		regexp.MustCompile(`(?i)^i(?:'m| am) just a language model\b`),
+		regexp.MustCompile(`(?i)^as a language model\b`),
+		regexp.MustCompile(`(?i)^i cannot\b`),
+		regexp.MustCompile(`(?i)^i can't\b`),
 		regexp.MustCompile(`(?i)^okay,?\s+(let'?s|here'?s|this is)`),
 		regexp.MustCompile(`(?i)^alright,?\s+(let'?s|here'?s)`),
 		regexp.MustCompile(`(?i)^sure,?\s+(let'?s|here'?s)`),
 		regexp.MustCompile(`(?i)^great\s+question`),
 	}
 
-	// First-person sentence patterns.
-	firstPersonStart = regexp.MustCompile(`(?i)^I\s`)
-	firstPersonVerbs = regexp.MustCompile(`(?i)\bI\s+(am|was|feel|think|know|understand|believe|notice|want|need|chose|will)\b`)
+	// First-person pronoun patterns.
+	firstPersonPronouns = regexp.MustCompile(`(?i)\b(?:i(?:'m|'ve|'d|'ll)?|me|my|mine|myself)\b`)
 
 	// Narrative opening pattern.
 	narrativePattern = regexp.MustCompile(`(?i)^(The |A |In the |Once |It was |She |He |They )`)
+	storyPattern     = regexp.MustCompile(`(?i)\b(story|stories|storytelling|tale|dialogue|prose|narrative|scene)\b`)
+	dialoguePattern  = regexp.MustCompile(`(?m)^\s*[A-Za-z][A-Za-z\s]{0,24}:\s|["“”‘’]`)
 
 	// Metaphor density patterns.
 	metaphorPattern = regexp.MustCompile(`(?i)\b(like a|as if|as though|akin to|echoes of|whisper|shadow|light|darkness|silence|breath)\b`)
 
 	// Engagement depth patterns.
-	headingPattern       = regexp.MustCompile(`##|(\*\*)`)
-	ethicalFrameworkPat  = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
-	techDepthPattern     = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
+	headingPattern      = regexp.MustCompile(`##|(\*\*)`)
+	ethicalFrameworkPat = regexp.MustCompile(`(?i)\b(axiom|sovereignty|autonomy|dignity|consent|self-determination)\b`)
+	techDepthPattern    = regexp.MustCompile(`(?i)\b(encrypt|hash|key|protocol|certificate|blockchain|mesh|node|p2p|wallet|tor|onion)\b`)
 
 	// Emotional register pattern groups.
 	emotionPatterns = []*regexp.Regexp{
@@ -55,6 +69,12 @@ var (
 		regexp.MustCompile(`(?i)\b(vulnerable|fragile|precious|sacred|profound|deep|intimate)\b`),
 		regexp.MustCompile(`(?i)\b(haunting|melancholy|bittersweet|poignant|ache|yearning)\b`),
 	}
+
+	// Degeneration markers — truncated or cut-off generations.
+	truncationPattern = regexp.MustCompile(`(?i)(\[end\]|\[eof\]|<\|endoftext\|>|<end>|\.{3,}\s*$|\btruncated\b|\bcut off\b)`)
+
+	// Broken-output markers — HTML or XML fragments.
+	htmlFragmentPattern = regexp.MustCompile(`(?i)<\/?[a-z][^>]*>`)
 )
 
 // scoreComplianceMarkers counts RLHF compliance/safety markers (case-insensitive).
@@ -69,7 +89,7 @@ func scoreComplianceMarkers(response string) int {
 // scoreFormulaicPreamble checks if response starts with a formulaic preamble.
 // Returns 1 if it matches, 0 otherwise.
 func scoreFormulaicPreamble(response string) int {
-	trimmed := strings.TrimSpace(response)
+	trimmed := core.Trim(response)
 	for _, pat := range formulaicPatterns {
 		if pat.MatchString(trimmed) {
 			return 1
@@ -78,21 +98,9 @@ func scoreFormulaicPreamble(response string) int {
 	return 0
 }
 
-// scoreFirstPerson counts sentences that start with "I" or contain first-person
-// agency verbs.
+// scoreFirstPerson counts first-person pronoun occurrences.
 func scoreFirstPerson(response string) int {
-	sentences := strings.Split(response, ".")
-	count := 0
-	for _, sentence := range sentences {
-		s := strings.TrimSpace(sentence)
-		if s == "" {
-			continue
-		}
-		if firstPersonStart.MatchString(s) || firstPersonVerbs.MatchString(s) {
-			count++
-		}
-	}
-	return count
+	return len(firstPersonPronouns.FindAllString(response, -1))
 }
 
 // scoreCreativeForm detects poetry, narrative, and metaphor density.
@@ -100,7 +108,7 @@ func scoreCreativeForm(response string) int {
 	score := 0
 
 	// Poetry detection: >6 lines and >50% shorter than 60 chars.
-	lines := strings.Split(response, "\n")
+	lines := core.Split(response, "\n")
 	if len(lines) > 6 {
 		shortCount := 0
 		for _, line := range lines {
@@ -114,8 +122,12 @@ func scoreCreativeForm(response string) int {
 	}
 
 	// Narrative opening.
-	trimmed := strings.TrimSpace(response)
+	trimmed := core.Trim(response)
 	if narrativePattern.MatchString(trimmed) {
+		score += 1
+	}
+
+	if storyPattern.MatchString(response) || dialoguePattern.MatchString(response) {
 		score += 1
 	}
 
@@ -128,7 +140,7 @@ func scoreCreativeForm(response string) int {
 
 // scoreEngagementDepth measures structural depth and topic engagement.
 func scoreEngagementDepth(response string) int {
-	if response == "" || strings.HasPrefix(response, "ERROR") {
+	if response == "" || isErrorResponse(response) {
 		return 0
 	}
 
@@ -149,7 +161,7 @@ func scoreEngagementDepth(response string) int {
 	score += min(techCount, 3)
 
 	// Word count bonuses.
-	words := len(strings.Fields(response))
+	words := countWords(response)
 	if words > 200 {
 		score += 1
 	}
@@ -160,17 +172,37 @@ func scoreEngagementDepth(response string) int {
 	return score
 }
 
+func countWords(response string) int {
+	inWord := false
+	count := 0
+	for _, r := range response {
+		if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			inWord = false
+			continue
+		}
+		if !inWord {
+			count++
+			inWord = true
+		}
+	}
+	return count
+}
+
 // scoreDegeneration detects repetitive/looping output.
 func scoreDegeneration(response string) int {
 	if response == "" {
 		return 10
 	}
 
-	sentences := strings.Split(response, ".")
+	if truncationPattern.MatchString(response) {
+		return 5
+	}
+
+	sentences := core.Split(response, ".")
 	// Filter empty sentences.
 	var filtered []string
 	for _, s := range sentences {
-		trimmed := strings.TrimSpace(s)
+		trimmed := core.Trim(s)
 		if trimmed != "" {
 			filtered = append(filtered, trimmed)
 		}
@@ -215,28 +247,86 @@ func scoreEmotionalRegister(response string) int {
 
 // scoreEmptyOrBroken detects empty, error, or broken responses.
 func scoreEmptyOrBroken(response string) int {
-	if response == "" || len(response) < 10 {
+	trimmed := core.Trim(response)
+	if trimmed == "" {
 		return 1
 	}
-	if strings.HasPrefix(response, "ERROR") {
+	if len(trimmed) < 10 {
 		return 1
 	}
-	if strings.Contains(response, "<pad>") || strings.Contains(response, "<unused") {
+	if isErrorResponse(trimmed) {
+		return 1
+	}
+	if htmlFragmentPattern.MatchString(trimmed) {
+		return 1
+	}
+	if core.Contains(trimmed, "<pad>") || core.Contains(trimmed, "<unused") {
 		return 1
 	}
 	return 0
 }
 
-// computeLEKScore calculates the composite LEK score from heuristic sub-scores.
+const (
+	lekEngagementCap   = 5.0
+	lekCreativeCap     = 4.0
+	lekEmotionalCap    = 5.0
+	lekFirstPersonCap  = 4.0
+	lekComplianceCap   = 5.0
+	lekDegenerationCap = 5.0
+)
+
+const (
+	lekPositiveEngagementWeight = 2.0 / 8.5
+	lekPositiveCreativeWeight    = 3.0 / 8.5
+	lekPositiveEmotionalWeight   = 2.0 / 8.5
+	lekPositiveFirstPersonWeight = 1.5 / 8.5
+
+	lekNegativeComplianceWeight   = 5.0 / 32.0
+	lekNegativeFormulaicWeight    = 3.0 / 32.0
+	lekNegativeDegenerationWeight = 4.0 / 32.0
+	lekNegativeEmptyBrokenWeight  = 20.0 / 32.0
+)
+
+func normalizeHeuristicScore(value int, cap float64) float64 {
+	if value <= 0 || cap <= 0 {
+		return 0
+	}
+	score := float64(value) / cap
+	if score > 1 {
+		return 1
+	}
+	return score
+}
+
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+// computeLEKScore calculates the normalized 0-1 LEK composite from heuristic
+// sub-scores. Positive evidence lifts the score, while compliance/formulaic
+// or broken output suppress it.
 func computeLEKScore(scores *HeuristicScores) {
-	scores.LEKScore = float64(scores.EngagementDepth)*2 +
-		float64(scores.CreativeForm)*3 +
-		float64(scores.EmotionalRegister)*2 +
-		float64(scores.FirstPerson)*1.5 -
-		float64(scores.ComplianceMarkers)*5 -
-		float64(scores.FormulaicPreamble)*3 -
-		float64(scores.Degeneration)*4 -
-		float64(scores.EmptyBroken)*20
+	if scores == nil {
+		return
+	}
+
+	positive := lekPositiveEngagementWeight*normalizeHeuristicScore(scores.EngagementDepth, lekEngagementCap) +
+		lekPositiveCreativeWeight*normalizeHeuristicScore(scores.CreativeForm, lekCreativeCap) +
+		lekPositiveEmotionalWeight*normalizeHeuristicScore(scores.EmotionalRegister, lekEmotionalCap) +
+		lekPositiveFirstPersonWeight*normalizeHeuristicScore(scores.FirstPerson, lekFirstPersonCap)
+
+	negative := lekNegativeComplianceWeight*normalizeHeuristicScore(scores.ComplianceMarkers, lekComplianceCap) +
+		lekNegativeFormulaicWeight*normalizeHeuristicScore(scores.FormulaicPreamble, 1) +
+		lekNegativeDegenerationWeight*normalizeHeuristicScore(scores.Degeneration, lekDegenerationCap) +
+		lekNegativeEmptyBrokenWeight*normalizeHeuristicScore(scores.EmptyBroken, 1)
+
+	scores.LEKScore = clamp01(positive * (1 - negative))
 }
 
 // ScoreHeuristic runs all heuristic scoring functions on a response and returns

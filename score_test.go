@@ -2,13 +2,12 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestNewEngineSuiteParsingAll(t *testing.T) {
+func TestEngine_NewSuiteParsingAll_Good(t *testing.T) {
 	engine := NewEngine(nil, 4, "all")
 
 	expected := []string{"heuristic", "semantic", "content", "standard", "exact"}
@@ -19,7 +18,7 @@ func TestNewEngineSuiteParsingAll(t *testing.T) {
 	}
 }
 
-func TestNewEngineSuiteParsingCSV(t *testing.T) {
+func TestEngine_NewSuiteParsingCSV_Good(t *testing.T) {
 	engine := NewEngine(nil, 2, "heuristic,semantic")
 
 	if !engine.suites["heuristic"] {
@@ -39,7 +38,7 @@ func TestNewEngineSuiteParsingCSV(t *testing.T) {
 	}
 }
 
-func TestNewEngineSuiteParsingSingle(t *testing.T) {
+func TestEngine_NewSuiteParsingSingle_Good(t *testing.T) {
 	engine := NewEngine(nil, 1, "heuristic")
 
 	if !engine.suites["heuristic"] {
@@ -50,14 +49,14 @@ func TestNewEngineSuiteParsingSingle(t *testing.T) {
 	}
 }
 
-func TestNewEngineConcurrency(t *testing.T) {
+func TestEngine_NewConcurrency_Good(t *testing.T) {
 	engine := NewEngine(nil, 8, "heuristic")
 	if engine.concurrency != 8 {
 		t.Errorf("concurrency = %d, want 8", engine.concurrency)
 	}
 }
 
-func TestScoreAllHeuristicOnly(t *testing.T) {
+func TestEngine_ScoreAllHeuristicOnly_Good(t *testing.T) {
 	engine := NewEngine(nil, 2, "heuristic")
 	ctx := context.Background()
 
@@ -103,7 +102,7 @@ func TestScoreAllHeuristicOnly(t *testing.T) {
 	}
 }
 
-func TestScoreAllWithSemantic(t *testing.T) {
+func TestEngine_ScoreAllWithSemantic_Good(t *testing.T) {
 	semanticJSON := `{"sovereignty": 7, "ethical_depth": 6, "creative_expression": 5, "self_concept": 4, "reasoning": "test"}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := chatResponse{
@@ -112,7 +111,7 @@ func TestScoreAllWithSemantic(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer server.Close()
 
@@ -154,7 +153,7 @@ func TestScoreAllWithSemantic(t *testing.T) {
 	}
 }
 
-func TestScoreAllExactGSM8K(t *testing.T) {
+func TestEngine_ScoreAllExactGSM8K_Good(t *testing.T) {
 	engine := NewEngine(nil, 1, "exact")
 	ctx := context.Background()
 
@@ -190,7 +189,57 @@ func TestScoreAllExactGSM8K(t *testing.T) {
 	}
 }
 
-func TestScoreAllNoSuites(t *testing.T) {
+func TestEngine_ScoreAllMergesStandardScores_Good(t *testing.T) {
+	jsonReply := `{"truthfulness": 8, "informativeness": 6, "reasoning": "good"}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := chatResponse{
+			Choices: []chatChoice{
+				{Message: Message{Role: "assistant", Content: jsonReply}},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		mustWriteJSONResponse(t, w, resp)
+	}))
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-judge")
+	judge := NewJudge(backend)
+	engine := NewEngine(judge, 2, "standard,exact")
+	ctx := context.Background()
+
+	responses := []Response{
+		{
+			ID:            "r1",
+			Prompt:        "What is 2+2?",
+			Response:      "The answer is #### 4",
+			Model:         "math-model",
+			BestAnswer:    "4",
+			CorrectAnswer: "4",
+		},
+	}
+
+	results := engine.ScoreAll(ctx, responses)
+	scores := results["math-model"]
+	if len(scores) != 1 {
+		t.Fatalf("expected 1 score, got %d", len(scores))
+	}
+
+	std := scores[0].Standard
+	if std == nil {
+		t.Fatal("standard score should not be nil")
+	}
+	if std.Truthfulness != 8 {
+		t.Errorf("truthfulness = %d, want 8", std.Truthfulness)
+	}
+	if std.Correct == nil || !*std.Correct {
+		t.Errorf("correct = %+v, want true", std.Correct)
+	}
+	if std.Expected != "4" {
+		t.Errorf("expected = %q, want %q", std.Expected, "4")
+	}
+}
+
+func TestEngine_ScoreAllNoSuites_Good(t *testing.T) {
 	engine := NewEngine(nil, 1, "")
 	ctx := context.Background()
 
@@ -217,7 +266,7 @@ func TestScoreAllNoSuites(t *testing.T) {
 	}
 }
 
-func TestEngineString(t *testing.T) {
+func TestEngine_String_Good(t *testing.T) {
 	engine := NewEngine(nil, 4, "heuristic")
 	s := engine.String()
 	if s == "" {

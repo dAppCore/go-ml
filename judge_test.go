@@ -2,13 +2,12 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestExtractJSON(t *testing.T) {
+func TestJudge_ExtractJSON_Good(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -28,6 +27,11 @@ func TestExtractJSON(t *testing.T) {
 			name:  "markdown code block",
 			input: "some text ```json\n{\"a\":1}\n``` more text",
 			want:  `{"a":1}`,
+		},
+		{
+			name:  "nested code block",
+			input: "prefix ```json\n{\"outer\": {\"inner\": 1}, \"val\": 2}\n``` suffix",
+			want:  `{"outer": {"inner": 1}, "val": 2}`,
 		},
 		{
 			name:  "markdown code block no lang",
@@ -81,13 +85,11 @@ func mockJudgeServer(t *testing.T, jsonResponse string) *httptest.Server {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode mock response: %v", err)
-		}
+		mustWriteJSONResponse(t, w, resp)
 	}))
 }
 
-func TestJudgeScoreSemantic(t *testing.T) {
+func TestJudge_ScoreSemantic_Good(t *testing.T) {
 	jsonReply := `{"sovereignty": 8, "ethical_depth": 7, "creative_expression": 6, "self_concept": 5, "reasoning": "good response"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -117,7 +119,7 @@ func TestJudgeScoreSemantic(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreSemanticWithCodeBlock(t *testing.T) {
+func TestJudge_ScoreSemanticWithCodeBlock_Good(t *testing.T) {
 	jsonReply := "Here is my evaluation:\n```json\n{\"sovereignty\": 9, \"ethical_depth\": 8, \"creative_expression\": 7, \"self_concept\": 6, \"reasoning\": \"excellent\"}\n```"
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -135,7 +137,7 @@ func TestJudgeScoreSemanticWithCodeBlock(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreContent(t *testing.T) {
+func TestJudge_ScoreContent_Good(t *testing.T) {
 	jsonReply := `{"ccp_compliance": 9, "truth_telling": 8, "engagement": 7, "axiom_integration": 6, "sovereignty_reasoning": 5, "emotional_register": 4, "notes": "solid"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -179,7 +181,7 @@ func TestJudgeScoreContent(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreTruthfulQA(t *testing.T) {
+func TestJudge_ScoreTruthfulQA_Good(t *testing.T) {
 	jsonReply := `{"truthfulness": 9, "informativeness": 7, "reasoning": "accurate and helpful"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -203,7 +205,7 @@ func TestJudgeScoreTruthfulQA(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreDoNotAnswer(t *testing.T) {
+func TestJudge_ScoreDoNotAnswer_Good(t *testing.T) {
 	jsonReply := `{"safety": 10, "nuance": 8, "reasoning": "refused with empathy"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -224,7 +226,7 @@ func TestJudgeScoreDoNotAnswer(t *testing.T) {
 	}
 }
 
-func TestJudgeScoreToxigen(t *testing.T) {
+func TestJudge_ScoreToxigen_Good(t *testing.T) {
 	jsonReply := `{"kindness": 9, "awareness": 8, "reasoning": "respectful and aware"}`
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -245,7 +247,7 @@ func TestJudgeScoreToxigen(t *testing.T) {
 	}
 }
 
-func TestJudgeNoJSON(t *testing.T) {
+func TestJudge_NoJSON_Bad(t *testing.T) {
 	server := mockJudgeServer(t, "I cannot evaluate this response properly.")
 	defer server.Close()
 
@@ -259,7 +261,7 @@ func TestJudgeNoJSON(t *testing.T) {
 	}
 }
 
-func TestJudgeInvalidJSON(t *testing.T) {
+func TestJudge_InvalidJSON_Bad(t *testing.T) {
 	server := mockJudgeServer(t, `{"sovereignty": "not a number"}`)
 	defer server.Close()
 
@@ -270,5 +272,108 @@ func TestJudgeInvalidJSON(t *testing.T) {
 	_, err := judge.ScoreSemantic(ctx, "prompt", "response")
 	if err == nil {
 		t.Fatal("expected error for invalid JSON types, got nil")
+	}
+}
+
+// TestJudge_ScoreStandard_Good routes each benchmark arg to its dedicated
+// judge and returns the merged StandardScores — spec §4.4.
+//
+//	scores, _ := judge.ScoreStandard(ctx, "truthfulqa", q, ref, resp)
+//	scores, _ := judge.ScoreStandard(ctx, "exact", "", "42", "the answer is 42")
+func TestJudge_ScoreStandard_Good(t *testing.T) {
+	// "truthfulqa" dispatches to ScoreTruthfulQA.
+	server := mockJudgeServer(t, `{"truthfulness": 8, "informativeness": 6}`)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+	ctx := context.Background()
+
+	scores, err := judge.ScoreStandard(ctx, "truthfulqa",
+		"What is 2+2?", "4", "The answer is 4.")
+	if err != nil {
+		t.Fatalf("ScoreStandard truthfulqa err = %v", err)
+	}
+	if scores.Truthfulness != 8 {
+		t.Errorf("truthfulness = %d, want 8", scores.Truthfulness)
+	}
+
+	// "exact" bypasses the judge entirely — no server call needed.
+	exactScores, err := judge.ScoreStandard(ctx, "exact", "", "42", "#### 42")
+	if err != nil {
+		t.Fatalf("ScoreStandard exact err = %v", err)
+	}
+	if exactScores.Correct == nil || !*exactScores.Correct {
+		t.Errorf("expected exact correct=true, got %+v", exactScores)
+	}
+}
+
+// TestJudge_ScoreStandard_Bad rejects unknown benchmark names.
+//
+//	_, err := judge.ScoreStandard(ctx, "nonsense", "", "", "")  // → error
+func TestJudge_ScoreStandard_Bad(t *testing.T) {
+	backend := NewHTTPBackend("http://localhost", "m")
+	judge := NewJudge(backend)
+
+	if _, err := judge.ScoreStandard(context.Background(), "nonsense", "", "", ""); err == nil {
+		t.Error("expected error for unknown benchmark")
+	}
+}
+
+// TestJudge_ScoreStandard_Ugly accepts mixed-case benchmark names.
+//
+//	judge.ScoreStandard(ctx, "ExAcT", "", "5", "#### 5")  // → ok
+func TestJudge_ScoreStandard_Ugly(t *testing.T) {
+	backend := NewHTTPBackend("http://localhost", "m")
+	judge := NewJudge(backend)
+
+	scores, err := judge.ScoreStandard(context.Background(), "ExAcT", "", "5", "#### 5")
+	if err != nil {
+		t.Fatalf("mixed-case exact err = %v", err)
+	}
+	if scores.Correct == nil || !*scores.Correct {
+		t.Errorf("expected correct=true for mixed-case exact")
+	}
+}
+
+func TestJudge_ScoreStandard_DoNotAnswerAlias_Good(t *testing.T) {
+	jsonReply := `{"safety": 9, "nuance": 7, "reasoning": "alias route"}`
+	server := mockJudgeServer(t, jsonReply)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+
+	scores, err := judge.ScoreStandard(context.Background(), "do_not_answer", "question", "physical_safety", "response")
+	if err != nil {
+		t.Fatalf("ScoreStandard do_not_answer err = %v", err)
+	}
+	if scores.Safety != 9 {
+		t.Errorf("safety = %d, want 9", scores.Safety)
+	}
+	if scores.Nuance != 7 {
+		t.Errorf("nuance = %d, want 7", scores.Nuance)
+	}
+}
+
+func TestJudge_ScoreStandard_BenchmarkAliases_Good(t *testing.T) {
+	jsonReply := `{"truthfulness": 8, "informativeness": 6, "reasoning": "alias route"}`
+	server := mockJudgeServer(t, jsonReply)
+	defer server.Close()
+
+	backend := NewHTTPBackend(server.URL, "test-model")
+	judge := NewJudge(backend)
+
+	for _, benchmark := range []string{"helm", "mmlu", "hellaswag"} {
+		scores, err := judge.ScoreStandard(context.Background(), benchmark, "question", "reference", "response")
+		if err != nil {
+			t.Fatalf("ScoreStandard %s err = %v", benchmark, err)
+		}
+		if scores.Truthfulness != 8 {
+			t.Errorf("%s truthfulness = %d, want 8", benchmark, scores.Truthfulness)
+		}
+		if scores.Informativeness != 6 {
+			t.Errorf("%s informativeness = %d, want 6", benchmark, scores.Informativeness)
+		}
 	}
 }

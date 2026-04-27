@@ -2,8 +2,12 @@
 
 package cmd
 
-import "dappco.re/go/core/ml"
+import "dappco.re/go/ml"
 
-func createServeBackend() (ml.Backend, error) {
+// createServeBackend returns the default HTTP backend for non-MLX builds.
+//
+//	backend, err := createServeBackend("")
+func createServeBackend(modelPath string) (ml.Backend, error) {
+	_ = modelPath // unused in default (HTTP) backend
 	return ml.NewHTTPBackend(apiURL, modelName), nil
 }

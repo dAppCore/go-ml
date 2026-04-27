@@ -4,11 +4,11 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	coreerr "dappco.re/go/core/log"
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/core"
+	"dappco.re/go/inference"
+	coreerr "dappco.re/go/log"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the
@@ -34,14 +34,15 @@ func NewInferenceAdapter(model inference.TextModel, name string) *InferenceAdapt
 // Generate collects all tokens from the model's iterator into a single string.
 func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
-	var b strings.Builder
+	b := core.NewBuilder()
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
+	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: b.String()}, err
+		return newResult(text, nil), err
 	}
-	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
+	return newResult(text, metricsPtr(a.model)), nil
 }
 
 // Chat sends a multi-turn conversation to the underlying TextModel and collects
@@ -49,14 +50,15 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 // conversion is needed.
 func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	inferOpts := convertOpts(opts)
-	var b strings.Builder
+	b := core.NewBuilder()
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		b.WriteString(tok.Text)
 	}
+	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return Result{Text: b.String()}, err
+		return newResult(text, nil), err
 	}
-	return Result{Text: b.String(), Metrics: metricsPtr(a.model)}, nil
+	return newResult(text, metricsPtr(a.model)), nil
 }
 
 // GenerateStream forwards each generated token's text to the callback.
@@ -64,9 +66,28 @@ func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts Ge
 // model's error if generation fails.
 func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error {
 	inferOpts := convertOpts(opts)
+	if len(opts.StopSequences) == 0 {
+		for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
+			if err := cb(tok.Text); err != nil {
+				return err
+			}
+		}
+		return a.model.Err()
+	}
+
+	var full strings.Builder
+	emitted := 0
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
-		if err := cb(tok.Text); err != nil {
-			return err
+		full.WriteString(tok.Text)
+		truncated := applyStopSequences(full.String(), opts.StopSequences)
+		if len(truncated) > emitted {
+			if err := cb(truncated[emitted:]); err != nil {
+				return err
+			}
+			emitted = len(truncated)
+		}
+		if len(truncated) < full.Len() {
+			return a.model.Err()
 		}
 	}
 	return a.model.Err()
@@ -77,9 +98,28 @@ func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, op
 // is needed.
 func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) error {
 	inferOpts := convertOpts(opts)
+	if len(opts.StopSequences) == 0 {
+		for tok := range a.model.Chat(ctx, messages, inferOpts...) {
+			if err := cb(tok.Text); err != nil {
+				return err
+			}
+		}
+		return a.model.Err()
+	}
+
+	var full strings.Builder
+	emitted := 0
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
-		if err := cb(tok.Text); err != nil {
-			return err
+		full.WriteString(tok.Text)
+		truncated := applyStopSequences(full.String(), opts.StopSequences)
+		if len(truncated) > emitted {
+			if err := cb(truncated[emitted:]); err != nil {
+				return err
+			}
+			emitted = len(truncated)
+		}
+		if len(truncated) < full.Len() {
+			return a.model.Err()
 		}
 	}
 	return a.model.Err()
@@ -105,7 +145,7 @@ func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
 func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) (*inference.AttentionSnapshot, error) {
 	inspector, ok := a.model.(inference.AttentionInspector)
 	if !ok {
-		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", fmt.Sprintf("backend %q does not support attention inspection", a.name), nil)
+		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil)
 	}
 	return inspector.InspectAttention(ctx, prompt, opts...)
 }
@@ -127,6 +167,9 @@ func convertOpts(opts GenOpts) []inference.GenerateOption {
 	}
 	if opts.RepeatPenalty > 0 {
 		out = append(out, inference.WithRepeatPenalty(float32(opts.RepeatPenalty)))
+	}
+	if len(opts.StopTokens) > 0 {
+		out = append(out, inference.WithStopTokens(opts.StopTokens...))
 	}
 	// GenOpts.Model is ignored — the model is already loaded.
 	return out

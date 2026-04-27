@@ -2,15 +2,11 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"path/filepath"
 	"time"
 
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-
+	"dappco.re/go/core"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // ExpandOutput is the JSONL output structure for expansion generation.
@@ -55,7 +51,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	// Check InfluxDB for already-completed IDs.
 	completed, err := GetCompletedIDs(influx)
 	if err != nil {
-		log.Printf("warning: could not check completed IDs: %v", err)
+		core.Print(nil,"warning: could not check completed IDs: %v", err)
 	} else {
 		remaining = nil
 		for _, p := range prompts {
@@ -66,7 +62,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 		skipped := len(prompts) - len(remaining)
 		if skipped > 0 {
-			log.Printf("skipping %d already-completed prompts, %d remaining", skipped, len(remaining))
+			core.Print(nil,"skipping %d already-completed prompts, %d remaining", skipped, len(remaining))
 		}
 	}
 
@@ -75,23 +71,23 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	}
 
 	if len(remaining) == 0 {
-		log.Println("all prompts already completed, nothing to do")
+		core.Print(nil,"all prompts already completed, nothing to do")
 		return nil
 	}
 
 	if dryRun {
-		log.Printf("dry-run: would process %d prompts with model %s (worker: %s)", len(remaining), modelName, worker)
+		core.Print(nil,"dry-run: would process %d prompts with model %s (worker: %s)", len(remaining), modelName, worker)
 		for i, p := range remaining {
 			if i >= 10 {
-				log.Printf("  ... and %d more", len(remaining)-10)
+				core.Print(nil,"  ... and %d more", len(remaining)-10)
 				break
 			}
-			log.Printf("  %s (domain: %s)", p.ID, p.Domain)
+			core.Print(nil,"  %s (domain: %s)", p.ID, p.Domain)
 		}
 		return nil
 	}
 
-	outputPath := filepath.Join(outputDir, fmt.Sprintf("expand-%s.jsonl", worker))
+	outputPath := core.JoinPath(outputDir, core.Sprintf("expand-%s.jsonl", worker))
 	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
 		return coreerr.E("ml.ExpandPrompts", "open output file", err)
@@ -107,7 +103,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 		elapsed := time.Since(start).Seconds()
 
 		if err != nil {
-			log.Printf("[%d/%d] id=%s ERROR: %v", idx+1, total, p.ID, err)
+			core.Print(nil,"[%d/%d] id=%s ERROR: %v", idx+1, total, p.ID, err)
 			continue
 		}
 
@@ -125,33 +121,28 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			Chars:          chars,
 		}
 
-		line, err := json.Marshal(out)
-		if err != nil {
-			log.Printf("[%d/%d] id=%s marshal error: %v", idx+1, total, p.ID, err)
+		line := core.JSONMarshalString(out)
+		if _, err := f.Write([]byte(core.Concat(line, "\n"))); err != nil {
+			core.Print(nil, "[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
 			continue
 		}
 
-		if _, err := f.Write(append(line, '\n')); err != nil {
-			log.Printf("[%d/%d] id=%s write error: %v", idx+1, total, p.ID, err)
-			continue
-		}
-
-		genLine := fmt.Sprintf("expansion_gen,i=%d,w=%s,d=%s seed_id=\"%s\",gen_time=%f,chars=%di,model=\"%s\"",
+		genLine := core.Sprintf("expansion_gen,i=%d,w=%s,d=%s seed_id=\"%s\",gen_time=%f,chars=%di,model=\"%s\"",
 			idx, EscapeLp(worker), EscapeLp(p.Domain),
 			p.ID, elapsed, chars, modelName)
 
 		pct := float64(completedCount) / float64(total) * 100.0
-		progressLine := fmt.Sprintf("expansion_progress,worker=%s completed=%di,target=%di,pct=%f",
+		progressLine := core.Sprintf("expansion_progress,worker=%s completed=%di,target=%di,pct=%f",
 			EscapeLp(worker), completedCount, total, pct)
 
 		if writeErr := influx.WriteLp([]string{genLine, progressLine}); writeErr != nil {
-			log.Printf("[%d/%d] id=%s influx write error: %v", idx+1, total, p.ID, writeErr)
+			core.Print(nil,"[%d/%d] id=%s influx write error: %v", idx+1, total, p.ID, writeErr)
 		}
 
-		log.Printf("[%d/%d] id=%s chars=%d time=%.1fs", idx+1, total, p.ID, chars, elapsed)
+		core.Print(nil,"[%d/%d] id=%s chars=%d time=%.1fs", idx+1, total, p.ID, chars, elapsed)
 	}
 
-	log.Printf("expand complete: %d/%d prompts generated, output: %s", completedCount, total, outputPath)
+	core.Print(nil,"expand complete: %d/%d prompts generated, output: %s", completedCount, total, outputPath)
 
 	return nil
 }

@@ -14,7 +14,7 @@ package ml
 import (
 	"context"
 
-	"forge.lthn.ai/core/go-inference"
+	"dappco.re/go/inference"
 )
 
 // Result holds the response text and optional inference metrics.
@@ -22,6 +22,7 @@ import (
 // Metrics; HTTP and subprocess backends leave it nil.
 type Result struct {
 	Text    string
+	Content string `json:"-"`
 	Metrics *inference.GenerateMetrics
 }
 
@@ -46,10 +47,12 @@ type Backend interface {
 type GenOpts struct {
 	Temperature   float64
 	MaxTokens     int
-	Model         string  // override model for this request
-	TopK          int     // top-k sampling (0 = disabled)
-	TopP          float64 // nucleus sampling threshold (0 = disabled)
-	RepeatPenalty float64 // repetition penalty (0 = disabled, 1.0 = no penalty)
+	Model         string   // override model for this request
+	TopK          int      // top-k sampling (0 = disabled)
+	TopP          float64  // nucleus sampling threshold (0 = disabled)
+	RepeatPenalty float64  // repetition penalty (0 = disabled, 1.0 = no penalty)
+	StopTokens    []int32  // token IDs that terminate generation early
+	StopSequences []string // literal substrings that terminate generation early
 }
 
 // Message is a type alias for inference.Message, providing backward compatibility.
@@ -77,5 +80,15 @@ type StreamingBackend interface {
 func DefaultGenOpts() GenOpts {
 	return GenOpts{
 		Temperature: 0.1,
+	}
+}
+
+// newResult keeps the legacy Text field and the RFC-facing Content alias in
+// sync for all backend returns.
+func newResult(text string, metrics *inference.GenerateMetrics) Result {
+	return Result{
+		Text:    text,
+		Content: text,
+		Metrics: metrics,
 	}
 }

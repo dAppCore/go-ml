@@ -4,7 +4,6 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -35,9 +34,7 @@ func newMockLlamaServer(t *testing.T, chatContent string) *httptest.Server {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(resp); err != nil {
-				t.Fatalf("encode mock response: %v", err)
-			}
+			mustWriteJSONResponse(t, w, resp)
 		default:
 			http.NotFound(w, r)
 		}
@@ -283,7 +280,7 @@ func TestLlamaBackend_Generate_EmptyChoices_Ugly(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		case "/v1/chat/completions":
 			resp := chatResponse{Choices: []chatChoice{}}
-			json.NewEncoder(w).Encode(resp)
+			mustWriteJSONResponse(t, w, resp)
 		default:
 			http.NotFound(w, r)
 		}
@@ -306,9 +303,7 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		case "/v1/chat/completions":
 			var req chatRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			mustReadJSONRequest(t, r, &req)
 			// Verify opts were forwarded.
 			assert.InDelta(t, 0.7, req.Temperature, 0.01)
 			assert.Equal(t, 256, req.MaxTokens)
@@ -316,7 +311,7 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *testing.T) {
 			resp := chatResponse{
 				Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "ok"}}},
 			}
-			json.NewEncoder(w).Encode(resp)
+			mustWriteJSONResponse(t, w, resp)
 		default:
 			http.NotFound(w, r)
 		}
@@ -335,4 +330,17 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *testing.T) {
 
 func TestLlamaBackend_InterfaceCompliance_Good(t *testing.T) {
 	var _ Backend = (*LlamaBackend)(nil)
+}
+
+// TestLlamaBackend_SetMaxTokens_Good — spec §2.4: SetMaxTokens forwards to
+// the internal HTTP client so subsequent generate calls carry max_tokens.
+//
+//	backend := ml.NewLlamaBackend(svc, opts)
+//	backend.SetMaxTokens(2048)
+func TestLlamaBackend_SetMaxTokens_Good(t *testing.T) {
+	lb := &LlamaBackend{
+		http: NewHTTPBackend("http://localhost", ""),
+	}
+	lb.SetMaxTokens(2048)
+	assert.Equal(t, 2048, lb.http.maxTokens)
 }

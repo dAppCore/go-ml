@@ -2,17 +2,14 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
 	"io"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
-	coreio "dappco.re/go/core/io"
-	coreerr "dappco.re/go/core/log"
-
+	"dappco.re/go/core"
+	coreio "dappco.re/go/io"
+	coreerr "dappco.re/go/log"
 )
 
 // IngestConfig holds the configuration for a benchmark/training ingest run.
@@ -100,7 +97,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 		totalPoints += n
 	}
 
-	fmt.Fprintf(w, "Ingested %d total points into InfluxDB\n", totalPoints)
+	core.Print(w, "Ingested %d total points into InfluxDB", totalPoints)
 	return nil
 }
 
@@ -109,7 +106,7 @@ func Ingest(influx *InfluxClient, cfg IngestConfig, w io.Writer) error {
 func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := coreio.Local.Open(cfg.ContentFile)
 	if err != nil {
-		return 0, coreerr.E("ml.ingestContentScores", fmt.Sprintf("open %s", cfg.ContentFile), err)
+		return 0, coreerr.E("ml.ingestContentScores", core.Sprintf("open %s", cfg.ContentFile), err)
 	}
 	defer f.Close()
 
@@ -122,20 +119,20 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 
 	for scanner.Scan() {
 		lineNum++
-		raw := strings.TrimSpace(scanner.Text())
+		raw := core.Trim(scanner.Text())
 		if raw == "" {
 			continue
 		}
 
 		var entry contentScoreLine
-		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
-			return totalPoints, coreerr.E("ml.ingestContentScores", fmt.Sprintf("line %d: parse json", lineNum), err)
+		if r := core.JSONUnmarshalString(raw, &entry); !r.OK {
+			return totalPoints, coreerr.E("ml.ingestContentScores", core.Sprintf("line %d: parse json", lineNum), r.Value.(error))
 		}
 
 		label := entry.Label
 		iteration := extractIteration(label)
 		hasKernel := "false"
-		if strings.Contains(strings.ToLower(label), "kernel") || strings.Contains(label, "LEK") {
+		if core.Contains(core.Lower(label), "kernel") || core.Contains(label, "LEK") {
 			hasKernel = "true"
 		}
 		ts := time.Now().UnixNano()
@@ -146,7 +143,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 			if !ok {
 				continue
 			}
-			line := fmt.Sprintf(
+			line := core.Sprintf(
 				MeasurementContentScore+",model=%s,run_id=%s,label=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 				EscapeLp(dim), hasKernel, score, iteration, ts,
@@ -162,7 +159,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 				if !ok {
 					continue
 				}
-				line := fmt.Sprintf(
+				line := core.Sprintf(
 					MeasurementProbeScore+",model=%s,run_id=%s,label=%s,probe_id=%s,dimension=%s,has_kernel=%s score=%.6f,iteration=%di %d",
 					EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 					EscapeLp(probeID), EscapeLp(dim), hasKernel, score, iteration, ts,
@@ -182,7 +179,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, coreerr.E("ml.ingestContentScores", fmt.Sprintf("scan %s", cfg.ContentFile), err)
+		return totalPoints, coreerr.E("ml.ingestContentScores", core.Sprintf("scan %s", cfg.ContentFile), err)
 	}
 
 	// Flush remaining lines.
@@ -192,7 +189,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 		}
 	}
 
-	fmt.Fprintf(w, "  content scores: %d points from %d lines\n", totalPoints, lineNum)
+	core.Print(w, "  content scores: %d points from %d lines", totalPoints, lineNum)
 	return totalPoints, nil
 }
 
@@ -201,7 +198,7 @@ func ingestContentScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (i
 func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := coreio.Local.Open(cfg.CapabilityFile)
 	if err != nil {
-		return 0, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("open %s", cfg.CapabilityFile), err)
+		return 0, coreerr.E("ml.ingestCapabilityScores", core.Sprintf("open %s", cfg.CapabilityFile), err)
 	}
 	defer f.Close()
 
@@ -214,14 +211,14 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 
 	for scanner.Scan() {
 		lineNum++
-		raw := strings.TrimSpace(scanner.Text())
+		raw := core.Trim(scanner.Text())
 		if raw == "" {
 			continue
 		}
 
 		var entry capabilityScoreLine
-		if err := json.Unmarshal([]byte(raw), &entry); err != nil {
-			return totalPoints, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("line %d: parse json", lineNum), err)
+		if r := core.JSONUnmarshalString(raw, &entry); !r.OK {
+			return totalPoints, coreerr.E("ml.ingestCapabilityScores", core.Sprintf("line %d: parse json", lineNum), r.Value.(error))
 		}
 
 		label := entry.Label
@@ -229,7 +226,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 		ts := time.Now().UnixNano()
 
 		// Overall capability score.
-		line := fmt.Sprintf(
+		line := core.Sprintf(
 			MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=overall accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
 			EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 			entry.Accuracy, entry.Correct, entry.Total, iteration, ts,
@@ -243,7 +240,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 			if block.Total > 0 {
 				catAccuracy = float64(block.Correct) / float64(block.Total)
 			}
-			line := fmt.Sprintf(
+			line := core.Sprintf(
 				MeasurementCapabilityScore+",model=%s,run_id=%s,label=%s,category=%s accuracy=%.6f,correct=%di,total=%di,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), EscapeLp(label),
 				EscapeLp(cat), catAccuracy, block.Correct, block.Total, iteration, ts,
@@ -262,7 +259,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, coreerr.E("ml.ingestCapabilityScores", fmt.Sprintf("scan %s", cfg.CapabilityFile), err)
+		return totalPoints, coreerr.E("ml.ingestCapabilityScores", core.Sprintf("scan %s", cfg.CapabilityFile), err)
 	}
 
 	// Flush remaining lines.
@@ -272,7 +269,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 		}
 	}
 
-	fmt.Fprintf(w, "  capability scores: %d points from %d lines\n", totalPoints, lineNum)
+	core.Print(w, "  capability scores: %d points from %d lines", totalPoints, lineNum)
 	return totalPoints, nil
 }
 
@@ -281,7 +278,7 @@ func ingestCapabilityScores(influx *InfluxClient, cfg IngestConfig, w io.Writer)
 func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int, error) {
 	f, err := coreio.Local.Open(cfg.TrainingLog)
 	if err != nil {
-		return 0, coreerr.E("ml.ingestTrainingLog", fmt.Sprintf("open %s", cfg.TrainingLog), err)
+		return 0, coreerr.E("ml.ingestTrainingLog", core.Sprintf("open %s", cfg.TrainingLog), err)
 	}
 	defer f.Close()
 
@@ -302,7 +299,7 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 			loss, _ := strconv.ParseFloat(m[2], 64)
 			ts := time.Now().UnixNano()
 
-			line := fmt.Sprintf(
+			line := core.Sprintf(
 				MeasurementTrainingLoss+",model=%s,run_id=%s,loss_type=val loss=%.6f,iteration=%di %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), loss, iter, ts,
 			)
@@ -319,7 +316,7 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 			tokPerSec, _ := strconv.ParseFloat(m[5], 64)
 			ts := time.Now().UnixNano()
 
-			line := fmt.Sprintf(
+			line := core.Sprintf(
 				MeasurementTrainingLoss+",model=%s,run_id=%s,loss_type=train loss=%.6f,iteration=%di,learning_rate=%.10f,it_per_sec=%.4f,tokens_per_sec=%.2f %d",
 				EscapeLp(cfg.Model), EscapeLp(cfg.RunID), loss, iter, lr, itPerSec, tokPerSec, ts,
 			)
@@ -337,7 +334,7 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 	}
 
 	if err := scanner.Err(); err != nil {
-		return totalPoints, coreerr.E("ml.ingestTrainingLog", fmt.Sprintf("scan %s", cfg.TrainingLog), err)
+		return totalPoints, coreerr.E("ml.ingestTrainingLog", core.Sprintf("scan %s", cfg.TrainingLog), err)
 	}
 
 	// Flush remaining lines.
@@ -347,14 +344,20 @@ func ingestTrainingLog(influx *InfluxClient, cfg IngestConfig, w io.Writer) (int
 		}
 	}
 
-	fmt.Fprintf(w, "  training log: %d points from %d lines\n", totalPoints, lineNum)
+	core.Print(w, "  training log: %d points from %d lines", totalPoints, lineNum)
 	return totalPoints, nil
 }
 
 // extractIteration extracts an iteration number from a label like "model@200".
 // Returns 0 if no iteration is found.
 func extractIteration(label string) int {
-	idx := strings.LastIndex(label, "@")
+	idx := -1
+	for i := len(label) - 1; i >= 0; i-- {
+		if label[i] == '@' {
+			idx = i
+			break
+		}
+	}
 	if idx < 0 || idx+1 >= len(label) {
 		return 0
 	}
@@ -375,9 +378,6 @@ func toFloat64(v any) (float64, bool) {
 		return float64(val), true
 	case int64:
 		return float64(val), true
-	case json.Number:
-		f, err := val.Float64()
-		return f, err == nil
 	case string:
 		f, err := strconv.ParseFloat(val, 64)
 		return f, err == nil

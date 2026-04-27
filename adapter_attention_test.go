@@ -6,8 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"forge.lthn.ai/core/go-inference"
-
+	"dappco.re/go/inference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

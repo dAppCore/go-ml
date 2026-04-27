@@ -4,24 +4,23 @@ package mcp
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	"dappco.re/go/core/log"
-	ml "dappco.re/go/core/ml"
-
-	"forge.lthn.ai/core/go-inference"
-
+	"dappco.re/go/core"
+	"dappco.re/go/inference"
+	"dappco.re/go/log"
+	ml "dappco.re/go/ml"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // MLSubsystem exposes ML inference and scoring tools via MCP.
+// Usage example: subsystem := mcp.NewMLSubsystem(service)
 type MLSubsystem struct {
 	service *ml.Service
 	logger  *log.Logger
 }
 
 // NewMLSubsystem creates an MCP subsystem for ML tools.
+// Usage example: server.AddSubsystem(mcp.NewMLSubsystem(service))
 func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	return &MLSubsystem{
 		service: svc,
@@ -29,9 +28,11 @@ func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	}
 }
 
+// Name returns the subsystem identifier exposed to the MCP server.
 func (m *MLSubsystem) Name() string { return "ml" }
 
 // RegisterTools adds ML tools to the MCP server.
+// Usage example: subsystem.RegisterTools(server)
 func (m *MLSubsystem) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_generate",
@@ -182,8 +183,8 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	output := MLScoreOutput{}
 
-	for suite := range strings.SplitSeq(suites, ",") {
-		suite = strings.TrimSpace(suite)
+	for _, suite := range core.Split(suites, ",") {
+		suite = core.Trim(suite)
 		switch suite {
 		case "heuristic":
 			output.Heuristic = ml.ScoreHeuristic(input.Response)
@@ -212,8 +213,8 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 	probes := ml.CapabilityProbes
 	if input.Categories != "" {
 		cats := make(map[string]bool)
-		for c := range strings.SplitSeq(input.Categories, ",") {
-			cats[strings.TrimSpace(c)] = true
+		for _, c := range core.Split(input.Categories, ",") {
+			cats[core.Trim(c)] = true
 		}
 		var filtered []ml.Probe
 		for _, p := range probes {
@@ -229,7 +230,7 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 		result, err := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
 		respText := result.Text
 		if err != nil {
-			respText = fmt.Sprintf("error: %v", err)
+			respText = core.Sprintf("error: %v", err)
 		}
 		results = append(results, MLProbeResultItem{
 			ID:       probe.ID,
@@ -257,8 +258,8 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	}
 
 	influx := ml.NewInfluxClient(url, db)
-	var buf strings.Builder
-	if err := ml.PrintStatus(influx, &buf); err != nil {
+	buf := core.NewBuilder()
+	if err := ml.PrintStatus(influx, buf); err != nil {
 		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
 	}
 

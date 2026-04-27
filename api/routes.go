@@ -7,25 +7,30 @@ package api
 import (
 	"net/http"
 
-	goapi "dappco.re/go/core/api"
-	"dappco.re/go/core/ml"
-
+	goapi "dappco.re/go/api"
+	"dappco.re/go/ml"
 	"github.com/gin-gonic/gin"
 )
 
 // Routes implements api.RouteGroup and api.StreamGroup for ML inference endpoints.
+// Usage example: engine.Register(api.NewRoutes(service))
 type Routes struct {
 	service *ml.Service
 }
 
 // NewRoutes creates an ML route group wrapping the given service.
+// Usage example: routes := api.NewRoutes(service)
 func NewRoutes(svc *ml.Service) *Routes {
 	return &Routes{service: svc}
 }
 
-func (r *Routes) Name() string     { return "ml" }
+// Name returns the route-group name used by the API engine.
+func (r *Routes) Name() string { return "ml" }
+
+// BasePath returns the URL prefix for the ML HTTP routes.
 func (r *Routes) BasePath() string { return "/v1/ml" }
 
+// RegisterRoutes mounts the ML HTTP handlers on the provided router group.
 func (r *Routes) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/backends", r.ListBackends)
 	rg.GET("/status", r.Status)

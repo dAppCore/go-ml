@@ -1,148 +1,161 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"maps"
-	"os"
 	"slices"
-	"strings"
 
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/store"
 )
 
-var queryCmd = &cli.Command{
-	Use:   "query [sql]",
-	Short: "Run ad-hoc SQL against DuckDB",
-	Long:  "Executes arbitrary SQL against the DuckDB database. Non-SELECT queries are auto-wrapped as golden_set WHERE clauses.",
-	Example: `  core ml query "SELECT COUNT(*) FROM golden_set"
-  core ml query "domain = 'ethics'"
-  core ml query --json "SHOW TABLES"`,
-	Args: cli.MinimumNArgs(1),
-	RunE: runQuery,
-}
+// addQueryCommand registers `ml query` — executes arbitrary SQL against the
+// DuckDB database. Non-SELECT queries are auto-wrapped as golden_set WHERE
+// clauses.
+//
+//	core ml query "SELECT COUNT(*) FROM golden_set"
+//	core ml query "domain = 'ethics'"
+//	core ml query --json "SHOW TABLES"
+func addQueryCommand(c *core.Core) {
+	c.Command("ml/query", core.Command{
+		Description: "Run ad-hoc SQL against DuckDB",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var queryJSON bool
-
-func init() {
-	queryCmd.Flags().BoolVar(&queryJSON, "json", false, "Output as JSON")
-}
-
-func runQuery(cmd *cli.Command, args []string) error {
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runQuery", "--db or LEM_DB env is required", nil)
-	}
-
-	db, err := ml.OpenDB(path)
-	if err != nil {
-		return coreerr.E("cmd.runQuery", "open db", err)
-	}
-	defer db.Close()
-
-	sql := strings.Join(args, " ")
-
-	// Auto-wrap non-SELECT queries as golden_set WHERE clauses.
-	trimmed := strings.TrimSpace(strings.ToUpper(sql))
-	if !strings.HasPrefix(trimmed, "SELECT") && !strings.HasPrefix(trimmed, "SHOW") &&
-		!strings.HasPrefix(trimmed, "DESCRIBE") && !strings.HasPrefix(trimmed, "EXPLAIN") {
-		sql = "SELECT * FROM golden_set WHERE " + sql + " LIMIT 20"
-	}
-
-	rows, err := db.QueryRows(sql)
-	if err != nil {
-		return coreerr.E("cmd.runQuery", "query", err)
-	}
-
-	if queryJSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(rows); err != nil {
-			return coreerr.E("cmd.runQuery", "encode json", err)
-		}
-		fmt.Fprintf(os.Stderr, "\n(%d rows)\n", len(rows))
-		return nil
-	}
-
-	if len(rows) == 0 {
-		fmt.Println("(0 rows)")
-		return nil
-	}
-
-	// Collect column names in stable order from first row.
-	cols := slices.Sorted(maps.Keys(rows[0]))
-
-	// Calculate column widths (capped at 60).
-	const maxWidth = 60
-	widths := make([]int, len(cols))
-	for i, col := range cols {
-		widths[i] = len(col)
-	}
-	for _, row := range rows {
-		for i, col := range cols {
-			val := formatValue(row[col])
-			if l := len(val); l > widths[i] {
-				widths[i] = l
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runQuery", "--db or LEM_DB env is required", nil))
 			}
-		}
-	}
-	for i := range widths {
-		if widths[i] > maxWidth {
-			widths[i] = maxWidth
-		}
-	}
 
-	// Print header.
-	for i, col := range cols {
-		if i > 0 {
-			fmt.Print(" | ")
-		}
-		fmt.Printf("%-*s", widths[i], truncate(col, widths[i]))
-	}
-	fmt.Println()
-
-	// Print separator.
-	for i := range cols {
-		if i > 0 {
-			fmt.Print("-+-")
-		}
-		fmt.Print(strings.Repeat("-", widths[i]))
-	}
-	fmt.Println()
-
-	// Print rows.
-	for _, row := range rows {
-		for i, col := range cols {
-			if i > 0 {
-				fmt.Print(" | ")
+			sql := opts.String("_arg")
+			if sql == "" {
+				return resultFromError(coreerr.E("cmd.runQuery", "SQL argument required", nil))
 			}
-			fmt.Printf("%-*s", widths[i], truncate(formatValue(row[col]), widths[i]))
-		}
-		fmt.Println()
-	}
 
-	fmt.Printf("\n(%d rows)\n", len(rows))
-	return nil
+			db, err := store.OpenDuckDB(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runQuery", "open db", err))
+			}
+			defer db.Close()
+
+			// Auto-wrap non-SELECT queries as golden_set WHERE clauses.
+			trimmed := core.Upper(core.Trim(sql))
+			if !core.HasPrefix(trimmed, "SELECT") && !core.HasPrefix(trimmed, "SHOW") &&
+				!core.HasPrefix(trimmed, "DESCRIBE") && !core.HasPrefix(trimmed, "EXPLAIN") {
+				sql = "SELECT * FROM golden_set WHERE " + sql + " LIMIT 20"
+			}
+
+			rows, err := db.QueryRows(sql)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runQuery", "query", err))
+			}
+
+			jsonMode := opts.Bool("json")
+			if jsonMode {
+				core.Print(nil, "%s", core.JSONMarshalString(rows))
+				core.Print(nil, "(%d rows)", len(rows))
+				return core.Result{OK: true}
+			}
+
+			if len(rows) == 0 {
+				core.Print(nil, "(0 rows)")
+				return core.Result{OK: true}
+			}
+
+			// Collect column names in stable order from first row.
+			cols := slices.Sorted(maps.Keys(rows[0]))
+
+			// Calculate column widths (capped at 60).
+			const maxWidth = 60
+			widths := make([]int, len(cols))
+			for i, col := range cols {
+				widths[i] = len(col)
+			}
+			for _, row := range rows {
+				for i, col := range cols {
+					val := formatValue(row[col])
+					if l := len(val); l > widths[i] {
+						widths[i] = l
+					}
+				}
+			}
+			for i := range widths {
+				if widths[i] > maxWidth {
+					widths[i] = maxWidth
+				}
+			}
+
+			// Print header.
+			line := core.NewBuilder()
+			for i, col := range cols {
+				if i > 0 {
+					line.WriteString(" | ")
+				}
+				line.WriteString(core.Sprintf("%-*s", widths[i], truncate(col, widths[i])))
+			}
+			core.Print(nil, "%s", line.String())
+
+			// Print separator.
+			sep := core.NewBuilder()
+			for i := range cols {
+				if i > 0 {
+					sep.WriteString("-+-")
+				}
+				sep.WriteString(repeatString("-", widths[i]))
+			}
+			core.Print(nil, "%s", sep.String())
+
+			// Print rows.
+			for _, row := range rows {
+				b := core.NewBuilder()
+				for i, col := range cols {
+					if i > 0 {
+						b.WriteString(" | ")
+					}
+					b.WriteString(core.Sprintf("%-*s", widths[i], truncate(formatValue(row[col]), widths[i])))
+				}
+				core.Print(nil, "%s", b.String())
+			}
+
+			core.Print(nil, "")
+			core.Print(nil, "(%d rows)", len(rows))
+			return core.Result{OK: true}
+		},
+	})
 }
 
+// formatValue renders a SQL row cell as a string — "NULL" for nil.
+//
+//	s := formatValue(row["id"])
 func formatValue(v any) string {
 	if v == nil {
 		return "NULL"
 	}
-	return fmt.Sprintf("%v", v)
+	return core.Sprintf("%v", v)
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+// truncate clips s to max chars, using "..." when truncation is needed.
+//
+//	t := truncate("hello world", 5) // "he..."
+func truncate(s string, maximum int) string {
+	if len(s) <= maximum {
 		return s
 	}
-	if max <= 3 {
-		return s[:max]
+	if maximum <= 3 {
+		return s[:maximum]
 	}
-	return s[:max-3] + "..."
+	return s[:maximum-3] + "..."
+}
+
+// repeatString returns part concatenated count times.
+//
+//	bar := repeatString("-", 80)
+func repeatString(part string, count int) string {
+	if count <= 0 {
+		return ""
+	}
+	b := core.NewBuilder()
+	for range count {
+		b.WriteString(part)
+	}
+	return b.String()
 }

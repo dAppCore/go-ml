@@ -1,11 +1,10 @@
 package ml
 
 import (
-	"fmt"
 	"io"
-	"strings"
 
-	coreerr "dappco.re/go/core/log"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
 )
 
 // TargetTotal is the golden set target size used for progress reporting.
@@ -34,8 +33,8 @@ func PrintInventory(db *DB, w io.Writer) error {
 
 	details := gatherDetails(db, counts)
 
-	fmt.Fprintln(w, "DuckDB Inventory")
-	fmt.Fprintln(w, strings.Repeat("-", 52))
+	core.Print(w, "DuckDB Inventory")
+	core.Print(w, "%s", repeatString("-", 52))
 
 	grand := 0
 	for _, table := range tableOrder {
@@ -44,16 +43,16 @@ func PrintInventory(db *DB, w io.Writer) error {
 			continue
 		}
 		grand += count
-		fmt.Fprintf(w, "  %-24s %8d rows", table, count)
+		line := core.Sprintf("  %-24s %8d rows", table, count)
 
 		if d, has := details[table]; has && len(d.notes) > 0 {
-			fmt.Fprintf(w, "  (%s)", strings.Join(d.notes, ", "))
+			line = core.Concat(line, "  (", core.Join(", ", d.notes...), ")")
 		}
-		fmt.Fprintln(w)
+		core.Print(w, "%s", line)
 	}
 
-	fmt.Fprintln(w, strings.Repeat("-", 52))
-	fmt.Fprintf(w, "  %-24s %8d rows\n", "TOTAL", grand)
+	core.Print(w, "%s", repeatString("-", 52))
+	core.Print(w, "  %-24s %8d rows", "TOTAL", grand)
 
 	return nil
 }
@@ -68,7 +67,7 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 	if count, ok := counts["golden_set"]; ok {
 		pct := float64(count) / float64(TargetTotal) * 100
 		details["golden_set"] = &tableDetail{
-			notes: []string{fmt.Sprintf("%.1f%% of %d target", pct, TargetTotal)},
+			notes: []string{core.Sprintf("%.1f%% of %d target", pct, TargetTotal)},
 		}
 	}
 
@@ -78,7 +77,7 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 		if err == nil && len(rows) > 0 {
 			n := toInt(rows[0]["n"])
 			details["training_examples"] = &tableDetail{
-				notes: []string{fmt.Sprintf("%d sources", n)},
+				notes: []string{core.Sprintf("%d sources", n)},
 			}
 		}
 	}
@@ -88,11 +87,11 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 		d := &tableDetail{}
 		rows, err := db.QueryRows("SELECT COUNT(DISTINCT domain) AS n FROM prompts")
 		if err == nil && len(rows) > 0 {
-			d.notes = append(d.notes, fmt.Sprintf("%d domains", toInt(rows[0]["n"])))
+			d.notes = append(d.notes, core.Sprintf("%d domains", toInt(rows[0]["n"])))
 		}
 		rows, err = db.QueryRows("SELECT COUNT(DISTINCT voice) AS n FROM prompts")
 		if err == nil && len(rows) > 0 {
-			d.notes = append(d.notes, fmt.Sprintf("%d voices", toInt(rows[0]["n"])))
+			d.notes = append(d.notes, core.Sprintf("%d voices", toInt(rows[0]["n"])))
 		}
 		if len(d.notes) > 0 {
 			details["prompts"] = d
@@ -110,7 +109,7 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 				model := strVal(row, "source_model")
 				n := toInt(row["n"])
 				if model != "" {
-					parts = append(parts, fmt.Sprintf("%s:%d", model, n))
+					parts = append(parts, core.Sprintf("%s:%d", model, n))
 				}
 			}
 			if len(parts) > 0 {
@@ -125,7 +124,7 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 		if err == nil && len(rows) > 0 {
 			n := toInt(rows[0]["n"])
 			details["benchmark_results"] = &tableDetail{
-				notes: []string{fmt.Sprintf("%d categories", n)},
+				notes: []string{core.Sprintf("%d categories", n)},
 			}
 		}
 	}

@@ -1,36 +1,35 @@
 package cmd
 
 import (
-	"os"
-
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
-var metricsCmd = &cli.Command{
-	Use:   "metrics",
-	Short: "Push golden set stats to InfluxDB",
-	Long:  "Queries golden_set stats from DuckDB and pushes summary, per-domain, and per-voice metrics to InfluxDB.",
-	RunE:  runMetrics,
-}
+// addMetricsCommand registers `ml metrics` — queries golden_set stats from
+// DuckDB and pushes summary, per-domain, and per-voice metrics to InfluxDB.
+//
+//	core ml metrics --db lem.duckdb --influx http://10.69.69.165:8181
+func addMetricsCommand(c *core.Core) {
+	c.Command("ml/metrics", core.Command{
+		Description: "Push golden set stats to InfluxDB",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-func runMetrics(cmd *cli.Command, args []string) error {
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runMetrics", "--db or LEM_DB required", nil)
-	}
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runMetrics", "--db or LEM_DB required", nil))
+			}
 
-	db, err := ml.OpenDB(path)
-	if err != nil {
-		return coreerr.E("cmd.runMetrics", "open db", err)
-	}
-	defer db.Close()
+			db, err := store.OpenDuckDB(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runMetrics", "open db", err))
+			}
+			defer db.Close()
 
-	influx := ml.NewInfluxClient(influxURL, influxDB)
+			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	return ml.PushMetrics(db, influx, os.Stdout)
+			return resultFromError(ml.PushMetrics(db, influx, nil))
+		},
+	})
 }

@@ -1,41 +1,33 @@
 package cmd
 
 import (
-	"fmt"
-
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
 )
 
-var (
-	ggufInput  string
-	ggufConfig string
-	ggufOutput string
-	ggufArch   string
-)
+// addGGUFCommand registers `ml gguf` — converts an MLX safetensors LoRA
+// adapter to GGUF v3 format for use with llama.cpp.
+//
+//	core ml gguf --input adapter.safetensors --config adapter_config.json --output adapter.gguf
+func addGGUFCommand(c *core.Core) {
+	c.Command("ml/gguf", core.Command{
+		Description: "Convert MLX LoRA adapter to GGUF format",
+		Action: func(opts core.Options) core.Result {
+			input := opts.String("input")
+			cfgPath := opts.String("config")
+			output := opts.String("output")
+			arch := optStringOr(opts, "arch", "gemma3")
 
-var ggufCmd = &cli.Command{
-	Use:   "gguf",
-	Short: "Convert MLX LoRA adapter to GGUF format",
-	Long:  "Converts an MLX safetensors LoRA adapter to GGUF v3 format for use with llama.cpp.",
-	RunE:  runGGUF,
-}
+			if input == "" || cfgPath == "" || output == "" {
+				return resultFromError(coreerr.E("cmd.runGGUF", "--input, --config, and --output are required", nil))
+			}
 
-func init() {
-	ggufCmd.Flags().StringVar(&ggufInput, "input", "", "Input safetensors file (required)")
-	ggufCmd.Flags().StringVar(&ggufConfig, "config", "", "Adapter config JSON (required)")
-	ggufCmd.Flags().StringVar(&ggufOutput, "output", "", "Output GGUF file (required)")
-	ggufCmd.Flags().StringVar(&ggufArch, "arch", "gemma3", "GGUF architecture name")
-	ggufCmd.MarkFlagRequired("input")
-	ggufCmd.MarkFlagRequired("config")
-	ggufCmd.MarkFlagRequired("output")
-}
-
-func runGGUF(cmd *cli.Command, args []string) error {
-	if err := ml.ConvertMLXtoGGUFLoRA(ggufInput, ggufConfig, ggufOutput, ggufArch); err != nil {
-		return coreerr.E("cmd.runGGUF", "convert to GGUF", err)
-	}
-	fmt.Printf("GGUF LoRA adapter written to %s\n", ggufOutput)
-	return nil
+			if err := ml.ConvertMLXtoGGUFLoRA(input, cfgPath, output, arch); err != nil {
+				return resultFromError(coreerr.E("cmd.runGGUF", "convert to GGUF", err))
+			}
+			core.Print(nil, "GGUF LoRA adapter written to %s", output)
+			return core.Result{OK: true}
+		},
+	})
 }

@@ -8,8 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"forge.lthn.ai/core/go-inference"
-
+	"dappco.re/go/inference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -154,4 +153,13 @@ func TestMLXBackend_ConvertOpts_AllFields_Good(t *testing.T) {
 		RepeatPenalty: 1.1,
 	})
 	assert.Len(t, opts, 5)
+}
+
+// TestMLXBackend_SetMLXMemoryLimits_ZeroNoop_Good verifies zero values leave
+// the driver untouched (no panic, no side effects). Spec §2.2 — memory
+// management before loading.
+//
+//	ml.SetMLXMemoryLimits(0, 0) // no-op
+func TestMLXBackend_SetMLXMemoryLimits_ZeroNoop_Good(t *testing.T) {
+	SetMLXMemoryLimits(0, 0)
 }

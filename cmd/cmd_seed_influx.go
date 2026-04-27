@@ -1,49 +1,38 @@
 package cmd
 
 import (
-	"os"
-
-	coreerr "dappco.re/go/core/log"
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	coreerr "dappco.re/go/log"
+	"dappco.re/go/ml"
+	"dappco.re/go/store"
 )
 
-var seedInfluxCmd = &cli.Command{
-	Use:   "seed-influx",
-	Short: "Seed InfluxDB golden_gen from DuckDB golden_set",
-	Long:  "One-time migration: batch-loads DuckDB golden_set records into InfluxDB golden_gen measurement.",
-	RunE:  runSeedInflux,
-}
+// addSeedInfluxCommand registers `ml seed-influx` — one-time migration:
+// batch-loads DuckDB golden_set records into InfluxDB golden_gen measurement.
+//
+//	core ml seed-influx --db lem.duckdb --batch-size 500
+func addSeedInfluxCommand(c *core.Core) {
+	c.Command("ml/seed-influx", core.Command{
+		Description: "Seed InfluxDB golden_gen from DuckDB golden_set",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var (
-	seedInfluxForce     bool
-	seedInfluxBatchSize int
-)
+			if dbPath == "" {
+				return resultFromError(coreerr.E("cmd.runSeedInflux", "--db or LEM_DB required", nil))
+			}
 
-func init() {
-	seedInfluxCmd.Flags().BoolVar(&seedInfluxForce, "force", false, "Re-seed even if InfluxDB already has data")
-	seedInfluxCmd.Flags().IntVar(&seedInfluxBatchSize, "batch-size", 500, "Lines per InfluxDB write batch")
-}
+			db, err := store.OpenDuckDB(dbPath)
+			if err != nil {
+				return resultFromError(coreerr.E("cmd.runSeedInflux", "open db", err))
+			}
+			defer db.Close()
 
-func runSeedInflux(cmd *cli.Command, args []string) error {
-	path := dbPath
-	if path == "" {
-		path = os.Getenv("LEM_DB")
-	}
-	if path == "" {
-		return coreerr.E("cmd.runSeedInflux", "--db or LEM_DB required", nil)
-	}
+			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-	db, err := ml.OpenDB(path)
-	if err != nil {
-		return coreerr.E("cmd.runSeedInflux", "open db", err)
-	}
-	defer db.Close()
-
-	influx := ml.NewInfluxClient(influxURL, influxDB)
-
-	return ml.SeedInflux(db, influx, ml.SeedInfluxConfig{
-		Force:     seedInfluxForce,
-		BatchSize: seedInfluxBatchSize,
-	}, os.Stdout)
+			return resultFromError(ml.SeedInflux(db, influx, ml.SeedInfluxConfig{
+				Force:     opts.Bool("force"),
+				BatchSize: optInt(opts, "batch-size", 500),
+			}, nil))
+		},
+	})
 }

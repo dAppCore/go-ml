@@ -2,13 +2,17 @@ package ml
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
-	"dappco.re/go/core/log"
-	"dappco.re/go/core/process"
+	"dappco.re/go/core"
+	"dappco.re/go/inference"
+	"dappco.re/go/log"
+	"dappco.re/go/process"
 )
+
+// Compile-time check: LlamaBackend satisfies inference.Backend (spec §2.1).
+var _ inference.Backend = (*LlamaBackend)(nil)
 
 // LlamaBackend manages a llama-server process and delegates HTTP calls to it.
 type LlamaBackend struct {
@@ -34,8 +38,42 @@ type LlamaOpts struct {
 }
 
 // NewLlamaBackend creates a backend that manages a llama-server process.
-// The process is not started until Start() is called.
-func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend {
+//
+// The constructor accepts the current process-service form used by the codebase
+// as well as the RFC's simpler model-path form:
+//
+//	NewLlamaBackend(processSvc, LlamaOpts{ModelPath: "model.gguf"})
+//	NewLlamaBackend("model.gguf")
+func NewLlamaBackend(args ...any) *LlamaBackend {
+	var processSvc *process.Service
+	opts := LlamaOpts{}
+
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case *process.Service:
+			processSvc = v
+		case LlamaOpts:
+			if v.LlamaPath != "" {
+				opts.LlamaPath = v.LlamaPath
+			}
+			if v.ModelPath != "" {
+				opts.ModelPath = v.ModelPath
+			}
+			if v.LoraPath != "" {
+				opts.LoraPath = v.LoraPath
+			}
+			if v.Port != 0 {
+				opts.Port = v.Port
+			}
+		case string:
+			if opts.ModelPath == "" {
+				opts.ModelPath = v
+			}
+		case nil:
+			// Allow the existing nil placeholder used by tests and callers.
+		}
+	}
+
 	if opts.Port == 0 {
 		opts.Port = 18090
 	}
@@ -43,7 +81,7 @@ func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend 
 		opts.LlamaPath = "llama-server"
 	}
 
-	baseURL := fmt.Sprintf("http://127.0.0.1:%d", opts.Port)
+	baseURL := core.Sprintf("http://127.0.0.1:%d", opts.Port)
 	return &LlamaBackend{
 		processSvc: processSvc,
 		port:       opts.Port,
@@ -57,12 +95,39 @@ func NewLlamaBackend(processSvc *process.Service, opts LlamaOpts) *LlamaBackend 
 // Name returns "llama".
 func (b *LlamaBackend) Name() string { return "llama" }
 
+// SetMaxTokens sets the maximum token count forwarded to the managed
+// llama-server for subsequent Generate/Chat calls. Matches spec §2.4.
+//
+//	backend := ml.NewLlamaBackend(process, ml.LlamaOpts{...})
+//	backend.SetMaxTokens(2048)
+func (b *LlamaBackend) SetMaxTokens(n int) {
+	if b.http != nil {
+		b.http.SetMaxTokens(n)
+	}
+}
+
+// LoadModel satisfies inference.Backend by wrapping the managed llama-server
+// as an inference.TextModel. The path argument is ignored — the GGUF path is
+// supplied at construction time via LlamaOpts.ModelPath. Spec §2.4.
+//
+//	backend := ml.NewLlamaBackend(svc, ml.LlamaOpts{ModelPath: "model.gguf"})
+//	model, _ := backend.LoadModel("dummy")
+//	for tok := range model.Generate(ctx, "hello") {
+//	    fmt.Print(tok.Text)
+//	}
+func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
+	if b.http == nil {
+		return nil, log.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil)
+	}
+	return NewLlamaTextModel(b), nil
+}
+
 // Available checks if the llama-server is responding to health checks.
 func (b *LlamaBackend) Available() bool {
 	if b.procID == "" {
 		return false
 	}
-	url := fmt.Sprintf("http://127.0.0.1:%d/health", b.port)
+	url := core.Sprintf("http://127.0.0.1:%d/health", b.port)
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -74,9 +139,13 @@ func (b *LlamaBackend) Available() bool {
 
 // Start launches the llama-server process.
 func (b *LlamaBackend) Start(ctx context.Context) error {
+	if b.processSvc == nil {
+		return log.E("ml.LlamaBackend.Start", "process service not configured", nil)
+	}
+
 	args := []string{
 		"-m", b.modelPath,
-		"--port", fmt.Sprintf("%d", b.port),
+		"--port", core.Sprintf("%d", b.port),
 		"--host", "127.0.0.1",
 	}
 	if b.loraPath != "" {
@@ -109,6 +178,9 @@ func (b *LlamaBackend) Stop() error {
 	if b.procID == "" {
 		return nil
 	}
+	if b.processSvc == nil {
+		return log.E("ml.LlamaBackend.Stop", "process service not configured", nil)
+	}
 	return b.processSvc.Kill(b.procID)
 }
 
@@ -117,6 +189,9 @@ func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts
 	if !b.Available() {
 		return Result{}, log.E("ml.LlamaBackend.Generate", "llama-server not available", nil)
 	}
+	if b.http == nil {
+		return Result{}, log.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil)
+	}
 	return b.http.Generate(ctx, prompt, opts)
 }
 
@@ -124,6 +199,9 @@ func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts
 func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
 	if !b.Available() {
 		return Result{}, log.E("ml.LlamaBackend.Chat", "llama-server not available", nil)
+	}
+	if b.http == nil {
+		return Result{}, log.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil)
 	}
 	return b.http.Chat(ctx, messages, opts)
 }

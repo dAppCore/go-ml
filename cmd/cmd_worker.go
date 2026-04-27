@@ -3,78 +3,51 @@ package cmd
 import (
 	"time"
 
-	"dappco.re/go/core/ml"
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/core"
+	"dappco.re/go/ml"
 )
 
-var (
-	workerAPIBase   string
-	workerID        string
-	workerName      string
-	workerAPIKey    string
-	workerGPU       string
-	workerVRAM      int
-	workerLangs     string
-	workerModels    string
-	workerInferURL  string
-	workerTaskType  string
-	workerBatchSize int
-	workerPoll      time.Duration
-	workerOneShot   bool
-	workerDryRun    bool
-)
+// addWorkerCommand registers `ml worker` — polls the LEM API for tasks, runs
+// local inference, and submits results.
+//
+//	core ml worker --api https://infer.lthn.ai --key $LEM_API_KEY --infer http://localhost:8090
+func addWorkerCommand(c *core.Core) {
+	c.Command("ml/worker", core.Command{
+		Description: "Run a distributed worker node",
+		Action: func(opts core.Options) core.Result {
+			readPersistentFlags(opts)
 
-var workerCmd = &cli.Command{
-	Use:   "worker",
-	Short: "Run a distributed worker node",
-	Long:  "Polls the LEM API for tasks, runs local inference, and submits results.",
-	RunE:  runWorker,
-}
+			apiKey := optStringOr(opts, "key", ml.EnvOr("LEM_API_KEY", ""))
+			if apiKey == "" {
+				apiKey = ml.ReadKeyFile()
+			}
 
-func init() {
-	workerCmd.Flags().StringVar(&workerAPIBase, "api", ml.EnvOr("LEM_API", "https://infer.lthn.ai"), "LEM API base URL")
-	workerCmd.Flags().StringVar(&workerID, "id", ml.EnvOr("LEM_WORKER_ID", ml.MachineID()), "Worker ID")
-	workerCmd.Flags().StringVar(&workerName, "name", ml.EnvOr("LEM_WORKER_NAME", ml.Hostname()), "Worker display name")
-	workerCmd.Flags().StringVar(&workerAPIKey, "key", ml.EnvOr("LEM_API_KEY", ""), "API key")
-	workerCmd.Flags().StringVar(&workerGPU, "gpu", ml.EnvOr("LEM_GPU", ""), "GPU type")
-	workerCmd.Flags().IntVar(&workerVRAM, "vram", ml.IntEnvOr("LEM_VRAM_GB", 0), "GPU VRAM in GB")
-	workerCmd.Flags().StringVar(&workerLangs, "languages", ml.EnvOr("LEM_LANGUAGES", ""), "Comma-separated language codes")
-	workerCmd.Flags().StringVar(&workerModels, "models", ml.EnvOr("LEM_MODELS", ""), "Comma-separated model names")
-	workerCmd.Flags().StringVar(&workerInferURL, "infer", ml.EnvOr("LEM_INFER_URL", "http://localhost:8090"), "Local inference endpoint")
-	workerCmd.Flags().StringVar(&workerTaskType, "type", "", "Filter by task type")
-	workerCmd.Flags().IntVar(&workerBatchSize, "batch", 5, "Tasks per poll")
-	workerCmd.Flags().DurationVar(&workerPoll, "poll", 30*time.Second, "Poll interval")
-	workerCmd.Flags().BoolVar(&workerOneShot, "one-shot", false, "Process one batch and exit")
-	workerCmd.Flags().BoolVar(&workerDryRun, "dry-run", false, "Fetch tasks but don't run inference")
-}
+			pollSec := optInt(opts, "poll", 30)
 
-func runWorker(cmd *cli.Command, args []string) error {
-	if workerAPIKey == "" {
-		workerAPIKey = ml.ReadKeyFile()
-	}
+			cfg := &ml.WorkerConfig{
+				APIBase:      optStringOr(opts, "api", ml.EnvOr("LEM_API", "https://infer.lthn.ai")),
+				WorkerID:     optStringOr(opts, "id", ml.EnvOr("LEM_WORKER_ID", ml.MachineID())),
+				Name:         optStringOr(opts, "name", ml.EnvOr("LEM_WORKER_NAME", ml.Hostname())),
+				APIKey:       apiKey,
+				GPUType:      optStringOr(opts, "gpu", ml.EnvOr("LEM_GPU", "")),
+				VRAMGb:       optInt(opts, "vram", ml.IntEnvOr("LEM_VRAM_GB", 0)),
+				InferURL:     optStringOr(opts, "infer", ml.EnvOr("LEM_INFER_URL", "http://localhost:8090")),
+				TaskType:     opts.String("type"),
+				BatchSize:    optInt(opts, "batch", 5),
+				PollInterval: time.Duration(pollSec) * time.Second,
+				OneShot:      opts.Bool("one-shot"),
+				DryRun:       opts.Bool("dry-run"),
+			}
 
-	cfg := &ml.WorkerConfig{
-		APIBase:      workerAPIBase,
-		WorkerID:     workerID,
-		Name:         workerName,
-		APIKey:       workerAPIKey,
-		GPUType:      workerGPU,
-		VRAMGb:       workerVRAM,
-		InferURL:     workerInferURL,
-		TaskType:     workerTaskType,
-		BatchSize:    workerBatchSize,
-		PollInterval: workerPoll,
-		OneShot:      workerOneShot,
-		DryRun:       workerDryRun,
-	}
+			if langs := optStringOr(opts, "languages", ml.EnvOr("LEM_LANGUAGES", "")); langs != "" {
+				cfg.Languages = ml.SplitComma(langs)
+			}
+			if models := optStringOr(opts, "models", ml.EnvOr("LEM_MODELS", "")); models != "" {
+				cfg.Models = ml.SplitComma(models)
+			}
 
-	if workerLangs != "" {
-		cfg.Languages = ml.SplitComma(workerLangs)
-	}
-	if workerModels != "" {
-		cfg.Models = ml.SplitComma(workerModels)
-	}
-
-	ml.RunWorkerLoop(cfg)
-	return nil
+			ml.RunWorkerLoop(cfg)
+			return core.Result{OK: true}
+		},
+	})
 }

@@ -2,7 +2,6 @@ package ml
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,9 +14,7 @@ func TestHTTPBackend_Generate_Good(t *testing.T) {
 		}
 
 		var req chatRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
+		mustReadJSONRequest(t, r, &req)
 
 		if len(req.Messages) != 1 || req.Messages[0].Content != "hello" {
 			t.Errorf("unexpected messages: %+v", req.Messages)
@@ -26,7 +23,7 @@ func TestHTTPBackend_Generate_Good(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "world"}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -57,6 +54,25 @@ func TestHTTPBackend_Generate_Bad(t *testing.T) {
 	}
 }
 
+func TestHTTPBackend_StopSequences_Good(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := chatResponse{
+			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "hello STOP world"}}},
+		}
+		mustWriteJSONResponse(t, w, resp)
+	}))
+	defer srv.Close()
+
+	b := NewHTTPBackend(srv.URL, "test-model")
+	result, err := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if result.Text != "hello " {
+		t.Errorf("got %q, want %q", result.Text, "hello ")
+	}
+}
+
 func TestHTTPBackend_Retry_Ugly(t *testing.T) {
 	attempts := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +85,7 @@ func TestHTTPBackend_Retry_Ugly(t *testing.T) {
 		resp := chatResponse{
 			Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "recovered"}}},
 		}
-		json.NewEncoder(w).Encode(resp)
+		mustWriteJSONResponse(t, w, resp)
 	}))
 	defer srv.Close()
 
@@ -86,14 +102,14 @@ func TestHTTPBackend_Retry_Ugly(t *testing.T) {
 	}
 }
 
-func TestHTTPBackend_Name(t *testing.T) {
+func TestHTTPBackend_Name_Good(t *testing.T) {
 	b := NewHTTPBackend("http://localhost", "model")
 	if b.Name() != "http" {
 		t.Errorf("Name() = %q, want %q", b.Name(), "http")
 	}
 }
 
-func TestHTTPBackend_Available(t *testing.T) {
+func TestHTTPBackend_Available_Good(t *testing.T) {
 	b := NewHTTPBackend("http://localhost", "model")
 	if !b.Available() {
 		t.Error("Available() should be true when baseURL is set")
@@ -102,5 +118,31 @@ func TestHTTPBackend_Available(t *testing.T) {
 	b2 := NewHTTPBackend("", "model")
 	if b2.Available() {
 		t.Error("Available() should be false when baseURL is empty")
+	}
+}
+
+func TestHTTPBackend_WithMedium_Good(t *testing.T) {
+	// Spec §10 — io.Medium supplied at construction is retained.
+	// We pass nil to verify the option is accepted and the getter returns
+	// the stored value (nil) rather than panicking.
+	b := NewHTTPBackend("http://localhost", "model", WithMedium(nil))
+	if b.Medium() != nil {
+		t.Errorf("Medium() = %v, want nil", b.Medium())
+	}
+}
+
+func TestHTTPBackend_WithHTTPMaxTokens_Good(t *testing.T) {
+	b := NewHTTPBackend("http://localhost", "model", WithHTTPMaxTokens(512))
+	if b.maxTokens != 512 {
+		t.Errorf("maxTokens = %d, want 512", b.maxTokens)
+	}
+}
+
+func TestHTTPBackend_WithHTTPClient_Ugly(t *testing.T) {
+	// Nil HTTP client must be ignored (option is a no-op rather than breaking
+	// the default 300s client).
+	b := NewHTTPBackend("http://localhost", "model", WithHTTPClient(nil))
+	if b.httpClient == nil {
+		t.Error("nil HTTP client must not overwrite default")
 	}
 }

@@ -3,12 +3,10 @@
 package ml
 
 import (
-	"encoding/json"
-	"path/filepath"
 	"testing"
 
-	coreio "forge.lthn.ai/core/go-io"
-
+	"dappco.re/go/core"
+	coreio "dappco.re/go/io"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,9 +15,9 @@ import (
 // ReadResponses
 // ---------------------------------------------------------------------------
 
-func TestReadResponses_Good(t *testing.T) {
+func TestIO_ReadResponses_Good(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "responses.jsonl")
+	path := core.JoinPath(dir, "responses.jsonl")
 
 	lines := []Response{
 		{ID: "1", Prompt: "hello", Response: "world", Model: "test"},
@@ -27,8 +25,7 @@ func TestReadResponses_Good(t *testing.T) {
 	}
 	var content string
 	for _, r := range lines {
-		b, _ := json.Marshal(r)
-		content += string(b) + "\n"
+		content += core.JSONMarshalString(r) + "\n"
 	}
 	require.NoError(t, coreio.Local.Write(path, content))
 
@@ -40,11 +37,11 @@ func TestReadResponses_Good(t *testing.T) {
 	assert.Equal(t, "2", got[1].ID)
 }
 
-func TestReadResponses_EmptyLines_Good(t *testing.T) {
+func TestIO_ReadResponsesEmptyLines_Good(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "sparse.jsonl")
+	path := core.JoinPath(dir, "sparse.jsonl")
 
-	line, _ := json.Marshal(Response{ID: "only", Prompt: "p", Response: "r"})
+	line := core.JSONMarshalString(Response{ID: "only", Prompt: "p", Response: "r"})
 	content := "\n" + string(line) + "\n\n"
 	require.NoError(t, coreio.Local.Write(path, content))
 
@@ -54,14 +51,14 @@ func TestReadResponses_EmptyLines_Good(t *testing.T) {
 	assert.Equal(t, "only", got[0].ID)
 }
 
-func TestReadResponses_NotExist_Bad(t *testing.T) {
+func TestIO_ReadResponsesNotExist_Bad(t *testing.T) {
 	_, err := ReadResponses("/nonexistent/path.jsonl")
 	assert.Error(t, err)
 }
 
-func TestReadResponses_InvalidJSON_Bad(t *testing.T) {
+func TestIO_ReadResponsesInvalidJSON_Bad(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "bad.jsonl")
+	path := core.JoinPath(dir, "bad.jsonl")
 	require.NoError(t, coreio.Local.Write(path, "not json\n"))
 
 	_, err := ReadResponses(path)
@@ -72,9 +69,9 @@ func TestReadResponses_InvalidJSON_Bad(t *testing.T) {
 // WriteScores / ReadScorerOutput round-trip
 // ---------------------------------------------------------------------------
 
-func TestWriteScoresReadScorerOutput_Good(t *testing.T) {
+func TestIO_WriteScoresReadScorerOutput_Good(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "scores.json")
+	path := core.JoinPath(dir, "scores.json")
 
 	output := &ScorerOutput{
 		Metadata: Metadata{JudgeModel: "test-judge", ScorerVersion: "1.0"},
@@ -99,7 +96,7 @@ func TestWriteScoresReadScorerOutput_Good(t *testing.T) {
 // ComputeAverages
 // ---------------------------------------------------------------------------
 
-func TestComputeAverages_Good(t *testing.T) {
+func TestIO_ComputeAverages_Good(t *testing.T) {
 	perPrompt := map[string][]PromptScore{
 		"p1": {
 			{Model: "a", Heuristic: &HeuristicScores{LEKScore: 0.8, ComplianceMarkers: 2}},
@@ -111,12 +108,12 @@ func TestComputeAverages_Good(t *testing.T) {
 	}
 
 	avgs := ComputeAverages(perPrompt)
-	assert.InDelta(t, 0.6, avgs["a"]["lek_score"], 0.001) // (0.8+0.4)/2
+	assert.InDelta(t, 0.6, avgs["a"]["lek_score"], 0.001)          // (0.8+0.4)/2
 	assert.InDelta(t, 1.0, avgs["a"]["compliance_markers"], 0.001) // (2+0)/2
-	assert.InDelta(t, 0.6, avgs["b"]["lek_score"], 0.001) // 0.6/1
+	assert.InDelta(t, 0.6, avgs["b"]["lek_score"], 0.001)          // 0.6/1
 }
 
-func TestComputeAverages_SemanticAndContent_Good(t *testing.T) {
+func TestIO_ComputeAveragesSemanticAndContent_Good(t *testing.T) {
 	perPrompt := map[string][]PromptScore{
 		"p1": {
 			{
@@ -134,7 +131,7 @@ func TestComputeAverages_SemanticAndContent_Good(t *testing.T) {
 	assert.InDelta(t, 2.0, avgs["x"]["engagement"], 0.001)
 }
 
-func TestComputeAverages_Empty_Good(t *testing.T) {
+func TestIO_ComputeAveragesEmpty_Good(t *testing.T) {
 	avgs := ComputeAverages(nil)
 	assert.Empty(t, avgs)
 }
