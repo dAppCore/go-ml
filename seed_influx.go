@@ -1,7 +1,7 @@
 package ml
 
 import (
-	"io"
+	"io" // Note: AX-6 intrinsic - io.Writer is the public output surface; core exposes no Writer primitive.
 
 	"dappco.re/go/core"
 	coreerr "dappco.re/go/log"
