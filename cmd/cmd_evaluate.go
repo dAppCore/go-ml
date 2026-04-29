@@ -5,7 +5,7 @@ package cmd
 import (
 	"context"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"

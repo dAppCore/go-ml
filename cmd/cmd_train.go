@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	"dappco.re/go/inference"
 	coreio "dappco.re/go/io"
@@ -352,7 +352,9 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 				)
 				lp := core.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=train %s",
 					modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase), fields)
-				_ = influx.WriteLp([]string{lp})
+				if err := influx.WriteLp([]string{lp}); err != nil {
+					slog.Warn("write training telemetry failed", "err", err)
+				}
 			}
 
 			runningLoss = 0
@@ -379,7 +381,9 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 			if influx != nil {
 				lp := core.Sprintf("training_loss,model=%s,run_id=%s,phase=%s,loss_type=val loss=%.6f,iteration=%di",
 					modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase), valLoss, it)
-				_ = influx.WriteLp([]string{lp})
+				if err := influx.WriteLp([]string{lp}); err != nil {
+					slog.Warn("write validation telemetry failed", "err", err)
+				}
 			}
 			mlx.ClearCache()
 		}
@@ -505,7 +509,9 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 		modelTag, ml.EscapeLp(trainRunID), ml.EscapeLp(trainPhase),
 		iter, escapeFieldStr(prompt, 2000), escapeFieldStr(response.String(), 2000),
 	)
-	_ = influx.WriteLp([]string{lp})
+	if err := influx.WriteLp([]string{lp}); err != nil {
+		slog.Warn("queue score job failed", "iter", iter, "err", err)
+	}
 
 	slog.Info("score job queued", "iter", iter, "response_len", response.Len())
 }

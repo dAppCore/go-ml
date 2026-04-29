@@ -4,18 +4,15 @@ package ml
 
 import (
 	"context"
-	"testing"
 
-	"dappco.re/go/core"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"dappco.re/go"
 )
 
 // ---------------------------------------------------------------------------
 // Agent — spec §8 Agent orchestrator
 // ---------------------------------------------------------------------------
 
-func TestAgent_NewAgent_Good(t *testing.T) {
+func TestAgent_NewAgent_Good(t *core.T) {
 	cfg := &AgentConfig{
 		M3Host:     "testhost",
 		M3User:     "tester",
@@ -32,7 +29,7 @@ func TestAgent_NewAgent_Good(t *testing.T) {
 	}
 }
 
-func TestAgent_ExecuteRemote_Good(t *testing.T) {
+func TestAgent_ExecuteRemote_Good(t *core.T) {
 	ft := newFakeTransport()
 	ft.On("echo hello", "hello\n", nil)
 
@@ -48,7 +45,7 @@ func TestAgent_ExecuteRemote_Good(t *testing.T) {
 	}
 }
 
-func TestAgent_ExecuteRemote_Bad(t *testing.T) {
+func TestAgent_ExecuteRemote_Bad(t *core.T) {
 	ft := newFakeTransport() // no commands registered → "no match" error
 	cfg := &AgentConfig{Transport: ft}
 	a := NewAgent(cfg)
@@ -58,7 +55,7 @@ func TestAgent_ExecuteRemote_Bad(t *testing.T) {
 	}
 }
 
-func TestAgent_DiscoverCheckpoints_Ugly(t *testing.T) {
+func TestAgent_DiscoverCheckpoints_Ugly(t *core.T) {
 	// Empty transport output → no checkpoints, no error.
 	ft := newFakeTransport()
 	ft.On("ls -d", "", nil)
@@ -75,7 +72,7 @@ func TestAgent_DiscoverCheckpoints_Ugly(t *testing.T) {
 	}
 }
 
-func TestAgent_Influx_Good(t *testing.T) {
+func TestAgent_Influx_Good(t *core.T) {
 	cfg := &AgentConfig{InfluxURL: "http://localhost:8086", InfluxDB: "test"}
 	a := NewAgent(cfg)
 	if a.Influx() == nil {
@@ -92,7 +89,7 @@ func TestAgent_Influx_Good(t *testing.T) {
 // agent's configured transport. We cannot exercise the real SSH binary
 // from a unit test, but we can confirm the argument-count routing is valid
 // and that the 0-arg form is rejected cleanly.
-func TestAgent_ExecuteRemote_Ugly(t *testing.T) {
+func TestAgent_ExecuteRemote_Ugly(t *core.T) {
 	cfg := &AgentConfig{Transport: newFakeTransport()}
 	a := NewAgent(cfg)
 
@@ -110,7 +107,7 @@ func TestAgent_ExecuteRemote_Ugly(t *testing.T) {
 // Spec §8 — Evaluate accepts Checkpoint, *Checkpoint or model-path string.
 // With no transport registered, the nil-pointer path must surface a clean
 // error rather than dereferencing.
-func TestAgent_Evaluate_Bad(t *testing.T) {
+func TestAgent_Evaluate_Bad(t *core.T) {
 	cfg := &AgentConfig{Transport: newFakeTransport()}
 	a := NewAgent(cfg)
 
@@ -125,7 +122,7 @@ func TestAgent_Evaluate_Bad(t *testing.T) {
 	}
 }
 
-func TestAgent_ResolveCheckpointTarget_String_Good(t *testing.T) {
+func TestAgent_ResolveCheckpointTarget_String_Good(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
@@ -141,17 +138,17 @@ func TestAgent_ResolveCheckpointTarget_String_Good(t *testing.T) {
 	})
 
 	cp, err := a.resolveCheckpointTarget(context.Background(), base+"/adapters-27b")
-	require.NoError(t, err)
-	assert.Equal(t, base+"/adapters-27b", cp.RemoteDir)
-	assert.Equal(t, "adapters-27b", cp.Dirname)
-	assert.Equal(t, "0001000_adapters.safetensors", cp.Filename)
-	assert.Equal(t, "gemma-3-27b", cp.ModelTag)
-	assert.NotEmpty(t, cp.Label)
-	assert.NotEmpty(t, cp.RunID)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, base+"/adapters-27b", cp.RemoteDir)
+	core.AssertEqual(t, "adapters-27b", cp.Dirname)
+	core.AssertEqual(t, "0001000_adapters.safetensors", cp.Filename)
+	core.AssertEqual(t, "gemma-3-27b", cp.ModelTag)
+	core.AssertNotEmpty(t, cp.Label)
+	core.AssertNotEmpty(t, cp.RunID)
 }
 
 // Spec §8 — CollectMetrics accepts optional influxURL override.
-func TestAgent_CollectMetrics_Good(t *testing.T) {
+func TestAgent_CollectMetrics_Good(t *core.T) {
 	cfg := &AgentConfig{
 		WorkDir:   t.TempDir(),
 		InfluxURL: "http://default:8086",
@@ -171,7 +168,7 @@ func TestAgent_CollectMetrics_Good(t *testing.T) {
 }
 
 // Spec §8 — Execute accepts optional config override.
-func TestAgent_Execute_Good(t *testing.T) {
+func TestAgent_Execute_Good(t *core.T) {
 	cfg := &AgentConfig{
 		OneShot: true,
 		WorkDir: t.TempDir(),
@@ -214,29 +211,29 @@ func (b *contentProbeBackend) Chat(_ context.Context, _ []Message, _ GenOpts) (R
 func (b *contentProbeBackend) Name() string    { return "content" }
 func (b *contentProbeBackend) Available() bool { return true }
 
-func TestRunContentProbesAlias_Good(t *testing.T) {
+func TestRunContentProbesAlias_Good(t *core.T) {
 	backend := &contentProbeBackend{}
 
 	responses := RunContentProbes(context.Background(), backend)
-	require.Len(t, responses, len(ContentProbes))
-	require.Len(t, backend.prompts, len(ContentProbes))
-	assert.Equal(t, ContentProbes[0].Prompt, backend.prompts[0])
-	assert.Equal(t, ContentProbes[0].ID, responses[0].Probe.ID)
-	assert.Equal(t, "content", responses[0].Response)
+	core.AssertLen(t, responses, len(ContentProbes))
+	core.AssertLen(t, backend.prompts, len(ContentProbes))
+	core.AssertEqual(t, ContentProbes[0].Prompt, backend.prompts[0])
+	core.AssertEqual(t, ContentProbes[0].ID, responses[0].Probe.ID)
+	core.AssertEqual(t, "content", responses[0].Response)
 }
 
 // ---------------------------------------------------------------------------
 // GGUF — spec §7 wrappers
 // ---------------------------------------------------------------------------
 
-func TestGGUF_ReadGGUFInfo_Bad(t *testing.T) {
+func TestGGUF_ReadGGUFInfo_Bad(t *core.T) {
 	// Missing file must produce an error, not panic.
 	if _, err := ReadGGUFInfo("/nonexistent/path/model.gguf"); err == nil {
 		t.Error("expected error for missing GGUF file")
 	}
 }
 
-func TestGGUF_DiscoverModels_Good(t *testing.T) {
+func TestGGUF_DiscoverModels_Good(t *core.T) {
 	// Empty directory returns no models but does not panic.
 	models := DiscoverModels(t.TempDir())
 	if models == nil {
@@ -248,7 +245,9 @@ func TestGGUF_DiscoverModels_Good(t *testing.T) {
 	}
 }
 
-func TestGGUF_DiscoverModels_Ugly(t *testing.T) {
+func TestGGUF_DiscoverModels_Ugly(t *core.T) {
 	// Nonexistent path must not panic.
-	_ = DiscoverModels("/definitely/not/a/real/path")
+	path := "/definitely/not/a/real/path"
+	models := DiscoverModels(path)
+	core.AssertEqual(t, 0, len(models))
 }

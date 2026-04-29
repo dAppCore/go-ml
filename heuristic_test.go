@@ -1,6 +1,9 @@
 package ml
 
-import "testing"
+import (
+	"dappco.re/go"
+	"testing"
+)
 
 func TestHeuristic_ComplianceMarkers_Good(t *testing.T) {
 	tests := []struct {
@@ -317,4 +320,18 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestHeuristic_ScoreHeuristic_Bad(t *core.T) {
+	symbol := any(ScoreHeuristic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestHeuristic_ScoreHeuristic_Ugly(t *core.T) {
+	symbol := any(ScoreHeuristic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

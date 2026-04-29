@@ -5,7 +5,7 @@ package ml
 import (
 	"context"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	corelog "dappco.re/go/log"
 )
 

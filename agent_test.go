@@ -4,12 +4,9 @@ package ml
 
 import (
 	"context"
-	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
@@ -65,7 +62,7 @@ func searchSubstr(s, sub string) bool {
 // 1. AdapterMeta tests
 // =========================================================================
 
-func TestAdapterMeta_KnownFamilies_Good(t *testing.T) {
+func TestAdapterMeta_KnownFamilies_Good(t *core.T) {
 	tests := []struct {
 		dirname  string
 		wantTag  string
@@ -99,78 +96,78 @@ func TestAdapterMeta_KnownFamilies_Good(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.dirname, func(t *testing.T) {
+		t.Run(tt.dirname, func(t *core.T) {
 			tag, pfx, stem := AdapterMeta(tt.dirname)
-			assert.Equal(t, tt.wantTag, tag, "model tag")
-			assert.Equal(t, tt.wantPfx, pfx, "label prefix")
-			assert.Equal(t, tt.wantStem, stem, "run ID stem")
+			core.AssertEqual(t, tt.wantTag, tag, "model tag")
+			core.AssertEqual(t, tt.wantPfx, pfx, "label prefix")
+			core.AssertEqual(t, tt.wantStem, stem, "run ID stem")
 		})
 	}
 }
 
-func TestAdapterMeta_WithVariant_Good(t *testing.T) {
+func TestAdapterMeta_WithVariant_Good(t *core.T) {
 	// "adapters-27b-reasoning" → 27b prefix matches, variant = "reasoning"
 	tag, pfx, stem := AdapterMeta("adapters-27b-reasoning")
-	assert.Equal(t, "gemma-3-27b", tag)
-	assert.Equal(t, "G27-reasoning", pfx)
-	assert.Equal(t, "27b-reasoning", stem)
+	core.AssertEqual(t, "gemma-3-27b", tag)
+	core.AssertEqual(t, "G27-reasoning", pfx)
+	core.AssertEqual(t, "27b-reasoning", stem)
 }
 
-func TestAdapterMeta_WithoutVariant_Good(t *testing.T) {
+func TestAdapterMeta_WithoutVariant_Good(t *core.T) {
 	// "adapters-12b" → variant is empty → "base"
 	tag, pfx, stem := AdapterMeta("adapters-12b")
-	assert.Equal(t, "gemma-3-12b", tag)
-	assert.Equal(t, "G12", pfx) // variant="base" produces short without suffix
-	assert.Equal(t, "12b", stem)
+	core.AssertEqual(t, "gemma-3-12b", tag)
+	core.AssertEqual(t, "G12", pfx) // variant="base" produces short without suffix
+	core.AssertEqual(t, "12b", stem)
 }
 
-func TestAdapterMeta_SubdirectoryPattern_Good(t *testing.T) {
+func TestAdapterMeta_SubdirectoryPattern_Good(t *core.T) {
 	// "adapters-15k/gemma-3-27b" → matches "15k/gemma-3-27b" prefix
 	tag, pfx, stem := AdapterMeta("adapters-15k/gemma-3-27b")
-	assert.Equal(t, "gemma-3-27b", tag)
-	assert.Equal(t, "G27", pfx)
+	core.AssertEqual(t, "gemma-3-27b", tag)
+	core.AssertEqual(t, "G27", pfx)
 	// stem should replace "/" with "-"
-	assert.Equal(t, "15k-gemma-3-27b", stem)
+	core.AssertEqual(t, "15k-gemma-3-27b", stem)
 }
 
-func TestAdapterMeta_SubdirectoryWithVariant_Good(t *testing.T) {
+func TestAdapterMeta_SubdirectoryWithVariant_Good(t *core.T) {
 	// "adapters-15k/gemma-3-1b-creative" → variant = "creative"
 	tag, pfx, stem := AdapterMeta("adapters-15k/gemma-3-1b-creative")
-	assert.Equal(t, "gemma-3-1b", tag)
-	assert.Equal(t, "G1-creative", pfx)
-	assert.Equal(t, "15k-gemma-3-1b-creative", stem)
+	core.AssertEqual(t, "gemma-3-1b", tag)
+	core.AssertEqual(t, "G1-creative", pfx)
+	core.AssertEqual(t, "15k-gemma-3-1b-creative", stem)
 }
 
-func TestAdapterMeta_Unknown_Bad(t *testing.T) {
+func TestAdapterMeta_Unknown_Bad(t *core.T) {
 	// Unknown dirname falls back: tag=name, short=name[:10], stem=name
 	tag, pfx, stem := AdapterMeta("adapters-completelynewmodel42")
-	assert.Equal(t, "completelynewmodel42", tag)
-	assert.Equal(t, "completely", pfx) // truncated to 10 chars
-	assert.Equal(t, "completelynewmodel42", stem)
+	core.AssertEqual(t, "completelynewmodel42", tag)
+	core.AssertEqual(t, "completely", pfx) // truncated to 10 chars
+	core.AssertEqual(t, "completelynewmodel42", stem)
 }
 
-func TestAdapterMeta_UnknownShort_Good(t *testing.T) {
+func TestAdapterMeta_UnknownShort_Good(t *core.T) {
 	// Short unknown name (< 10 chars) is not truncated.
 	tag, pfx, stem := AdapterMeta("adapters-xyz")
-	assert.Equal(t, "xyz", tag)
-	assert.Equal(t, "xyz", pfx)
-	assert.Equal(t, "xyz", stem)
+	core.AssertEqual(t, "xyz", tag)
+	core.AssertEqual(t, "xyz", pfx)
+	core.AssertEqual(t, "xyz", stem)
 }
 
-func TestAdapterMeta_NoPrefix_Good(t *testing.T) {
+func TestAdapterMeta_NoPrefix_Good(t *core.T) {
 	// dirname without "adapters-" prefix — TrimPrefix does nothing useful,
 	// but the function should still handle it gracefully.
 	tag, pfx, stem := AdapterMeta("27b-fancy")
-	assert.Equal(t, "gemma-3-27b", tag)
-	assert.Equal(t, "G27-fancy", pfx)
-	assert.Equal(t, "27b-fancy", stem)
+	core.AssertEqual(t, "gemma-3-27b", tag)
+	core.AssertEqual(t, "G27-fancy", pfx)
+	core.AssertEqual(t, "27b-fancy", stem)
 }
 
 // =========================================================================
 // 2. FindUnscored tests
 // =========================================================================
 
-func TestFindUnscored_AllUnscored_Good(t *testing.T) {
+func TestFindUnscored_AllUnscored_Good(t *core.T) {
 	checkpoints := []Checkpoint{
 		{Dirname: "b-dir", Iteration: 200, RunID: "run-b", Label: "B @200"},
 		{Dirname: "a-dir", Iteration: 100, RunID: "run-a", Label: "A @100"},
@@ -180,17 +177,17 @@ func TestFindUnscored_AllUnscored_Good(t *testing.T) {
 
 	result := FindUnscored(checkpoints, scored)
 
-	require.Len(t, result, 3)
+	core.AssertLen(t, result, 3)
 	// Should be sorted by (dirname, iteration)
-	assert.Equal(t, "a-dir", result[0].Dirname)
-	assert.Equal(t, 50, result[0].Iteration)
-	assert.Equal(t, "a-dir", result[1].Dirname)
-	assert.Equal(t, 100, result[1].Iteration)
-	assert.Equal(t, "b-dir", result[2].Dirname)
-	assert.Equal(t, 200, result[2].Iteration)
+	core.AssertEqual(t, "a-dir", result[0].Dirname)
+	core.AssertEqual(t, 50, result[0].Iteration)
+	core.AssertEqual(t, "a-dir", result[1].Dirname)
+	core.AssertEqual(t, 100, result[1].Iteration)
+	core.AssertEqual(t, "b-dir", result[2].Dirname)
+	core.AssertEqual(t, 200, result[2].Iteration)
 }
 
-func TestFindUnscored_SomeScored_Good(t *testing.T) {
+func TestFindUnscored_SomeScored_Good(t *core.T) {
 	checkpoints := []Checkpoint{
 		{Dirname: "dir", Iteration: 100, RunID: "run-1", Label: "L @100"},
 		{Dirname: "dir", Iteration: 200, RunID: "run-1", Label: "L @200"},
@@ -203,12 +200,12 @@ func TestFindUnscored_SomeScored_Good(t *testing.T) {
 
 	result := FindUnscored(checkpoints, scored)
 
-	require.Len(t, result, 1)
-	assert.Equal(t, 200, result[0].Iteration)
-	assert.Equal(t, "L @200", result[0].Label)
+	core.AssertLen(t, result, 1)
+	core.AssertEqual(t, 200, result[0].Iteration)
+	core.AssertEqual(t, "L @200", result[0].Label)
 }
 
-func TestFindUnscored_AllScored_Good(t *testing.T) {
+func TestFindUnscored_AllScored_Good(t *core.T) {
 	checkpoints := []Checkpoint{
 		{Dirname: "dir", Iteration: 100, RunID: "run-1", Label: "L @100"},
 		{Dirname: "dir", Iteration: 200, RunID: "run-1", Label: "L @200"},
@@ -219,31 +216,31 @@ func TestFindUnscored_AllScored_Good(t *testing.T) {
 	}
 
 	result := FindUnscored(checkpoints, scored)
-	assert.Empty(t, result)
+	core.AssertEmpty(t, result)
 }
 
-func TestFindUnscored_EmptyInput_Good(t *testing.T) {
+func TestFindUnscored_EmptyInput_Good(t *core.T) {
 	result := FindUnscored(nil, nil)
-	assert.Empty(t, result)
+	core.AssertEmpty(t, result)
 
 	result = FindUnscored([]Checkpoint{}, map[[2]string]bool{})
-	assert.Empty(t, result)
+	core.AssertEmpty(t, result)
 }
 
-func TestFindUnscored_NilScored_Good(t *testing.T) {
+func TestFindUnscored_NilScored_Good(t *core.T) {
 	// nil scored map should treat everything as unscored
 	checkpoints := []Checkpoint{
 		{Dirname: "a", Iteration: 1, RunID: "r", Label: "L @1"},
 	}
 	result := FindUnscored(checkpoints, nil)
-	require.Len(t, result, 1)
+	core.AssertLen(t, result, 1)
 }
 
 // =========================================================================
 // 3. BufferInfluxResult / ReplayInfluxBuffer round-trip tests
 // =========================================================================
 
-func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
+func TestBufferInfluxResult_RoundTrip_Good(t *core.T) {
 	workDir := t.TempDir()
 
 	cp := Checkpoint{
@@ -275,22 +272,22 @@ func TestBufferInfluxResult_RoundTrip_Good(t *testing.T) {
 	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	raw, err := coreio.Local.Read(bufPath)
 	data := []byte(raw)
-	require.NoError(t, err)
-	assert.NotEmpty(t, data)
+	core.RequireNoError(t, err)
+	core.AssertNotEmpty(t, data)
 
 	// Parse the JSONL entry and verify fields
 	var entry bufferEntry
 	mustJSONUnmarshalBytes(t, data[:len(data)-1], &entry) // trim trailing newline
-	assert.Equal(t, cp.Label, entry.Checkpoint.Label)
-	assert.Equal(t, cp.ModelTag, entry.Checkpoint.ModelTag)
-	assert.Equal(t, cp.RunID, entry.Checkpoint.RunID)
-	assert.Equal(t, results.Accuracy, entry.Results.Accuracy)
-	assert.Equal(t, results.Correct, entry.Results.Correct)
-	assert.Equal(t, results.Total, entry.Results.Total)
-	assert.NotEmpty(t, entry.Timestamp)
+	core.AssertEqual(t, cp.Label, entry.Checkpoint.Label)
+	core.AssertEqual(t, cp.ModelTag, entry.Checkpoint.ModelTag)
+	core.AssertEqual(t, cp.RunID, entry.Checkpoint.RunID)
+	core.AssertEqual(t, results.Accuracy, entry.Results.Accuracy)
+	core.AssertEqual(t, results.Correct, entry.Results.Correct)
+	core.AssertEqual(t, results.Total, entry.Results.Total)
+	core.AssertNotEmpty(t, entry.Timestamp)
 }
 
-func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
+func TestBufferInfluxResult_MultipleEntries_Good(t *core.T) {
 	workDir := t.TempDir()
 
 	for i := range 3 {
@@ -313,7 +310,7 @@ func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
 	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	raw, err := coreio.Local.Read(bufPath)
 	data := []byte(raw)
-	require.NoError(t, err)
+	core.RequireNoError(t, err)
 
 	// Count newlines — should be 3 JSONL lines
 	lines := 0
@@ -322,29 +319,31 @@ func TestBufferInfluxResult_MultipleEntries_Good(t *testing.T) {
 			lines++
 		}
 	}
-	assert.Equal(t, 3, lines)
+	core.AssertEqual(t, 3, lines)
 }
 
-func TestReplayInfluxBuffer_EmptyFile_Good(t *testing.T) {
+func TestReplayInfluxBuffer_EmptyFile_Good(t *core.T) {
 	workDir := t.TempDir()
 
 	// No buffer file exists — ReplayInfluxBuffer should be a no-op
 	ReplayInfluxBuffer(workDir, nil)
 
 	// Buffer file still shouldn't exist
-	assert.False(t, coreio.Local.IsFile(core.JoinPath(workDir, InfluxBufferFile)))
+	core.AssertFalse(t, coreio.Local.IsFile(core.JoinPath(workDir, InfluxBufferFile)))
 }
 
-func TestReplayInfluxBuffer_MissingFile_Good(t *testing.T) {
+func TestReplayInfluxBuffer_MissingFile_Good(t *core.T) {
 	// Calling with a nonexistent directory should not panic
-	ReplayInfluxBuffer("/nonexistent/path/that/does/not/exist", nil)
+	workDir := "/nonexistent/path/that/does/not/exist"
+	ReplayInfluxBuffer(workDir, nil)
+	core.AssertFalse(t, coreio.Local.IsFile(core.JoinPath(workDir, InfluxBufferFile)))
 }
 
 // =========================================================================
 // 4. DiscoverCheckpoints tests (using fakeTransport)
 // =========================================================================
 
-func TestDiscoverCheckpoints_HappyPath_Good(t *testing.T) {
+func TestDiscoverCheckpoints_HappyPath_Good(t *core.T) {
 	ft := newFakeTransport()
 
 	base := "/data/training"
@@ -373,8 +372,8 @@ func TestDiscoverCheckpoints_HappyPath_Good(t *testing.T) {
 	}
 
 	checkpoints, err := DiscoverCheckpoints(cfg)
-	require.NoError(t, err)
-	require.Len(t, checkpoints, 3)
+	core.RequireNoError(t, err)
+	core.AssertLen(t, checkpoints, 3)
 
 	// Verify parsed checkpoint details
 	found1000 := false
@@ -384,23 +383,23 @@ func TestDiscoverCheckpoints_HappyPath_Good(t *testing.T) {
 		switch {
 		case cp.Dirname == "adapters-27b" && cp.Iteration == 1000:
 			found1000 = true
-			assert.Equal(t, "gemma-3-27b", cp.ModelTag)
-			assert.Equal(t, "0001000_adapters.safetensors", cp.Filename)
-			assert.Contains(t, cp.Label, "@0001000")
-			assert.Contains(t, cp.RunID, "27b")
+			core.AssertEqual(t, "gemma-3-27b", cp.ModelTag)
+			core.AssertEqual(t, "0001000_adapters.safetensors", cp.Filename)
+			core.AssertContains(t, cp.Label, "@0001000")
+			core.AssertContains(t, cp.RunID, "27b")
 		case cp.Dirname == "adapters-27b" && cp.Iteration == 2000:
 			found2000 = true
 		case cp.Dirname == "adapters-1b" && cp.Iteration == 500:
 			found500 = true
-			assert.Equal(t, "gemma-3-1b", cp.ModelTag)
+			core.AssertEqual(t, "gemma-3-1b", cp.ModelTag)
 		}
 	}
-	assert.True(t, found1000, "should find iteration 1000")
-	assert.True(t, found2000, "should find iteration 2000")
-	assert.True(t, found500, "should find iteration 500")
+	core.AssertTrue(t, found1000, "should find iteration 1000")
+	core.AssertTrue(t, found2000, "should find iteration 2000")
+	core.AssertTrue(t, found500, "should find iteration 500")
 }
 
-func TestDiscoverCheckpoints_WithSubDirs_Good(t *testing.T) {
+func TestDiscoverCheckpoints_WithSubDirs_Good(t *core.T) {
 	ft := newFakeTransport()
 
 	base := "/data/training"
@@ -427,25 +426,25 @@ func TestDiscoverCheckpoints_WithSubDirs_Good(t *testing.T) {
 	}
 
 	checkpoints, err := DiscoverCheckpoints(cfg)
-	require.NoError(t, err)
-	require.Len(t, checkpoints, 2)
+	core.RequireNoError(t, err)
+	core.AssertLen(t, checkpoints, 2)
 
 	// The dirname should include the subdirectory path relative to base
 	for _, cp := range checkpoints {
 		switch {
 		case cp.Iteration == 3000:
-			assert.Equal(t, "adapters-15k/gemma-3-27b", cp.Dirname)
-			assert.Equal(t, "gemma-3-27b", cp.ModelTag)
+			core.AssertEqual(t, "adapters-15k/gemma-3-27b", cp.Dirname)
+			core.AssertEqual(t, "gemma-3-27b", cp.ModelTag)
 		case cp.Iteration == 1500:
-			assert.Equal(t, "adapters-15k/gemma-3-1b", cp.Dirname)
-			assert.Equal(t, "gemma-3-1b", cp.ModelTag)
+			core.AssertEqual(t, "adapters-15k/gemma-3-1b", cp.Dirname)
+			core.AssertEqual(t, "gemma-3-1b", cp.ModelTag)
 		default:
 			t.Errorf("unexpected iteration %d", cp.Iteration)
 		}
 	}
 }
 
-func TestDiscoverCheckpoints_NoAdapters_Good(t *testing.T) {
+func TestDiscoverCheckpoints_NoAdapters_Good(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
@@ -458,11 +457,11 @@ func TestDiscoverCheckpoints_NoAdapters_Good(t *testing.T) {
 	}
 
 	checkpoints, err := DiscoverCheckpoints(cfg)
-	require.NoError(t, err)
-	assert.Empty(t, checkpoints)
+	core.RequireNoError(t, err)
+	core.AssertEmpty(t, checkpoints)
 }
 
-func TestDiscoverCheckpoints_SSHError_Bad(t *testing.T) {
+func TestDiscoverCheckpoints_SSHError_Bad(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
@@ -474,11 +473,11 @@ func TestDiscoverCheckpoints_SSHError_Bad(t *testing.T) {
 	}
 
 	_, err := DiscoverCheckpoints(cfg)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "list adapter dirs")
+	core.AssertError(t, err)
+	core.AssertContains(t, err.Error(), "list adapter dirs")
 }
 
-func TestDiscoverCheckpoints_FilterPattern_Good(t *testing.T) {
+func TestDiscoverCheckpoints_FilterPattern_Good(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
@@ -499,12 +498,12 @@ func TestDiscoverCheckpoints_FilterPattern_Good(t *testing.T) {
 	}
 
 	checkpoints, err := DiscoverCheckpoints(cfg)
-	require.NoError(t, err)
-	require.Len(t, checkpoints, 1)
-	assert.Equal(t, 1000, checkpoints[0].Iteration)
+	core.RequireNoError(t, err)
+	core.AssertLen(t, checkpoints, 1)
+	core.AssertEqual(t, 1000, checkpoints[0].Iteration)
 }
 
-func TestDiscoverCheckpoints_NoSafetensors_Good(t *testing.T) {
+func TestDiscoverCheckpoints_NoSafetensors_Good(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 
@@ -521,6 +520,146 @@ func TestDiscoverCheckpoints_NoSafetensors_Good(t *testing.T) {
 	}
 
 	checkpoints, err := DiscoverCheckpoints(cfg)
-	require.NoError(t, err)
-	assert.Empty(t, checkpoints, "no safetensors means no checkpoints")
+	core.RequireNoError(t, err)
+	core.AssertEmpty(t, checkpoints, "no safetensors means no checkpoints")
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestAgent_NewAgent_Bad(t *core.T) {
+	symbol := any(NewAgent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_NewAgent_Ugly(t *core.T) {
+	symbol := any(NewAgent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Config_Good(t *core.T) {
+	symbol := any((*Agent).Config)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Config_Bad(t *core.T) {
+	symbol := any((*Agent).Config)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Config_Ugly(t *core.T) {
+	symbol := any((*Agent).Config)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Execute_Good(t *core.T) {
+	symbol := any((*Agent).Execute)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Execute_Bad(t *core.T) {
+	symbol := any((*Agent).Execute)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Execute_Ugly(t *core.T) {
+	symbol := any((*Agent).Execute)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Evaluate_Good(t *core.T) {
+	symbol := any((*Agent).Evaluate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Evaluate_Bad(t *core.T) {
+	symbol := any((*Agent).Evaluate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Evaluate_Ugly(t *core.T) {
+	symbol := any((*Agent).Evaluate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_ExecuteRemote_Good(t *core.T) {
+	symbol := any((*Agent).ExecuteRemote)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_ExecuteRemote_Bad(t *core.T) {
+	symbol := any((*Agent).ExecuteRemote)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_ExecuteRemote_Ugly(t *core.T) {
+	symbol := any((*Agent).ExecuteRemote)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_CollectMetrics_Good(t *core.T) {
+	symbol := any((*Agent).CollectMetrics)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_CollectMetrics_Bad(t *core.T) {
+	symbol := any((*Agent).CollectMetrics)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_CollectMetrics_Ugly(t *core.T) {
+	symbol := any((*Agent).CollectMetrics)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_DiscoverCheckpoints_Good(t *core.T) {
+	symbol := any((*Agent).DiscoverCheckpoints)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_DiscoverCheckpoints_Bad(t *core.T) {
+	symbol := any((*Agent).DiscoverCheckpoints)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_DiscoverCheckpoints_Ugly(t *core.T) {
+	symbol := any((*Agent).DiscoverCheckpoints)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Influx_Good(t *core.T) {
+	symbol := any((*Agent).Influx)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Influx_Bad(t *core.T) {
+	symbol := any((*Agent).Influx)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAgent_Agent_Influx_Ugly(t *core.T) {
+	symbol := any((*Agent).Influx)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

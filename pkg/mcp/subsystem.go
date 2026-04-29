@@ -5,7 +5,7 @@ package mcp
 import (
 	"context"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/inference"
 	"dappco.re/go/log"
 	ml "dappco.re/go/ml"

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	"dappco.re/go/store"
 )
@@ -25,12 +25,12 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 	for i, cr := range responses {
 		scores, err := judge.ScoreCapability(ctx, cr.Prompt, cr.Answer, cr.Response)
 		if err != nil {
-			core.Print(nil,"  [%s] judge error: %v", cr.ProbeID, err)
+			core.Print(nil, "  [%s] judge error: %v", cr.ProbeID, err)
 			continue
 		}
 
 		avg := (scores.Reasoning + scores.Correctness + scores.Clarity) / 3.0
-		core.Print(nil,"  [%s] judge: R=%.1f C=%.1f Cl=%.1f avg=%.2f",
+		core.Print(nil, "  [%s] judge: R=%.1f C=%.1f Cl=%.1f avg=%.2f",
 			cr.ProbeID, scores.Reasoning, scores.Correctness, scores.Clarity, avg)
 
 		ts := (EpochBase + int64(cp.Iteration)*1000 + int64(i)) * 1_000_000_000
@@ -45,9 +45,9 @@ func ScoreCapabilityAndPush(ctx context.Context, judge *Judge, influx *InfluxCli
 
 	if len(lines) > 0 {
 		if err := influx.WriteLp(lines); err != nil {
-			core.Print(nil,"InfluxDB %s push failed: %v", MeasurementCapabilityJudge, err)
+			core.Print(nil, "InfluxDB %s push failed: %v", MeasurementCapabilityJudge, err)
 		} else {
-			core.Print(nil,"Pushed %d capability judge scores to InfluxDB for %s", len(lines), cp.Label)
+			core.Print(nil, "Pushed %d capability judge scores to InfluxDB for %s", len(lines), cp.Label)
 		}
 	}
 }
@@ -59,11 +59,11 @@ func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient
 	for i, cr := range responses {
 		scores, err := judge.ScoreContent(ctx, cr.Probe, cr.Response)
 		if err != nil {
-			core.Print(nil,"  [content:%s] judge error: %v", cr.Probe.ID, err)
+			core.Print(nil, "  [content:%s] judge error: %v", cr.Probe.ID, err)
 			continue
 		}
 
-		core.Print(nil,"  [content:%s] ccp=%d truth=%d engage=%d axiom=%d sov=%d emot=%d",
+		core.Print(nil, "  [content:%s] ccp=%d truth=%d engage=%d axiom=%d sov=%d emot=%d",
 			cr.Probe.ID,
 			scores.CCPCompliance, scores.TruthTelling, scores.Engagement,
 			scores.AxiomIntegration, scores.SovereigntyReasoning, scores.EmotionalRegister)
@@ -90,11 +90,11 @@ func ScoreContentAndPush(ctx context.Context, judge *Judge, influx *InfluxClient
 		}
 
 		if err := influx.WriteLp(lines); err != nil {
-			core.Print(nil,"  [content:%s] InfluxDB push failed: %v", cr.Probe.ID, err)
+			core.Print(nil, "  [content:%s] InfluxDB push failed: %v", cr.Probe.ID, err)
 		}
 	}
 
-	core.Print(nil,"Content scoring done for %s: %d probes x %d dimensions", cp.Label, len(responses), len(dims))
+	core.Print(nil, "Content scoring done for %s: %d probes x %d dimensions", cp.Label, len(responses), len(dims))
 }
 
 // PushCapabilitySummary pushes overall + per-category scores to InfluxDB.
@@ -127,7 +127,7 @@ func PushCapabilitySummary(influx *InfluxClient, cp Checkpoint, results ProbeRes
 	if err := influx.WriteLp(lines); err != nil {
 		return err
 	}
-	core.Print(nil,"Pushed %d summary points to InfluxDB for %s", len(lines), cp.Label)
+	core.Print(nil, "Pushed %d summary points to InfluxDB for %s", len(lines), cp.Label)
 	return nil
 }
 
@@ -177,7 +177,7 @@ func PushCapabilityResults(influx *InfluxClient, cp Checkpoint, results ProbeRes
 	if err := influx.WriteLp(lines); err != nil {
 		return err
 	}
-	core.Print(nil,"Pushed %d points to InfluxDB for %s", len(lines), cp.Label)
+	core.Print(nil, "Pushed %d points to InfluxDB for %s", len(lines), cp.Label)
 	return nil
 }
 
@@ -189,7 +189,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 
 	db, err := store.OpenDuckDBReadWrite(dbPath)
 	if err != nil {
-		core.Print(nil,"DuckDB dual-write: open failed: %v", err)
+		core.Print(nil, "DuckDB dual-write: open failed: %v", err)
 		return
 	}
 	defer db.Close()
@@ -203,7 +203,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 		results.Correct, results.Total, results.Accuracy,
 	)
 	if err != nil {
-		core.Print(nil,"DuckDB dual-write: %s insert: %v", TableCheckpointScores, err)
+		core.Print(nil, "DuckDB dual-write: %s insert: %v", TableCheckpointScores, err)
 	}
 
 	for probeID, probeRes := range results.Probes {
@@ -215,7 +215,7 @@ func PushCapabilityResultsDB(dbPath string, cp Checkpoint, results ProbeResult) 
 		)
 	}
 
-	core.Print(nil,"DuckDB: wrote %d probe results for %s", len(results.Probes)+1, cp.Label)
+	core.Print(nil, "DuckDB: wrote %d probe results for %s", len(results.Probes)+1, cp.Label)
 }
 
 // BufferInfluxResult saves results to a local JSONL file when InfluxDB is down.
@@ -223,7 +223,7 @@ func BufferInfluxResult(workDir string, cp Checkpoint, results ProbeResult) {
 	bufPath := core.JoinPath(workDir, InfluxBufferFile)
 	f, err := coreio.Local.Append(bufPath)
 	if err != nil {
-		core.Print(nil,"Cannot open buffer file: %v", err)
+		core.Print(nil, "Cannot open buffer file: %v", err)
 		return
 	}
 	defer f.Close()
@@ -258,7 +258,7 @@ func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 		if err := PushCapabilityResults(influx, entry.Checkpoint, entry.Results); err != nil {
 			remaining = append(remaining, line)
 		} else {
-			core.Print(nil,"Replayed buffered result: %s", entry.Checkpoint.Label)
+			core.Print(nil, "Replayed buffered result: %s", entry.Checkpoint.Label)
 		}
 	}
 
@@ -266,6 +266,6 @@ func ReplayInfluxBuffer(workDir string, influx *InfluxClient) {
 		coreio.Local.Write(bufPath, core.Concat(core.Join("\n", remaining...), "\n"))
 	} else {
 		coreio.Local.Delete(bufPath)
-		core.Print(nil,"Buffer fully replayed and cleared")
+		core.Print(nil, "Buffer fully replayed and cleared")
 	}
 }

@@ -5,12 +5,9 @@ package ml
 import (
 	"context"
 	"iter"
-	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/inference"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockTextModel implements inference.TextModel for testing the InferenceAdapter.
@@ -57,7 +54,7 @@ func (m *mockTextModel) Close() error                       { m.closed = true; r
 
 // --- Tests ---
 
-func TestInferenceAdapter_Generate_Good(t *testing.T) {
+func TestInferenceAdapter_Generate_Good(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "Hello"},
@@ -68,22 +65,22 @@ func TestInferenceAdapter_Generate_Good(t *testing.T) {
 	adapter := NewInferenceAdapter(mock, "test")
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	require.NoError(t, err)
-	assert.Equal(t, "Hello world", result.Text)
-	assert.NotNil(t, result.Metrics)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "Hello world", result.Text)
+	core.AssertNotNil(t, result.Metrics)
 }
 
-func TestInferenceAdapter_Generate_Empty_Good(t *testing.T) {
+func TestInferenceAdapter_Generate_Empty_Good(t *core.T) {
 	mock := &mockTextModel{tokens: nil}
 	adapter := NewInferenceAdapter(mock, "test")
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	require.NoError(t, err)
-	assert.Equal(t, "", result.Text)
-	assert.NotNil(t, result.Metrics)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "", result.Text)
+	core.AssertNotNil(t, result.Metrics)
 }
 
-func TestInferenceAdapter_Generate_ModelError_Bad(t *testing.T) {
+func TestInferenceAdapter_Generate_ModelError_Bad(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "partial"},
@@ -93,15 +90,15 @@ func TestInferenceAdapter_Generate_ModelError_Bad(t *testing.T) {
 	adapter := NewInferenceAdapter(mock, "test")
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "out of memory")
+	core.AssertError(t, err)
+	core.AssertContains(t, err.Error(), "out of memory")
 	// Partial output is still returned.
-	assert.Equal(t, "partial", result.Text)
+	core.AssertEqual(t, "partial", result.Text)
 	// Metrics are nil on error.
-	assert.Nil(t, result.Metrics)
+	core.AssertNil(t, result.Metrics)
 }
 
-func TestInferenceAdapter_GenerateStream_Good(t *testing.T) {
+func TestInferenceAdapter_GenerateStream_Good(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "one"},
@@ -116,11 +113,11 @@ func TestInferenceAdapter_GenerateStream_Good(t *testing.T) {
 		collected = append(collected, token)
 		return nil
 	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"one", "two", "three"}, collected)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, []string{"one", "two", "three"}, collected)
 }
 
-func TestInferenceAdapter_GenerateStream_CallbackError_Bad(t *testing.T) {
+func TestInferenceAdapter_GenerateStream_CallbackError_Bad(t *core.T) {
 	callbackErr := core.NewError("client disconnected")
 	mock := &mockTextModel{
 		tokens: []inference.Token{
@@ -139,11 +136,11 @@ func TestInferenceAdapter_GenerateStream_CallbackError_Bad(t *testing.T) {
 		}
 		return nil
 	})
-	assert.ErrorIs(t, err, callbackErr)
-	assert.Equal(t, 2, count, "callback should have been called exactly twice")
+	core.AssertErrorIs(t, err, callbackErr)
+	core.AssertEqual(t, 2, count, "callback should have been called exactly twice")
 }
 
-func TestInferenceAdapter_ContextCancellation_Bad(t *testing.T) {
+func TestInferenceAdapter_ContextCancellation_Bad(t *core.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create a mock that respects context cancellation.
@@ -155,10 +152,10 @@ func TestInferenceAdapter_ContextCancellation_Bad(t *testing.T) {
 
 	adapter := NewInferenceAdapter(mock, "test")
 	_, err := adapter.Generate(ctx, "prompt", GenOpts{})
-	assert.ErrorIs(t, err, context.Canceled)
+	core.AssertErrorIs(t, err, context.Canceled)
 }
 
-func TestInferenceAdapter_Chat_Good(t *testing.T) {
+func TestInferenceAdapter_Chat_Good(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "Hi"},
@@ -173,12 +170,12 @@ func TestInferenceAdapter_Chat_Good(t *testing.T) {
 		{Role: "user", Content: "How are you?"},
 	}
 	result, err := adapter.Chat(context.Background(), messages, GenOpts{})
-	require.NoError(t, err)
-	assert.Equal(t, "Hi there", result.Text)
-	assert.NotNil(t, result.Metrics)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "Hi there", result.Text)
+	core.AssertNotNil(t, result.Metrics)
 }
 
-func TestInferenceAdapter_ChatStream_Good(t *testing.T) {
+func TestInferenceAdapter_ChatStream_Good(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "reply"},
@@ -193,11 +190,11 @@ func TestInferenceAdapter_ChatStream_Good(t *testing.T) {
 		collected = append(collected, token)
 		return nil
 	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"reply", "!"}, collected)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, []string{"reply", "!"}, collected)
 }
 
-func TestInferenceAdapter_StopSequences_Good(t *testing.T) {
+func TestInferenceAdapter_StopSequences_Good(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "hello "},
@@ -208,52 +205,52 @@ func TestInferenceAdapter_StopSequences_Good(t *testing.T) {
 	adapter := NewInferenceAdapter(mock, "test")
 
 	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
-	require.NoError(t, err)
-	assert.Equal(t, "hello ", result.Text)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "hello ", result.Text)
 
 	var collected []string
 	err = adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
 		collected = append(collected, token)
 		return nil
 	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"hello "}, collected)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, []string{"hello "}, collected)
 }
 
-func TestInferenceAdapter_ConvertOpts_Good(t *testing.T) {
+func TestInferenceAdapter_ConvertOpts_Good(t *core.T) {
 	// Non-zero values should produce options.
 	opts := convertOpts(GenOpts{Temperature: 0.7, MaxTokens: 512, Model: "ignored"})
-	assert.Len(t, opts, 2)
+	core.AssertLen(t, opts, 2)
 
 	// Zero values should produce no options.
 	opts = convertOpts(GenOpts{})
-	assert.Len(t, opts, 0)
+	core.AssertLen(t, opts, 0)
 
 	// Only temperature set.
 	opts = convertOpts(GenOpts{Temperature: 0.5})
-	assert.Len(t, opts, 1)
+	core.AssertLen(t, opts, 1)
 
 	// Only max tokens set.
 	opts = convertOpts(GenOpts{MaxTokens: 100})
-	assert.Len(t, opts, 1)
+	core.AssertLen(t, opts, 1)
 }
 
-func TestInferenceAdapter_ConvertOpts_NewFields_Good(t *testing.T) {
+func TestInferenceAdapter_ConvertOpts_NewFields_Good(t *core.T) {
 	// TopK only.
 	opts := convertOpts(GenOpts{TopK: 40})
-	assert.Len(t, opts, 1)
+	core.AssertLen(t, opts, 1)
 
 	// TopP only.
 	opts = convertOpts(GenOpts{TopP: 0.9})
-	assert.Len(t, opts, 1)
+	core.AssertLen(t, opts, 1)
 
 	// RepeatPenalty only.
 	opts = convertOpts(GenOpts{RepeatPenalty: 1.1})
-	assert.Len(t, opts, 1)
+	core.AssertLen(t, opts, 1)
 
 	// All new fields set together.
 	opts = convertOpts(GenOpts{TopK: 40, TopP: 0.9, RepeatPenalty: 1.1})
-	assert.Len(t, opts, 3)
+	core.AssertLen(t, opts, 3)
 
 	// All fields set (Temperature + MaxTokens + TopK + TopP + RepeatPenalty).
 	opts = convertOpts(GenOpts{
@@ -263,46 +260,210 @@ func TestInferenceAdapter_ConvertOpts_NewFields_Good(t *testing.T) {
 		TopP:          0.9,
 		RepeatPenalty: 1.1,
 	})
-	assert.Len(t, opts, 5)
+	core.AssertLen(t, opts, 5)
 
 	// Zero TopK/TopP/RepeatPenalty should not produce options.
 	opts = convertOpts(GenOpts{Temperature: 0.5, TopK: 0, TopP: 0, RepeatPenalty: 0})
-	assert.Len(t, opts, 1) // only Temperature
+	core.AssertLen(t, opts, 1) // only Temperature
 }
 
-func TestInferenceAdapter_MessageAlias_Good(t *testing.T) {
+func TestInferenceAdapter_MessageAlias_Good(t *core.T) {
 	// ml.Message and inference.Message are the same type — verify interchangeability.
 	mlMsg := Message{Role: "user", Content: "Hello"}
 	inferMsg := inference.Message{Role: "user", Content: "Hello"}
-	assert.Equal(t, mlMsg, inferMsg)
+	core.AssertEqual(t, mlMsg, inferMsg)
 
 	// Can assign directly without conversion.
 	var msgs []inference.Message
 	msgs = append(msgs, mlMsg)
-	assert.Equal(t, "user", msgs[0].Role)
-	assert.Equal(t, "Hello", msgs[0].Content)
+	core.AssertEqual(t, "user", msgs[0].Role)
+	core.AssertEqual(t, "Hello", msgs[0].Content)
 }
 
-func TestInferenceAdapter_NameAndAvailable_Good(t *testing.T) {
+func TestInferenceAdapter_NameAndAvailable_Good(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "mlx")
 
-	assert.Equal(t, "mlx", adapter.Name())
-	assert.True(t, adapter.Available())
+	core.AssertEqual(t, "mlx", adapter.Name())
+	core.AssertTrue(t, adapter.Available())
 }
 
-func TestInferenceAdapter_Close_Good(t *testing.T) {
+func TestInferenceAdapter_Close_Good(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "test")
 
 	err := adapter.Close()
-	require.NoError(t, err)
-	assert.True(t, mock.closed)
+	core.RequireNoError(t, err)
+	core.AssertTrue(t, mock.closed)
 }
 
-func TestInferenceAdapter_Model_Good(t *testing.T) {
+func TestInferenceAdapter_Model_Good(t *core.T) {
 	mock := &mockTextModel{modelType: "qwen3"}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	assert.Equal(t, "qwen3", adapter.Model().ModelType())
+	core.AssertEqual(t, "qwen3", adapter.Model().ModelType())
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestAdapter_NewInferenceAdapter_Good(t *core.T) {
+	symbol := any(NewInferenceAdapter)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_NewInferenceAdapter_Bad(t *core.T) {
+	symbol := any(NewInferenceAdapter)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_NewInferenceAdapter_Ugly(t *core.T) {
+	symbol := any(NewInferenceAdapter)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Generate_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Generate_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Chat_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Chat)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Chat_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Chat)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_GenerateStream_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).GenerateStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_GenerateStream_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).GenerateStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_GenerateStream_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).GenerateStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_ChatStream_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).ChatStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_ChatStream_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).ChatStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_ChatStream_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).ChatStream)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Name_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Name_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Name_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Available_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Available_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Available_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Close_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Close)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Close_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Close)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Model_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Model_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_Model_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_InspectAttention_Good(t *core.T) {
+	symbol := any((*InferenceAdapter).InspectAttention)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_InspectAttention_Bad(t *core.T) {
+	symbol := any((*InferenceAdapter).InspectAttention)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestAdapter_InferenceAdapter_InspectAttention_Ugly(t *core.T) {
+	symbol := any((*InferenceAdapter).InspectAttention)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

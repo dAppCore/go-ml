@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 func mustJSONUnmarshalBytes(t testing.TB, data []byte, out any) {

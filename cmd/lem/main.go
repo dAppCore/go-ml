@@ -6,8 +6,8 @@
 package main
 
 import (
-	"dappco.re/go/ml/cmd"
 	"dappco.re/go/cli/pkg/cli"
+	"dappco.re/go/ml/cmd"
 )
 
 func main() {

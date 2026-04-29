@@ -5,7 +5,7 @@ package cmd
 import (
 	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // TestEvaluate_decodeResponsesJSONL_Good parses a well-formed JSONL blob.

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // Pre-compiled regex patterns for GSM8K answer extraction.

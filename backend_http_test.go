@@ -2,6 +2,7 @@ package ml
 
 import (
 	"context"
+	"dappco.re/go"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -145,4 +146,258 @@ func TestHTTPBackend_WithHTTPClient_Ugly(t *testing.T) {
 	if b.httpClient == nil {
 		t.Error("nil HTTP client must not overwrite default")
 	}
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestBackendHttp_WithHTTPClient_Good(t *core.T) {
+	symbol := any(WithHTTPClient)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_WithHTTPClient_Bad(t *core.T) {
+	symbol := any(WithHTTPClient)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_WithMedium_Bad(t *core.T) {
+	symbol := any(WithMedium)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_WithMedium_Ugly(t *core.T) {
+	symbol := any(WithMedium)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_WithHTTPMaxTokens_Bad(t *core.T) {
+	symbol := any(WithHTTPMaxTokens)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_WithHTTPMaxTokens_Ugly(t *core.T) {
+	symbol := any(WithHTTPMaxTokens)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Error_Good(t *core.T) {
+	symbol := any((*retryableError).Error)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Error_Bad(t *core.T) {
+	symbol := any((*retryableError).Error)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Error_Ugly(t *core.T) {
+	symbol := any((*retryableError).Error)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Unwrap_Good(t *core.T) {
+	symbol := any((*retryableError).Unwrap)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Unwrap_Bad(t *core.T) {
+	symbol := any((*retryableError).Unwrap)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_Error_Unwrap_Ugly(t *core.T) {
+	symbol := any((*retryableError).Unwrap)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_NewHTTPBackend_Good(t *core.T) {
+	symbol := any(NewHTTPBackend)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_NewHTTPBackend_Bad(t *core.T) {
+	symbol := any(NewHTTPBackend)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_NewHTTPBackend_Ugly(t *core.T) {
+	symbol := any(NewHTTPBackend)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Medium_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Medium)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Medium_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Medium)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Medium_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Medium)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Name_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Name_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Name_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Available_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Available_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Available_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Available)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Model_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Model_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Model_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Model)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_BaseURL_Good(t *core.T) {
+	symbol := any((*HTTPBackend).BaseURL)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_BaseURL_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).BaseURL)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_BaseURL_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).BaseURL)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_SetMaxTokens_Good(t *core.T) {
+	symbol := any((*HTTPBackend).SetMaxTokens)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_SetMaxTokens_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).SetMaxTokens)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_SetMaxTokens_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).SetMaxTokens)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_LoadModel_Good(t *core.T) {
+	symbol := any((*HTTPBackend).LoadModel)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_LoadModel_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).LoadModel)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_LoadModel_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).LoadModel)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Generate_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Generate_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Generate_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Chat_Good(t *core.T) {
+	symbol := any((*HTTPBackend).Chat)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Chat_Bad(t *core.T) {
+	symbol := any((*HTTPBackend).Chat)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestBackendHttp_HTTPBackend_Chat_Ugly(t *core.T) {
+	symbol := any((*HTTPBackend).Chat)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

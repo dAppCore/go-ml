@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strconv"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 )
@@ -174,7 +174,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 	if err != nil {
 		return coreerr.E("ml.ConvertMLXtoPEFT", "read safetensors", err)
 	}
-	core.Print(nil,"loaded %d tensors from %s", len(tensors), safetensorsPath)
+	core.Print(nil, "loaded %d tensors from %s", len(tensors), safetensorsPath)
 
 	peftTensors := make(map[string]SafetensorsTensorInfo)
 	peftData := make(map[string][]byte)
@@ -269,7 +269,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		return coreerr.E("ml.ConvertMLXtoPEFT", "write adapter_config.json", err)
 	}
 
-	core.Print(nil,"converted %d tensors, %d layers, target modules: %v",
+	core.Print(nil, "converted %d tensors, %d layers, target modules: %v",
 		len(peftTensors), len(sortedLayers), sortedModules)
 
 	return nil

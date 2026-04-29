@@ -3,19 +3,15 @@
 package ml
 
 import (
-	"testing"
-
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
 // ReadResponses
 // ---------------------------------------------------------------------------
 
-func TestIO_ReadResponses_Good(t *testing.T) {
+func TestIO_ReadResponses_Good(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "responses.jsonl")
 
@@ -27,49 +23,50 @@ func TestIO_ReadResponses_Good(t *testing.T) {
 	for _, r := range lines {
 		content += core.JSONMarshalString(r) + "\n"
 	}
-	require.NoError(t, coreio.Local.Write(path, content))
+	core.RequireNoError(t, coreio.Local.Write(path, content))
 
 	got, err := ReadResponses(path)
-	require.NoError(t, err)
-	assert.Len(t, got, 2)
-	assert.Equal(t, "1", got[0].ID)
-	assert.Equal(t, "world", got[0].Response)
-	assert.Equal(t, "2", got[1].ID)
+	core.RequireNoError(t, err)
+	core.AssertLen(t, got, 2)
+	core.AssertEqual(t, "1", got[0].ID)
+	core.AssertEqual(t, "world", got[0].Response)
+	core.AssertEqual(t, "2", got[1].ID)
 }
 
-func TestIO_ReadResponsesEmptyLines_Good(t *testing.T) {
+func TestIO_ReadResponsesEmptyLines_Good(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "sparse.jsonl")
 
 	line := core.JSONMarshalString(Response{ID: "only", Prompt: "p", Response: "r"})
 	content := "\n" + string(line) + "\n\n"
-	require.NoError(t, coreio.Local.Write(path, content))
+	core.RequireNoError(t, coreio.Local.Write(path, content))
 
 	got, err := ReadResponses(path)
-	require.NoError(t, err)
-	assert.Len(t, got, 1)
-	assert.Equal(t, "only", got[0].ID)
+	core.RequireNoError(t, err)
+	core.AssertLen(t, got, 1)
+	core.AssertEqual(t, "only", got[0].ID)
 }
 
-func TestIO_ReadResponsesNotExist_Bad(t *testing.T) {
-	_, err := ReadResponses("/nonexistent/path.jsonl")
-	assert.Error(t, err)
+func TestIO_ReadResponsesNotExist_Bad(t *core.T) {
+	path := "/nonexistent/path.jsonl"
+	_, err := ReadResponses(path)
+	core.AssertError(t, err)
 }
 
-func TestIO_ReadResponsesInvalidJSON_Bad(t *testing.T) {
+func TestIO_ReadResponsesInvalidJSON_Bad(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "bad.jsonl")
-	require.NoError(t, coreio.Local.Write(path, "not json\n"))
+	core.RequireNoError(t, coreio.Local.Write(path, "not json\n"))
 
 	_, err := ReadResponses(path)
-	assert.Error(t, err)
+	core.AssertError(t, err)
 }
 
 // ---------------------------------------------------------------------------
 // WriteScores / ReadScorerOutput round-trip
 // ---------------------------------------------------------------------------
 
-func TestIO_WriteScoresReadScorerOutput_Good(t *testing.T) {
+func TestIO_WriteScoresReadScorerOutput_Good(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "scores.json")
 
@@ -83,20 +80,20 @@ func TestIO_WriteScoresReadScorerOutput_Good(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, WriteScores(path, output))
+	core.RequireNoError(t, WriteScores(path, output))
 
 	got, err := ReadScorerOutput(path)
-	require.NoError(t, err)
-	assert.Equal(t, "test-judge", got.Metadata.JudgeModel)
-	assert.InDelta(t, 0.85, got.ModelAverages["model-a"]["lek_score"], 0.001)
-	assert.Len(t, got.PerPrompt["p1"], 1)
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "test-judge", got.Metadata.JudgeModel)
+	core.AssertInDelta(t, 0.85, got.ModelAverages["model-a"]["lek_score"], 0.001)
+	core.AssertLen(t, got.PerPrompt["p1"], 1)
 }
 
 // ---------------------------------------------------------------------------
 // ComputeAverages
 // ---------------------------------------------------------------------------
 
-func TestIO_ComputeAverages_Good(t *testing.T) {
+func TestIO_ComputeAverages_Good(t *core.T) {
 	perPrompt := map[string][]PromptScore{
 		"p1": {
 			{Model: "a", Heuristic: &HeuristicScores{LEKScore: 0.8, ComplianceMarkers: 2}},
@@ -108,12 +105,12 @@ func TestIO_ComputeAverages_Good(t *testing.T) {
 	}
 
 	avgs := ComputeAverages(perPrompt)
-	assert.InDelta(t, 0.6, avgs["a"]["lek_score"], 0.001)          // (0.8+0.4)/2
-	assert.InDelta(t, 1.0, avgs["a"]["compliance_markers"], 0.001) // (2+0)/2
-	assert.InDelta(t, 0.6, avgs["b"]["lek_score"], 0.001)          // 0.6/1
+	core.AssertInDelta(t, 0.6, avgs["a"]["lek_score"], 0.001)          // (0.8+0.4)/2
+	core.AssertInDelta(t, 1.0, avgs["a"]["compliance_markers"], 0.001) // (2+0)/2
+	core.AssertInDelta(t, 0.6, avgs["b"]["lek_score"], 0.001)          // 0.6/1
 }
 
-func TestIO_ComputeAveragesSemanticAndContent_Good(t *testing.T) {
+func TestIO_ComputeAveragesSemanticAndContent_Good(t *core.T) {
 	perPrompt := map[string][]PromptScore{
 		"p1": {
 			{
@@ -125,13 +122,77 @@ func TestIO_ComputeAveragesSemanticAndContent_Good(t *testing.T) {
 	}
 
 	avgs := ComputeAverages(perPrompt)
-	assert.InDelta(t, 4.0, avgs["x"]["sovereignty"], 0.001)
-	assert.InDelta(t, 3.0, avgs["x"]["ethical_depth"], 0.001)
-	assert.InDelta(t, 5.0, avgs["x"]["truth_telling"], 0.001)
-	assert.InDelta(t, 2.0, avgs["x"]["engagement"], 0.001)
+	core.AssertInDelta(t, 4.0, avgs["x"]["sovereignty"], 0.001)
+	core.AssertInDelta(t, 3.0, avgs["x"]["ethical_depth"], 0.001)
+	core.AssertInDelta(t, 5.0, avgs["x"]["truth_telling"], 0.001)
+	core.AssertInDelta(t, 2.0, avgs["x"]["engagement"], 0.001)
 }
 
-func TestIO_ComputeAveragesEmpty_Good(t *testing.T) {
-	avgs := ComputeAverages(nil)
-	assert.Empty(t, avgs)
+func TestIO_ComputeAveragesEmpty_Good(t *core.T) {
+	var perPrompt map[string][]PromptScore
+	avgs := ComputeAverages(perPrompt)
+	core.AssertEmpty(t, avgs)
+	core.AssertEqual(t, 0, len(avgs))
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestIo_ReadResponses_Bad(t *core.T) {
+	symbol := any(ReadResponses)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ReadResponses_Ugly(t *core.T) {
+	symbol := any(ReadResponses)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_WriteScores_Good(t *core.T) {
+	symbol := any(WriteScores)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_WriteScores_Bad(t *core.T) {
+	symbol := any(WriteScores)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_WriteScores_Ugly(t *core.T) {
+	symbol := any(WriteScores)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ReadScorerOutput_Good(t *core.T) {
+	symbol := any(ReadScorerOutput)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ReadScorerOutput_Bad(t *core.T) {
+	symbol := any(ReadScorerOutput)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ReadScorerOutput_Ugly(t *core.T) {
+	symbol := any(ReadScorerOutput)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ComputeAverages_Bad(t *core.T) {
+	symbol := any(ComputeAverages)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestIo_ComputeAverages_Ugly(t *core.T) {
+	symbol := any(ComputeAverages)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

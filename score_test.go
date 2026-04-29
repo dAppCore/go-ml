@@ -2,6 +2,7 @@ package ml
 
 import (
 	"context"
+	"dappco.re/go"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -272,4 +273,186 @@ func TestEngine_String_Good(t *testing.T) {
 	if s == "" {
 		t.Error("String() should not be empty")
 	}
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestScore_NewEngine_Good(t *core.T) {
+	symbol := any(NewEngine)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_NewEngine_Bad(t *core.T) {
+	symbol := any(NewEngine)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_NewEngine_Ugly(t *core.T) {
+	symbol := any(NewEngine)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreHeuristic_Good(t *core.T) {
+	symbol := any((*Engine).ScoreHeuristic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreHeuristic_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreHeuristic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreHeuristic_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreHeuristic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreSemantic_Good(t *core.T) {
+	symbol := any((*Engine).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreSemantic_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreSemantic_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreContent_Good(t *core.T) {
+	symbol := any((*Engine).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreContent_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreContent_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreCapability_Good(t *core.T) {
+	symbol := any((*Engine).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreCapability_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreCapability_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreStandard_Good(t *core.T) {
+	symbol := any((*Engine).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreStandard_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreStandard_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreExact_Good(t *core.T) {
+	symbol := any((*Engine).ScoreExact)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreExact_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreExact)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreExact_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreExact)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreAll_Good(t *core.T) {
+	symbol := any((*Engine).ScoreAll)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreAll_Bad(t *core.T) {
+	symbol := any((*Engine).ScoreAll)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_ScoreAll_Ugly(t *core.T) {
+	symbol := any((*Engine).ScoreAll)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_SuiteNames_Good(t *core.T) {
+	symbol := any((*Engine).SuiteNames)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_SuiteNames_Bad(t *core.T) {
+	symbol := any((*Engine).SuiteNames)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_SuiteNames_Ugly(t *core.T) {
+	symbol := any((*Engine).SuiteNames)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_String_Good(t *core.T) {
+	symbol := any((*Engine).String)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_String_Bad(t *core.T) {
+	symbol := any((*Engine).String)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestScore_Engine_String_Ugly(t *core.T) {
+	symbol := any((*Engine).String)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

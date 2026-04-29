@@ -3,7 +3,7 @@ package ml
 import (
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // ----- Scoring epoch & timing -----

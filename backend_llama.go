@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/inference"
 	"dappco.re/go/log"
 	"dappco.re/go/process"

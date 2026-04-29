@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"slices"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // Probe defines a binary pass/fail capability check.

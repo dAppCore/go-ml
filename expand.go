@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 )
@@ -51,7 +51,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	// Check InfluxDB for already-completed IDs.
 	completed, err := GetCompletedIDs(influx)
 	if err != nil {
-		core.Print(nil,"warning: could not check completed IDs: %v", err)
+		core.Print(nil, "warning: could not check completed IDs: %v", err)
 	} else {
 		remaining = nil
 		for _, p := range prompts {
@@ -62,7 +62,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 		skipped := len(prompts) - len(remaining)
 		if skipped > 0 {
-			core.Print(nil,"skipping %d already-completed prompts, %d remaining", skipped, len(remaining))
+			core.Print(nil, "skipping %d already-completed prompts, %d remaining", skipped, len(remaining))
 		}
 	}
 
@@ -71,18 +71,18 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	}
 
 	if len(remaining) == 0 {
-		core.Print(nil,"all prompts already completed, nothing to do")
+		core.Print(nil, "all prompts already completed, nothing to do")
 		return nil
 	}
 
 	if dryRun {
-		core.Print(nil,"dry-run: would process %d prompts with model %s (worker: %s)", len(remaining), modelName, worker)
+		core.Print(nil, "dry-run: would process %d prompts with model %s (worker: %s)", len(remaining), modelName, worker)
 		for i, p := range remaining {
 			if i >= 10 {
-				core.Print(nil,"  ... and %d more", len(remaining)-10)
+				core.Print(nil, "  ... and %d more", len(remaining)-10)
 				break
 			}
-			core.Print(nil,"  %s (domain: %s)", p.ID, p.Domain)
+			core.Print(nil, "  %s (domain: %s)", p.ID, p.Domain)
 		}
 		return nil
 	}
@@ -103,7 +103,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 		elapsed := time.Since(start).Seconds()
 
 		if err != nil {
-			core.Print(nil,"[%d/%d] id=%s ERROR: %v", idx+1, total, p.ID, err)
+			core.Print(nil, "[%d/%d] id=%s ERROR: %v", idx+1, total, p.ID, err)
 			continue
 		}
 
@@ -136,13 +136,13 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			EscapeLp(worker), completedCount, total, pct)
 
 		if writeErr := influx.WriteLp([]string{genLine, progressLine}); writeErr != nil {
-			core.Print(nil,"[%d/%d] id=%s influx write error: %v", idx+1, total, p.ID, writeErr)
+			core.Print(nil, "[%d/%d] id=%s influx write error: %v", idx+1, total, p.ID, writeErr)
 		}
 
-		core.Print(nil,"[%d/%d] id=%s chars=%d time=%.1fs", idx+1, total, p.ID, chars, elapsed)
+		core.Print(nil, "[%d/%d] id=%s chars=%d time=%.1fs", idx+1, total, p.ID, chars, elapsed)
 	}
 
-	core.Print(nil,"expand complete: %d/%d prompts generated, output: %s", completedCount, total, outputPath)
+	core.Print(nil, "expand complete: %d/%d prompts generated, output: %s", completedCount, total, outputPath)
 
 	return nil
 }

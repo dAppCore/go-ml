@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -149,7 +149,9 @@ func (m *trainContentModel) View(width, height int) string {
 	}
 
 	_, _ = b.WriteString(renderLossChart(m.lossHist, m.valHist, chartWidth, chartHeight))
-	_ = b.WriteByte('\n')
+	if err := b.WriteByte('\n'); err != nil {
+		return b.String()
+	}
 
 	// --- Metrics table ---
 	_, _ = b.WriteString(core.Sprintf(" iteration:  %d / %d\n", t.Iter, t.TotalIters))
@@ -237,7 +239,9 @@ func renderLossChart(train, val []float64, width, height int) string {
 				_, _ = b.WriteRune(' ')
 			}
 		}
-		_ = b.WriteByte('\n')
+		if err := b.WriteByte('\n'); err != nil {
+			return b.String()
+		}
 	}
 
 	_, _ = b.WriteString(core.Sprintf(" %6.3f └%s\n", minV, repeatString("─", len(points))))

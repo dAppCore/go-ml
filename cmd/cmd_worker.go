@@ -3,7 +3,7 @@ package cmd
 import (
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/ml"
 )
 

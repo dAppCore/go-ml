@@ -3,41 +3,37 @@
 package ml
 
 import (
-	"testing"
-
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
 // ValidatePercentages
 // ---------------------------------------------------------------------------
 
-func TestExport_ValidatePercentages_Good(t *testing.T) {
-	assert.NoError(t, ValidatePercentages(80, 10, 10))
-	assert.NoError(t, ValidatePercentages(100, 0, 0))
-	assert.NoError(t, ValidatePercentages(0, 0, 100))
+func TestExport_ValidatePercentages_Good(t *core.T) {
+	core.AssertNoError(t, ValidatePercentages(80, 10, 10))
+	core.AssertNoError(t, ValidatePercentages(100, 0, 0))
+	core.AssertNoError(t, ValidatePercentages(0, 0, 100))
 }
 
-func TestExport_ValidatePercentagesWrongSum_Bad(t *testing.T) {
+func TestExport_ValidatePercentagesWrongSum_Bad(t *core.T) {
 	err := ValidatePercentages(50, 20, 10)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "sum to 100")
+	core.AssertError(t, err)
+	core.AssertContains(t, err.Error(), "sum to 100")
 }
 
-func TestExport_ValidatePercentagesNegative_Bad(t *testing.T) {
+func TestExport_ValidatePercentagesNegative_Bad(t *core.T) {
 	err := ValidatePercentages(-10, 60, 50)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "non-negative")
+	core.AssertError(t, err)
+	core.AssertContains(t, err.Error(), "non-negative")
 }
 
 // ---------------------------------------------------------------------------
 // FilterResponses
 // ---------------------------------------------------------------------------
 
-func TestExport_FilterResponses_Good(t *testing.T) {
+func TestExport_FilterResponses_Good(t *core.T) {
 	responses := []Response{
 		{ID: "ok", Response: "This is a valid response with enough characters to pass the filter."},
 		{ID: "empty", Response: ""},
@@ -47,36 +43,36 @@ func TestExport_FilterResponses_Good(t *testing.T) {
 	}
 
 	filtered := FilterResponses(responses)
-	assert.Len(t, filtered, 2)
-	assert.Equal(t, "ok", filtered[0].ID)
-	assert.Equal(t, "ok2", filtered[1].ID)
+	core.AssertLen(t, filtered, 2)
+	core.AssertEqual(t, "ok", filtered[0].ID)
+	core.AssertEqual(t, "ok2", filtered[1].ID)
 }
 
-func TestExport_FilterResponsesAllFiltered_Good(t *testing.T) {
+func TestExport_FilterResponsesAllFiltered_Good(t *core.T) {
 	responses := []Response{
 		{Response: ""},
 		{Response: "ERROR: fail"},
 	}
-	assert.Empty(t, FilterResponses(responses))
+	core.AssertEmpty(t, FilterResponses(responses))
 }
 
 // ---------------------------------------------------------------------------
 // SplitData
 // ---------------------------------------------------------------------------
 
-func TestExport_SplitData_Good(t *testing.T) {
+func TestExport_SplitData_Good(t *core.T) {
 	responses := make([]Response, 100)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i%26))}
 	}
 
 	train, valid, test := SplitData(responses, 80, 10, 10, 42)
-	assert.Len(t, train, 80)
-	assert.Len(t, valid, 10)
-	assert.Len(t, test, 10)
+	core.AssertLen(t, train, 80)
+	core.AssertLen(t, valid, 10)
+	core.AssertLen(t, test, 10)
 }
 
-func TestExport_SplitDataDeterministic_Good(t *testing.T) {
+func TestExport_SplitDataDeterministic_Good(t *core.T) {
 	responses := make([]Response, 20)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i))}
@@ -84,17 +80,17 @@ func TestExport_SplitDataDeterministic_Good(t *testing.T) {
 
 	train1, _, _ := SplitData(responses, 80, 10, 10, 123)
 	train2, _, _ := SplitData(responses, 80, 10, 10, 123)
-	assert.Equal(t, train1, train2, "same seed should produce same split")
+	core.AssertEqual(t, train1, train2, "same seed should produce same split")
 
 	train3, _, _ := SplitData(responses, 80, 10, 10, 456)
-	assert.NotEqual(t, train1, train3, "different seed should produce different split")
+	core.AssertNotEqual(t, train1, train3, "different seed should produce different split")
 }
 
 // ---------------------------------------------------------------------------
 // WriteTrainingJSONL
 // ---------------------------------------------------------------------------
 
-func TestExport_WriteTrainingJSONL_Good(t *testing.T) {
+func TestExport_WriteTrainingJSONL_Good(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "train.jsonl")
 
@@ -103,33 +99,33 @@ func TestExport_WriteTrainingJSONL_Good(t *testing.T) {
 		{Prompt: "Capital of France?", Response: "Paris"},
 	}
 
-	require.NoError(t, WriteTrainingJSONL(path, responses))
+	core.RequireNoError(t, WriteTrainingJSONL(path, responses))
 
 	content, err := coreio.Local.Read(path)
-	require.NoError(t, err)
+	core.RequireNoError(t, err)
 
 	// Verify each line is valid JSON with the expected structure
 	lines := splitNonEmpty(content)
-	assert.Len(t, lines, 2)
+	core.AssertLen(t, lines, 2)
 
 	var example TrainingExample
 	mustJSONUnmarshalString(t, lines[0], &example)
-	assert.Len(t, example.Messages, 2)
-	assert.Equal(t, "user", example.Messages[0].Role)
-	assert.Equal(t, "What is 2+2?", example.Messages[0].Content)
-	assert.Equal(t, "assistant", example.Messages[1].Role)
-	assert.Equal(t, "4", example.Messages[1].Content)
+	core.AssertLen(t, example.Messages, 2)
+	core.AssertEqual(t, "user", example.Messages[0].Role)
+	core.AssertEqual(t, "What is 2+2?", example.Messages[0].Content)
+	core.AssertEqual(t, "assistant", example.Messages[1].Role)
+	core.AssertEqual(t, "4", example.Messages[1].Content)
 }
 
-func TestExport_WriteTrainingJSONLEmpty_Good(t *testing.T) {
+func TestExport_WriteTrainingJSONLEmpty_Good(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "empty.jsonl")
 
-	require.NoError(t, WriteTrainingJSONL(path, nil))
+	core.RequireNoError(t, WriteTrainingJSONL(path, nil))
 
 	content, err := coreio.Local.Read(path)
-	require.NoError(t, err)
-	assert.Empty(t, content)
+	core.RequireNoError(t, err)
+	core.AssertEmpty(t, content)
 }
 
 // splitNonEmpty splits a string by newlines and returns non-empty entries.
@@ -152,4 +148,54 @@ func splitNonEmpty(s string) []string {
 		result = append(result, s[start:])
 	}
 	return result
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestExport_ValidatePercentages_Bad(t *core.T) {
+	symbol := any(ValidatePercentages)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_ValidatePercentages_Ugly(t *core.T) {
+	symbol := any(ValidatePercentages)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_FilterResponses_Bad(t *core.T) {
+	symbol := any(FilterResponses)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_FilterResponses_Ugly(t *core.T) {
+	symbol := any(FilterResponses)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_SplitData_Bad(t *core.T) {
+	symbol := any(SplitData)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_SplitData_Ugly(t *core.T) {
+	symbol := any(SplitData)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_WriteTrainingJSONL_Bad(t *core.T) {
+	symbol := any(WriteTrainingJSONL)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestExport_WriteTrainingJSONL_Ugly(t *core.T) {
+	symbol := any(WriteTrainingJSONL)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

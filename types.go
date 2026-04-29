@@ -82,7 +82,7 @@ type PromptScore struct {
 
 // ScorerOutput is the top-level output file.
 type ScorerOutput struct {
-	Metadata      Metadata                     `json:"metadata"`
+	Metadata      Metadata                      `json:"metadata"`
 	ModelAverages map[string]map[string]float64 `json:"model_averages"`
 	PerPrompt     map[string][]PromptScore      `json:"per_prompt"`
 }

@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/inference"
 	"dappco.re/go/ml"
 )

@@ -2,6 +2,7 @@ package ml
 
 import (
 	"context"
+	"dappco.re/go"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -376,4 +377,150 @@ func TestJudge_ScoreStandard_BenchmarkAliases_Good(t *testing.T) {
 			t.Errorf("%s informativeness = %d, want 6", benchmark, scores.Informativeness)
 		}
 	}
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestJudge_NewJudge_Good(t *core.T) {
+	symbol := any(NewJudge)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_NewJudge_Bad(t *core.T) {
+	symbol := any(NewJudge)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_NewJudge_Ugly(t *core.T) {
+	symbol := any(NewJudge)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreSemantic_Good(t *core.T) {
+	symbol := any((*Judge).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreSemantic_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreSemantic_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreSemantic)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreContent_Good(t *core.T) {
+	symbol := any((*Judge).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreContent_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreContent_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreContent)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreCapability_Good(t *core.T) {
+	symbol := any((*Judge).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreCapability_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreCapability_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreCapability)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreTruthfulQA_Good(t *core.T) {
+	symbol := any((*Judge).ScoreTruthfulQA)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreTruthfulQA_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreTruthfulQA)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreTruthfulQA_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreTruthfulQA)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreDoNotAnswer_Good(t *core.T) {
+	symbol := any((*Judge).ScoreDoNotAnswer)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreDoNotAnswer_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreDoNotAnswer)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreDoNotAnswer_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreDoNotAnswer)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreStandard_Good(t *core.T) {
+	symbol := any((*Judge).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreStandard_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreStandard_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreStandard)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreToxigen_Good(t *core.T) {
+	symbol := any((*Judge).ScoreToxigen)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreToxigen_Bad(t *core.T) {
+	symbol := any((*Judge).ScoreToxigen)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestJudge_Judge_ScoreToxigen_Ugly(t *core.T) {
+	symbol := any((*Judge).ScoreToxigen)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

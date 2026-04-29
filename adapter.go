@@ -6,7 +6,7 @@ import (
 	"context"
 	"strings"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/inference"
 	coreerr "dappco.re/go/log"
 )

@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strconv"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 	"dappco.re/go/mlx"
@@ -154,7 +154,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 	if err != nil {
 		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "read safetensors", err)
 	}
-	core.Print(nil,"loaded %d tensors from %s", len(tensors), safetensorsPath)
+	core.Print(nil, "loaded %d tensors from %s", len(tensors), safetensorsPath)
 
 	var ggufTensors []ggufTensor
 	for mlxKey, info := range tensors {
@@ -215,7 +215,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 		return coreerr.E("ml.ConvertMLXtoGGUFLoRA", "write GGUF", err)
 	}
 
-	core.Print(nil,"wrote GGUF LoRA: %s (%d tensors, alpha=%.0f)", outputPath, len(ggufTensors), loraAlpha)
+	core.Print(nil, "wrote GGUF LoRA: %s (%d tensors, alpha=%.0f)", outputPath, len(ggufTensors), loraAlpha)
 	return nil
 }
 

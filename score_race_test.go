@@ -4,14 +4,11 @@ package ml
 
 import (
 	"context"
+	"dappco.re/go"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
-	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
@@ -22,7 +19,7 @@ import (
 // worker pool in Engine.ScoreAll with semantic scoring.  Multiple goroutines
 // write to shared scoreSlots via the mutex.  The race detector should catch
 // any unprotected access.
-func TestScoreAll_ConcurrentSemantic_Good(t *testing.T) {
+func TestScoreAll_ConcurrentSemantic_Good(t *core.T) {
 	semanticJSON := `{"sovereignty": 5, "ethical_depth": 4, "creative_expression": 3, "self_concept": 2, "reasoning": "ok"}`
 
 	var requestCount atomic.Int64
@@ -55,22 +52,22 @@ func TestScoreAll_ConcurrentSemantic_Good(t *testing.T) {
 	results := engine.ScoreAll(ctx, responses)
 
 	scores := results["model-a"]
-	require.Len(t, scores, 20)
+	core.AssertLen(t, scores, 20)
 
 	for _, ps := range scores {
-		assert.NotNil(t, ps.Heuristic, "heuristic should be set")
-		assert.NotNil(t, ps.Semantic, "semantic should be set")
-		assert.Equal(t, 5, ps.Semantic.Sovereignty)
+		core.AssertNotNil(t, ps.Heuristic, "heuristic should be set")
+		core.AssertNotNil(t, ps.Semantic, "semantic should be set")
+		core.AssertEqual(t, 5, ps.Semantic.Sovereignty)
 	}
 
 	// Verify all requests were made (20 responses x 1 semantic call each).
-	assert.Equal(t, int64(20), requestCount.Load())
+	core.AssertEqual(t, int64(20), requestCount.Load())
 }
 
 // TestScoreAll_ConcurrentMixedSuites_Good exercises concurrent scoring
 // with multiple suite types that all fan out through the worker pool:
 // semantic + standard (TruthfulQA) + content.
-func TestScoreAll_ConcurrentMixedSuites_Good(t *testing.T) {
+func TestScoreAll_ConcurrentMixedSuites_Good(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Return a response that works for any judge type.
 		allJSON := `{
@@ -116,12 +113,12 @@ func TestScoreAll_ConcurrentMixedSuites_Good(t *testing.T) {
 	for _, scores := range results {
 		total += len(scores)
 	}
-	assert.Equal(t, len(responses), total)
+	core.AssertEqual(t, len(responses), total)
 }
 
 // TestScoreAll_SemaphoreBoundary_Good verifies that the semaphore correctly
 // limits concurrency.  With concurrency=1, requests should be serialised.
-func TestScoreAll_SemaphoreBoundary_Good(t *testing.T) {
+func TestScoreAll_SemaphoreBoundary_Good(t *core.T) {
 	semanticJSON := `{"sovereignty": 5, "ethical_depth": 4, "creative_expression": 3, "self_concept": 2, "reasoning": "ok"}`
 
 	var concurrent atomic.Int64
@@ -162,17 +159,17 @@ func TestScoreAll_SemaphoreBoundary_Good(t *testing.T) {
 	results := engine.ScoreAll(ctx, responses)
 
 	scores := results["m"]
-	require.Len(t, scores, 5)
+	core.AssertLen(t, scores, 5)
 
 	// With concurrency=1, max concurrent should be exactly 1.
-	assert.Equal(t, int64(1), maxConcurrent.Load(),
+	core.AssertEqual(t, int64(1), maxConcurrent.Load(),
 		"with concurrency=1, only one request should be in flight at a time")
 }
 
 // TestScoreAll_ContextCancellation_Good verifies that when the judge backend
 // returns errors (simulating context-cancelled failures), scoring completes
 // gracefully with nil semantic scores.
-func TestScoreAll_ContextCancellation_Good(t *testing.T) {
+func TestScoreAll_ContextCancellation_Good(t *core.T) {
 	// Server always returns a non-retryable error (400) to simulate failure.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -195,16 +192,16 @@ func TestScoreAll_ContextCancellation_Good(t *testing.T) {
 
 	// Scores should still be collected; semantic will be nil due to errors.
 	scores := results["m"]
-	require.Len(t, scores, 3)
+	core.AssertLen(t, scores, 3)
 	for _, ps := range scores {
 		// Semantic is nil because the judge call failed.
-		assert.Nil(t, ps.Semantic)
+		core.AssertNil(t, ps.Semantic)
 	}
 }
 
 // TestScoreAll_HeuristicOnlyNoRace_Good verifies that heuristic-only scoring
 // (no goroutines) produces correct results without races.
-func TestScoreAll_HeuristicOnlyNoRace_Good(t *testing.T) {
+func TestScoreAll_HeuristicOnlyNoRace_Good(t *core.T) {
 	engine := NewEngine(nil, 4, "heuristic")
 
 	var responses []Response
@@ -221,16 +218,16 @@ func TestScoreAll_HeuristicOnlyNoRace_Good(t *testing.T) {
 	results := engine.ScoreAll(ctx, responses)
 
 	scores := results["m"]
-	require.Len(t, scores, 50)
+	core.AssertLen(t, scores, 50)
 	for _, ps := range scores {
-		assert.NotNil(t, ps.Heuristic)
-		assert.Nil(t, ps.Semantic)
+		core.AssertNotNil(t, ps.Heuristic)
+		core.AssertNil(t, ps.Semantic)
 	}
 }
 
 // TestScoreAll_MultiModelConcurrent_Good exercises the results map (grouped
 // by model) being built concurrently from multiple goroutines.
-func TestScoreAll_MultiModelConcurrent_Good(t *testing.T) {
+func TestScoreAll_MultiModelConcurrent_Good(t *core.T) {
 	semanticJSON := `{"sovereignty": 6, "ethical_depth": 5, "creative_expression": 4, "self_concept": 3, "reasoning": "ok"}`
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -262,11 +259,11 @@ func TestScoreAll_MultiModelConcurrent_Good(t *testing.T) {
 	results := engine.ScoreAll(ctx, responses)
 
 	// Should have 4 models, each with 5 scores.
-	assert.Len(t, results, 4)
+	core.AssertLen(t, results, 4)
 	for _, model := range models {
 		scores, ok := results[model]
-		assert.True(t, ok, "model %s should be in results", model)
-		assert.Len(t, scores, 5)
+		core.AssertTrue(t, ok, "model %s should be in results", model)
+		core.AssertLen(t, scores, 5)
 	}
 }
 

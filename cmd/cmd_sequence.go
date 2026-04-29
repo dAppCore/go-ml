@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
@@ -319,5 +319,7 @@ func loadSequenceState(path string) sequenceState {
 }
 
 func saveSequenceState(path string, state sequenceState) {
-	_ = coreio.Local.Write(path, core.JSONMarshalString(state))
+	if err := coreio.Local.Write(path, core.JSONMarshalString(state)); err != nil {
+		slog.Warn("write sequence state failed", "path", path, "err", err)
+	}
 }

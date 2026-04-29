@@ -7,7 +7,7 @@ package cmd
 import (
 	"strconv"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	"dappco.re/go/ml"
 )

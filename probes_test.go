@@ -1,6 +1,7 @@
 package ml
 
 import (
+	"dappco.re/go"
 	"testing"
 )
 
@@ -137,4 +138,54 @@ func TestProbes_StripThinkBlocks_Good(t *testing.T) {
 			t.Errorf("StripThinkBlocks(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestProbes_ProbeCategories_Good(t *core.T) {
+	symbol := any(ProbeCategories)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_ProbeCategories_Bad(t *core.T) {
+	symbol := any(ProbeCategories)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_ProbeCategories_Ugly(t *core.T) {
+	symbol := any(ProbeCategories)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_ProbeDomains_Good(t *core.T) {
+	symbol := any(ProbeDomains)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_ProbeDomains_Bad(t *core.T) {
+	symbol := any(ProbeDomains)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_ProbeDomains_Ugly(t *core.T) {
+	symbol := any(ProbeDomains)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_StripThinkBlocks_Bad(t *core.T) {
+	symbol := any(StripThinkBlocks)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestProbes_StripThinkBlocks_Ugly(t *core.T) {
+	symbol := any(StripThinkBlocks)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

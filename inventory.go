@@ -3,7 +3,7 @@ package ml
 import (
 	"io"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreerr "dappco.re/go/log"
 )
 

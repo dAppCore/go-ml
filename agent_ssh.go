@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 	goexec "dappco.re/go/process/exec"

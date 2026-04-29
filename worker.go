@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	coreerr "dappco.re/go/log"
 )
@@ -47,32 +47,32 @@ type APITask struct {
 
 // RunWorkerLoop is the main worker loop that polls for tasks and processes them.
 func RunWorkerLoop(cfg *WorkerConfig) {
-	core.Print(nil,"LEM Worker starting")
-	core.Print(nil,"  ID:       %s", cfg.WorkerID)
-	core.Print(nil,"  Name:     %s", cfg.Name)
-	core.Print(nil,"  API:      %s", cfg.APIBase)
-	core.Print(nil,"  Infer:    %s", cfg.InferURL)
-	core.Print(nil,"  GPU:      %s (%d GB)", cfg.GPUType, cfg.VRAMGb)
-	core.Print(nil,"  Langs:    %v", cfg.Languages)
-	core.Print(nil,"  Models:   %v", cfg.Models)
-	core.Print(nil,"  Batch:    %d", cfg.BatchSize)
-	core.Print(nil,"  Dry-run:  %v", cfg.DryRun)
+	core.Print(nil, "LEM Worker starting")
+	core.Print(nil, "  ID:       %s", cfg.WorkerID)
+	core.Print(nil, "  Name:     %s", cfg.Name)
+	core.Print(nil, "  API:      %s", cfg.APIBase)
+	core.Print(nil, "  Infer:    %s", cfg.InferURL)
+	core.Print(nil, "  GPU:      %s (%d GB)", cfg.GPUType, cfg.VRAMGb)
+	core.Print(nil, "  Langs:    %v", cfg.Languages)
+	core.Print(nil, "  Models:   %v", cfg.Models)
+	core.Print(nil, "  Batch:    %d", cfg.BatchSize)
+	core.Print(nil, "  Dry-run:  %v", cfg.DryRun)
 
 	if err := workerRegister(cfg); err != nil {
-		core.Print(nil,"Registration failed: %v", err)
+		core.Print(nil, "Registration failed: %v", err)
 	}
-	core.Print(nil,"Registered with LEM API")
+	core.Print(nil, "Registered with LEM API")
 
 	for {
 		processed := workerPoll(cfg)
 
 		if cfg.OneShot {
-			core.Print(nil,"One-shot mode: processed %d tasks, exiting", processed)
+			core.Print(nil, "One-shot mode: processed %d tasks, exiting", processed)
 			return
 		}
 
 		if processed == 0 {
-			core.Print(nil,"No tasks available, sleeping %v", cfg.PollInterval)
+			core.Print(nil, "No tasks available, sleeping %v", cfg.PollInterval)
 			time.Sleep(cfg.PollInterval)
 		}
 
@@ -120,7 +120,7 @@ func workerPoll(cfg *WorkerConfig) int {
 
 	resp, err := apiGet(cfg, url)
 	if err != nil {
-		core.Print(nil,"Error fetching tasks: %v", err)
+		core.Print(nil, "Error fetching tasks: %v", err)
 		return 0
 	}
 
@@ -137,12 +137,12 @@ func workerPoll(cfg *WorkerConfig) int {
 		return 0
 	}
 
-	core.Print(nil,"Got %d tasks", result.Count)
+	core.Print(nil, "Got %d tasks", result.Count)
 	processed := 0
 
 	for _, task := range result.Tasks {
 		if err := workerProcessTask(cfg, task); err != nil {
-			core.Print(nil,"Task %d failed: %v", task.ID, err)
+			core.Print(nil, "Task %d failed: %v", task.ID, err)
 			apiDelete(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 				"worker_id": cfg.WorkerID,
 			})
@@ -155,7 +155,7 @@ func workerPoll(cfg *WorkerConfig) int {
 }
 
 func workerProcessTask(cfg *WorkerConfig, task APITask) error {
-	core.Print(nil,"Processing task %d: %s [%s/%s] %d chars prompt",
+	core.Print(nil, "Processing task %d: %s [%s/%s] %d chars prompt",
 		task.ID, task.TaskType, task.Language, task.Domain, len(task.PromptText))
 
 	_, err := apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
@@ -171,7 +171,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 	})
 
 	if cfg.DryRun {
-		core.Print(nil,"  [DRY-RUN] Would generate response for: %.80s...", task.PromptText)
+		core.Print(nil, "  [DRY-RUN] Would generate response for: %.80s...", task.PromptText)
 		return nil
 	}
 
@@ -202,7 +202,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		return coreerr.E("ml.workerProcessTask", "submit result", err)
 	}
 
-	core.Print(nil,"  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
+	core.Print(nil, "  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
 	return nil
 }
 

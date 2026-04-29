@@ -3,7 +3,7 @@ package ml
 import (
 	"database/sql"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreerr "dappco.re/go/log"
 	_ "github.com/marcboeker/go-duckdb"
 )

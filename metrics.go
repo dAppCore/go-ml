@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
@@ -16,7 +16,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 	var total, domains, voices int
 	var avgGenTime, avgChars float64
 	err := db.Conn().QueryRow(
-		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), " +
+		"SELECT count(*), count(DISTINCT domain), count(DISTINCT voice), "+
 			"coalesce(avg(gen_time), 0), coalesce(avg(char_count), 0) FROM golden_set",
 	).Scan(&total, &domains, &voices, &avgGenTime, &avgChars)
 	if err != nil {

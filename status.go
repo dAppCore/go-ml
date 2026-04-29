@@ -5,7 +5,7 @@ import (
 	"io"
 	"slices"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // trainingRow holds deduplicated training status + loss for a single model.

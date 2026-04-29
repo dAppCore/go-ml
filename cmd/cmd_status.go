@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"

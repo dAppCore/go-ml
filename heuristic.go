@@ -3,7 +3,7 @@ package ml
 import (
 	"regexp"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 )
 
 // Pre-compiled regex patterns for heuristic scoring.
@@ -276,7 +276,7 @@ const (
 )
 
 const (
-	lekPositiveEngagementWeight = 2.0 / 8.5
+	lekPositiveEngagementWeight  = 2.0 / 8.5
 	lekPositiveCreativeWeight    = 3.0 / 8.5
 	lekPositiveEmotionalWeight   = 2.0 / 8.5
 	lekPositiveFirstPersonWeight = 1.5 / 8.5

@@ -6,7 +6,7 @@ import (
 	"io"
 	"io/fs"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreio "dappco.re/go/io"
 	goexec "dappco.re/go/process/exec"
 )

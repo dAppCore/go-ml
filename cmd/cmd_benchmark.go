@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	"dappco.re/go/i18n/reversal"
 	coreio "dappco.re/go/io"

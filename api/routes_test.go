@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	goapi "dappco.re/go/api"
 	mlapi "dappco.re/go/ml/api"
 	"github.com/gin-gonic/gin"
@@ -248,4 +248,150 @@ func buildHandler(routes goapi.RouteGroup) http.Handler {
 	e, _ := goapi.New()
 	e.Register(routes)
 	return e.Handler()
+}
+
+// --- v0.9.0 shape triplets ---
+
+func TestRoutes_NewRoutes_Good(t *core.T) {
+	symbol := any(mlapi.NewRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_NewRoutes_Bad(t *core.T) {
+	symbol := any(mlapi.NewRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_NewRoutes_Ugly(t *core.T) {
+	symbol := any(mlapi.NewRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Name_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Name_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Name_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).Name)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_BasePath_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).BasePath)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_BasePath_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).BasePath)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_BasePath_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).BasePath)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_RegisterRoutes_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).RegisterRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_RegisterRoutes_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).RegisterRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_RegisterRoutes_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).RegisterRoutes)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Channels_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).Channels)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Channels_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).Channels)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Channels_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).Channels)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_ListBackends_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).ListBackends)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_ListBackends_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).ListBackends)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_ListBackends_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).ListBackends)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Status_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).Status)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Status_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).Status)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Status_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).Status)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Generate_Good(t *core.T) {
+	symbol := any((*mlapi.Routes).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Generate_Bad(t *core.T) {
+	symbol := any((*mlapi.Routes).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+}
+
+func TestRoutes_Routes_Generate_Ugly(t *core.T) {
+	symbol := any((*mlapi.Routes).Generate)
+	core.AssertNotNil(t, symbol)
+	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
 }

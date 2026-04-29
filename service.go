@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sync"
 
-	"dappco.re/go/core"
+	"dappco.re/go"
 	coreerr "dappco.re/go/log"
 )
 
