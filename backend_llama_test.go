@@ -210,7 +210,7 @@ func TestLlamaBackend_Stop_NoProcID_Good(t *core.T) {
 
 // --- NewLlamaBackend constructor ---
 
-func TestNewLlamaBackend_DefaultPort_Good(t *core.T) {
+func TestNewLlamaBackendDefaultPortGoodScenario(t *core.T) {
 	lb := NewLlamaBackend(nil, LlamaOpts{ModelPath: "/tmp/model.gguf"})
 
 	core.AssertEqual(t, 18090, lb.port)
@@ -219,7 +219,7 @@ func TestNewLlamaBackend_DefaultPort_Good(t *core.T) {
 	core.AssertNotNil(t, lb.http)
 }
 
-func TestNewLlamaBackend_CustomPort_Good(t *core.T) {
+func TestNewLlamaBackendCustomPortGoodScenario(t *core.T) {
 	lb := NewLlamaBackend(nil, LlamaOpts{
 		ModelPath: "/tmp/model.gguf",
 		Port:      9999,
@@ -230,7 +230,7 @@ func TestNewLlamaBackend_CustomPort_Good(t *core.T) {
 	core.AssertEqual(t, "/usr/local/bin/llama-server", lb.llamaPath)
 }
 
-func TestNewLlamaBackend_WithLoRA_Good(t *core.T) {
+func TestNewLlamaBackendWithLoRAGoodScenario(t *core.T) {
 	lb := NewLlamaBackend(nil, LlamaOpts{
 		ModelPath: "/tmp/model.gguf",
 		LoraPath:  "/tmp/lora.gguf",
@@ -239,7 +239,7 @@ func TestNewLlamaBackend_WithLoRA_Good(t *core.T) {
 	core.AssertEqual(t, "/tmp/lora.gguf", lb.loraPath)
 }
 
-func TestNewLlamaBackend_DefaultLlamaPath_Good(t *core.T) {
+func TestNewLlamaBackendDefaultLlamaPathGoodScenario(t *core.T) {
 	lb := NewLlamaBackend(nil, LlamaOpts{
 		ModelPath: "/tmp/model.gguf",
 		LlamaPath: "", // should default
@@ -329,7 +329,7 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *core.T) {
 
 // --- Verify Backend interface compliance ---
 
-func TestLlamaBackend_InterfaceCompliance_Good(t *core.T) {
+func TestLlamaBackendInterfaceComplianceGoodScenario(t *core.T) {
 	var backend Backend = &LlamaBackend{}
 	core.AssertNotNil(t, backend)
 	core.AssertEqual(t, "llama", backend.Name())
@@ -351,163 +351,179 @@ func TestLlamaBackend_SetMaxTokens_Good(t *core.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestBackendLlama_NewLlamaBackend_Good(t *core.T) {
-	symbol := any(NewLlamaBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{ModelPath: "model.gguf", Port: 19001})
+	core.AssertEqual(t, "llama", b.Name())
+	core.AssertEqual(t, 19001, b.port)
+	core.AssertEqual(t, "model.gguf", b.modelPath)
 }
 
 func TestBackendLlama_NewLlamaBackend_Bad(t *core.T) {
-	symbol := any(NewLlamaBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(nil)
+	core.AssertEqual(t, 18090, b.port)
+	core.AssertEqual(t, "llama-server", b.llamaPath)
 }
 
 func TestBackendLlama_NewLlamaBackend_Ugly(t *core.T) {
-	symbol := any(NewLlamaBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend("from-string.gguf", LlamaOpts{Port: 19002})
+	core.AssertEqual(t, "from-string.gguf", b.modelPath)
+	core.AssertEqual(t, 19002, b.port)
 }
 
 func TestBackendLlama_LlamaBackend_Name_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewLlamaBackend()
+	core.AssertEqual(t, "llama", b.Name())
 }
 
 func TestBackendLlama_LlamaBackend_Name_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	var b LlamaBackend
+	core.AssertEqual(t, "llama", b.Name())
 }
 
 func TestBackendLlama_LlamaBackend_Name_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewLlamaBackend(LlamaOpts{LoraPath: "adapter.gguf"})
+	core.AssertEqual(t, "llama", b.Name())
 }
 
 func TestBackendLlama_LlamaBackend_SetMaxTokens_Good(t *core.T) {
-	symbol := any((*LlamaBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	b.SetMaxTokens(64)
+	core.AssertEqual(t, 64, b.http.maxTokens)
 }
 
 func TestBackendLlama_LlamaBackend_SetMaxTokens_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b LlamaBackend
+	b.SetMaxTokens(64)
+	core.AssertNil(t, b.http)
 }
 
 func TestBackendLlama_LlamaBackend_SetMaxTokens_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	b.SetMaxTokens(0)
+	core.AssertEqual(t, 0, b.http.maxTokens)
 }
 
 func TestBackendLlama_LlamaBackend_LoadModel_Good(t *core.T) {
-	symbol := any((*LlamaBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	model, err := b.LoadModel("ignored")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendLlama_LlamaBackend_LoadModel_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b LlamaBackend
+	model, err := b.LoadModel("")
+	core.AssertNil(t, model)
+	core.AssertError(t, err, "HTTP shim")
 }
 
 func TestBackendLlama_LlamaBackend_LoadModel_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{Port: 19003})
+	model, err := b.LoadModel("unused")
+	core.RequireNoError(t, err)
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendLlama_LlamaBackend_Available_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer srv.Close()
+	u, _ := url.Parse(srv.URL)
+	port, _ := strconv.Atoi(u.Port())
+	b := NewLlamaBackend(LlamaOpts{Port: port})
+	b.procID = "proc"
+	core.AssertTrue(t, b.Available())
 }
 
 func TestBackendLlama_LlamaBackend_Available_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewLlamaBackend()
+	core.AssertFalse(t, b.Available())
 }
 
 func TestBackendLlama_LlamaBackend_Available_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{Port: 1})
+	b.procID = "proc"
+	core.AssertFalse(t, b.Available())
 }
 
 func TestBackendLlama_LlamaBackend_Start_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Start)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	err := b.Start(context.Background())
+	core.AssertError(t, err, "process service")
 }
 
 func TestBackendLlama_LlamaBackend_Start_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Start)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b LlamaBackend
+	err := b.Start(context.Background())
+	core.AssertError(t, err, "process service")
 }
 
 func TestBackendLlama_LlamaBackend_Start_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Start)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{ModelPath: "missing.gguf"})
+	err := b.Start(context.Background())
+	core.AssertError(t, err)
 }
 
 func TestBackendLlama_LlamaBackend_Stop_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Stop)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewLlamaBackend()
+	core.AssertNoError(t, b.Stop())
 }
 
 func TestBackendLlama_LlamaBackend_Stop_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Stop)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	b.procID = "proc"
+	core.AssertError(t, b.Stop(), "process service")
 }
 
 func TestBackendLlama_LlamaBackend_Stop_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Stop)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	var b LlamaBackend
+	core.AssertNoError(t, b.Stop())
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
+	core.AssertError(t, err, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b LlamaBackend
+	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
+	core.AssertError(t, err, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{Port: 1})
+	b.procID = "proc"
+	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
+	core.AssertError(t, err, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Good(t *core.T) {
-	symbol := any((*LlamaBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend()
+	_, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{})
+	core.AssertError(t, err, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Bad(t *core.T) {
-	symbol := any((*LlamaBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b LlamaBackend
+	_, err := b.Chat(context.Background(), nil, GenOpts{})
+	core.AssertError(t, err, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Ugly(t *core.T) {
-	symbol := any((*LlamaBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewLlamaBackend(LlamaOpts{Port: 1})
+	b.procID = "proc"
+	_, err := b.Chat(context.Background(), nil, GenOpts{})
+	core.AssertError(t, err, "not available")
 }

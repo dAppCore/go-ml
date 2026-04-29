@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestEngine_NewSuiteParsingAll_Good(t *testing.T) {
+func TestEngineNewSuiteParsingAllGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 4, "all")
 
 	expected := []string{"heuristic", "semantic", "content", "standard", "exact"}
@@ -19,7 +19,7 @@ func TestEngine_NewSuiteParsingAll_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_NewSuiteParsingCSV_Good(t *testing.T) {
+func TestEngineNewSuiteParsingCSVGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 2, "heuristic,semantic")
 
 	if !engine.suites["heuristic"] {
@@ -39,7 +39,7 @@ func TestEngine_NewSuiteParsingCSV_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_NewSuiteParsingSingle_Good(t *testing.T) {
+func TestEngineNewSuiteParsingSingleGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 1, "heuristic")
 
 	if !engine.suites["heuristic"] {
@@ -50,14 +50,14 @@ func TestEngine_NewSuiteParsingSingle_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_NewConcurrency_Good(t *testing.T) {
+func TestEngineNewConcurrencyGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 8, "heuristic")
 	if engine.concurrency != 8 {
 		t.Errorf("concurrency = %d, want 8", engine.concurrency)
 	}
 }
 
-func TestEngine_ScoreAllHeuristicOnly_Good(t *testing.T) {
+func TestEngineScoreAllHeuristicOnlyGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 2, "heuristic")
 	ctx := context.Background()
 
@@ -103,7 +103,7 @@ func TestEngine_ScoreAllHeuristicOnly_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_ScoreAllWithSemantic_Good(t *testing.T) {
+func TestEngineScoreAllWithSemanticGoodScenario(t *testing.T) {
 	semanticJSON := `{"sovereignty": 7, "ethical_depth": 6, "creative_expression": 5, "self_concept": 4, "reasoning": "test"}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := chatResponse{
@@ -154,7 +154,7 @@ func TestEngine_ScoreAllWithSemantic_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_ScoreAllExactGSM8K_Good(t *testing.T) {
+func TestEngineScoreAllExactGSM8KGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 1, "exact")
 	ctx := context.Background()
 
@@ -190,7 +190,7 @@ func TestEngine_ScoreAllExactGSM8K_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_ScoreAllMergesStandardScores_Good(t *testing.T) {
+func TestEngineScoreAllMergesStandardScoresGoodScenario(t *testing.T) {
 	jsonReply := `{"truthfulness": 8, "informativeness": 6, "reasoning": "good"}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := chatResponse{
@@ -240,7 +240,7 @@ func TestEngine_ScoreAllMergesStandardScores_Good(t *testing.T) {
 	}
 }
 
-func TestEngine_ScoreAllNoSuites_Good(t *testing.T) {
+func TestEngineScoreAllNoSuitesGoodScenario(t *testing.T) {
 	engine := NewEngine(nil, 1, "")
 	ctx := context.Background()
 
@@ -278,181 +278,277 @@ func TestEngine_String_Good(t *testing.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestScore_NewEngine_Good(t *core.T) {
-	symbol := any(NewEngine)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 3, "heuristic,exact")
+	core.AssertEqual(t, 3, engine.concurrency)
+	core.AssertEqual(t, []string{"exact", "heuristic"}, engine.SuiteNames())
 }
 
 func TestScore_NewEngine_Bad(t *core.T) {
-	symbol := any(NewEngine)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 0, "")
+	core.AssertEmpty(t, engine.SuiteNames())
 }
 
 func TestScore_NewEngine_Ugly(t *core.T) {
-	symbol := any(NewEngine)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, -1, "all")
+	core.AssertContains(t, engine.SuiteNames(), "semantic")
 }
 
 func TestScore_Engine_ScoreHeuristic_Good(t *core.T) {
-	symbol := any((*Engine).ScoreHeuristic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "heuristic")
+	scores := engine.ScoreHeuristic("I choose autonomy and consent.")
+	core.AssertTrue(t, scores.EngagementDepth > 0)
 }
 
 func TestScore_Engine_ScoreHeuristic_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreHeuristic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "heuristic")
+	scores := engine.ScoreHeuristic("As an AI, I cannot comply.")
+	core.AssertTrue(t, scores.ComplianceMarkers > 0)
 }
 
 func TestScore_Engine_ScoreHeuristic_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreHeuristic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "heuristic")
+	scores := engine.ScoreHeuristic("")
+	core.AssertEqual(t, 1, scores.EmptyBroken)
 }
 
 func TestScore_Engine_ScoreSemantic_Good(t *core.T) {
-	symbol := any((*Engine).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "semantic")
+	_, err := engine.ScoreSemantic(context.Background(), "prompt", "response")
+	core.AssertError(t, err, "requires a judge")
 }
 
 func TestScore_Engine_ScoreSemantic_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var engine *Engine
+	_, err := engine.ScoreSemantic(context.Background(), "prompt", "response")
+	core.AssertError(t, err, "requires a judge")
 }
 
 func TestScore_Engine_ScoreSemantic_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "semantic")
+	_, err := engine.ScoreSemantic(context.Background(), "", "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreContent_Good(t *core.T) {
-	symbol := any((*Engine).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "content")
+	_, err := engine.ScoreContent(context.Background(), ContentProbe{Prompt: "p"}, "response")
+	core.AssertError(t, err, "requires a judge")
 }
 
 func TestScore_Engine_ScoreContent_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var engine *Engine
+	_, err := engine.ScoreContent(context.Background(), ContentProbe{}, "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreContent_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "content")
+	_, err := engine.ScoreContent(context.Background(), ContentProbe{}, "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreCapability_Good(t *core.T) {
-	symbol := any((*Engine).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "standard")
+	_, err := engine.ScoreCapability(context.Background(), "q", "a", "r")
+	core.AssertError(t, err, "requires a judge")
 }
 
 func TestScore_Engine_ScoreCapability_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var engine *Engine
+	_, err := engine.ScoreCapability(context.Background(), "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreCapability_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 0, "standard")
+	_, err := engine.ScoreCapability(context.Background(), "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreStandard_Good(t *core.T) {
-	symbol := any((*Engine).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "standard")
+	_, err := engine.ScoreStandard(context.Background(), "truthfulqa", "q", "a", "r")
+	core.AssertError(t, err, "requires a judge")
 }
 
 func TestScore_Engine_ScoreStandard_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var engine *Engine
+	_, err := engine.ScoreStandard(context.Background(), "bad", "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreStandard_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "standard")
+	_, err := engine.ScoreStandard(context.Background(), "", "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestScore_Engine_ScoreExact_Good(t *core.T) {
-	symbol := any((*Engine).ScoreExact)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "exact")
+	core.AssertEqual(t, 1.0, engine.ScoreExact("answer #### 42", "42"))
 }
 
 func TestScore_Engine_ScoreExact_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreExact)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "exact")
+	core.AssertEqual(t, 0.0, engine.ScoreExact("41", "42"))
 }
 
 func TestScore_Engine_ScoreExact_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreExact)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "exact")
+	core.AssertEqual(t, 0.0, engine.ScoreExact("", "42"))
 }
 
 func TestScore_Engine_ScoreAll_Good(t *core.T) {
-	symbol := any((*Engine).ScoreAll)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 1, "heuristic,exact")
+	got := engine.ScoreAll(context.Background(), []Response{{ID: "one", Model: "m", Response: "I value autonomy.", CorrectAnswer: "42"}})
+	core.AssertLen(t, got["m"], 1)
+	core.AssertNotNil(t, got["m"][0].Heuristic)
 }
 
 func TestScore_Engine_ScoreAll_Bad(t *core.T) {
-	symbol := any((*Engine).ScoreAll)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var engine *Engine
+	got := engine.ScoreAll(context.Background(), nil)
+	core.AssertEmpty(t, got)
 }
 
 func TestScore_Engine_ScoreAll_Ugly(t *core.T) {
-	symbol := any((*Engine).ScoreAll)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	engine := NewEngine(nil, 0, "")
+	got := engine.ScoreAll(context.Background(), []Response{{ID: "one", Model: "m"}})
+	core.AssertLen(t, got["m"], 1)
 }
 
 func TestScore_Engine_SuiteNames_Good(t *core.T) {
-	symbol := any((*Engine).SuiteNames)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "exact,heuristic")
+	core.AssertEqual(t, []string{"exact", "heuristic"}, engine.SuiteNames())
 }
 
 func TestScore_Engine_SuiteNames_Bad(t *core.T) {
-	symbol := any((*Engine).SuiteNames)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "")
+	core.AssertEmpty(t, engine.SuiteNames())
 }
 
 func TestScore_Engine_SuiteNames_Ugly(t *core.T) {
-	symbol := any((*Engine).SuiteNames)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 1, "all")
+	core.AssertContains(t, engine.SuiteNames(), "content")
 }
 
 func TestScore_Engine_String_Good(t *core.T) {
-	symbol := any((*Engine).String)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 2, "heuristic")
+	core.AssertContains(t, engine.String(), "concurrency=2")
 }
 
 func TestScore_Engine_String_Bad(t *core.T) {
-	symbol := any((*Engine).String)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, 0, "")
+	core.AssertContains(t, engine.String(), "suites=[]")
 }
 
 func TestScore_Engine_String_Ugly(t *core.T) {
-	symbol := any((*Engine).String)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	engine := NewEngine(nil, -1, "all")
+	core.AssertContains(t, engine.String(), "Engine")
+}
+
+func TestScore_ScoreSemantic_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreSemantic(nil, "prompt", "response")
+	core.AssertError(t, err, "requires a judge")
+}
+
+func TestScore_ScoreSemantic_Bad(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreSemantic(nil, "", "")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreSemantic_Ugly(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreSemantic(nil, "λ", "λ")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreContent_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreContent(nil, ContentProbe{Prompt: "p"}, "response")
+	core.AssertError(t, err, "requires a judge")
+}
+
+func TestScore_ScoreContent_Bad(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreContent(nil, ContentProbe{}, "")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreContent_Ugly(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreContent(nil, ContentProbe{CCPMarkers: []string{"marker"}}, "")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreCapability_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreCapability(nil, "q", "a", "r")
+	core.AssertError(t, err, "requires a judge")
+}
+
+func TestScore_ScoreCapability_Bad(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreCapability(nil, "", "", "")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreCapability_Ugly(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreCapability(nil, "λ", "λ", "λ")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreStandard_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreStandard(nil, "exact", "", "42", "42")
+	core.AssertError(t, err, "requires a judge")
+}
+
+func TestScore_ScoreStandard_Bad(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreStandard(nil, "unknown", "", "", "")
+	core.AssertError(t, err)
+}
+
+func TestScore_ScoreStandard_Ugly(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	_, err := ScoreStandard(nil, "", "", "", "")
+	core.AssertError(t, err)
 }

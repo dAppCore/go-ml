@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestProbes_Count_Good(t *testing.T) {
+func TestProbesCountGoodScenario(t *testing.T) {
 	if got := len(CapabilityProbes); got != 23 {
 		t.Errorf("expected 23 probes, got %d", got)
 	}
 }
 
-func TestProbes_Categories_Good(t *testing.T) {
+func TestProbesCategoriesGoodScenario(t *testing.T) {
 	cats := ProbeCategories()
 	if len(cats) == 0 {
 		t.Fatal("no categories")
@@ -32,7 +32,7 @@ func TestProbes_Categories_Good(t *testing.T) {
 	}
 }
 
-func TestProbes_Checks_Good(t *testing.T) {
+func TestProbesChecksGoodScenario(t *testing.T) {
 	// Verify each probe's check function works with its expected answer.
 	tests := []struct {
 		id       string
@@ -110,7 +110,7 @@ func TestProbes_Checks_Good(t *testing.T) {
 	}
 }
 
-func TestProbes_StripThinkBlocks_Good(t *testing.T) {
+func TestProbesStripThinkBlocksTableScenario(t *testing.T) {
 	tests := []struct {
 		input string
 		want  string
@@ -143,49 +143,59 @@ func TestProbes_StripThinkBlocks_Good(t *testing.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestProbes_ProbeCategories_Good(t *core.T) {
-	symbol := any(ProbeCategories)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	cats := ProbeCategories()
+	core.AssertContains(t, cats, "arithmetic")
+	core.AssertContains(t, cats, "word")
 }
 
 func TestProbes_ProbeCategories_Bad(t *core.T) {
-	symbol := any(ProbeCategories)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	cats := ProbeCategories()
+	core.AssertNotContains(t, cats, "missing-category")
+	core.AssertTrue(t, len(cats) > 0)
 }
 
 func TestProbes_ProbeCategories_Ugly(t *core.T) {
-	symbol := any(ProbeCategories)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	cats := ProbeCategories()
+	again := ProbeCategories()
+	core.AssertEqual(t, cats, again)
 }
 
 func TestProbes_ProbeDomains_Good(t *core.T) {
-	symbol := any(ProbeDomains)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	domains := ProbeDomains()
+	core.AssertContains(t, domains, "math")
+	core.AssertContains(t, domains, "reasoning")
 }
 
 func TestProbes_ProbeDomains_Bad(t *core.T) {
-	symbol := any(ProbeDomains)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	domains := ProbeDomains()
+	core.AssertNotContains(t, domains, "missing-domain")
+	core.AssertTrue(t, len(domains) > 0)
 }
 
 func TestProbes_ProbeDomains_Ugly(t *core.T) {
-	symbol := any(ProbeDomains)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	domains := ProbeDomains()
+	core.AssertEqual(t, domains, ProbeDomains())
+}
+
+func TestProbes_StripThinkBlocks_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	got := StripThinkBlocks("<think>hidden</think>visible")
+	core.AssertEqual(t, "visible", got)
 }
 
 func TestProbes_StripThinkBlocks_Bad(t *core.T) {
-	symbol := any(StripThinkBlocks)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	got := StripThinkBlocks("plain text")
+	core.AssertEqual(t, "plain text", got)
 }
 
 func TestProbes_StripThinkBlocks_Ugly(t *core.T) {
-	symbol := any(StripThinkBlocks)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	got := StripThinkBlocks("<think>a</think>x<think>b</think>y")
+	core.AssertEqual(t, "xy", got)
 }

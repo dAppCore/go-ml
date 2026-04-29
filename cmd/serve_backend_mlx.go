@@ -15,7 +15,7 @@ import (
 //	backend, err := createServeBackend("/Volumes/Data/lem/models/lem")
 func createServeBackend(modelPath string) (ml.Backend, error) {
 	if modelPath != "" {
-		slog.Info("ml serve: loading native MLX backend", "path", modelPath)
+		slog.Info("ml serve: loading native MLX backend", "model_path", modelPath)
 		b, err := ml.NewMLXBackend(modelPath)
 		if err != nil {
 			return nil, coreerr.E("cmd.createServeBackend", "mlx backend", err)

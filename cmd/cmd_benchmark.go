@@ -220,7 +220,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	}
 
 	// Generate baseline responses
-	slog.Info("benchmark: loading baseline model", "path", benchmarkBaseline)
+	slog.Info("benchmark: loading baseline model", "model_path", benchmarkBaseline)
 	baselineBackend, err := ml.NewMLXBackend(benchmarkBaseline)
 	if err != nil {
 		return coreerr.E("cmd.runBenchmark", "load baseline", err)
@@ -250,7 +250,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	runtime.GC()
 
 	// Generate trained responses
-	slog.Info("benchmark: loading trained model", "path", benchmarkTrained)
+	slog.Info("benchmark: loading trained model", "model_path", benchmarkTrained)
 	trainedBackend, err := ml.NewMLXBackend(benchmarkTrained)
 	if err != nil {
 		return coreerr.E("cmd.runBenchmark", "load trained", err)

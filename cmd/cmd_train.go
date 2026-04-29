@@ -141,7 +141,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	}
 
 	// --- Load model ---
-	slog.Info("loading model", "path", trainModelPath)
+	slog.Info("loading model", "model_path", trainModelPath)
 	tm, err := inference.LoadTrainable(trainModelPath)
 	if err != nil {
 		return coreerr.E("cmd.runTrainLoop", "load model", err)

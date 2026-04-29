@@ -82,11 +82,11 @@ func RunWorkerLoop(cfg *WorkerConfig) {
 
 func workerRegister(cfg *WorkerConfig) error {
 	body := map[string]any{
-		"worker_id": cfg.WorkerID,
-		"name":      cfg.Name,
-		"version":   "0.1.0",
-		"os":        runtime.GOOS,
-		"arch":      runtime.GOARCH,
+		"worker_id":   cfg.WorkerID,
+		"name":        cfg.Name,
+		"version":     "0.1.0",
+		"platform_os": runtime.GOOS,
+		"arch":        runtime.GOARCH,
 	}
 	if cfg.GPUType != "" {
 		body["gpu_type"] = cfg.GPUType

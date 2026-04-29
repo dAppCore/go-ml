@@ -62,7 +62,7 @@ func TestMLXBackend_InferenceAdapter_Chat_Good(t *core.T) {
 
 // TestMLXBackend_InferenceAdapter_Stream_Good verifies streaming through
 // the InferenceAdapter (StreamingBackend path).
-func TestMLXBackend_InferenceAdapter_Stream_Good(t *core.T) {
+func TestMLXBackendInferenceAdapterStreamGoodScenario(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "tok1"},
@@ -86,7 +86,7 @@ func TestMLXBackend_InferenceAdapter_Stream_Good(t *core.T) {
 
 // TestMLXBackend_InferenceAdapter_ModelError_Bad verifies error propagation
 // from the underlying TextModel through InferenceAdapter (the MLX path).
-func TestMLXBackend_InferenceAdapter_ModelError_Bad(t *core.T) {
+func TestMLXBackendInferenceAdapterModelErrorBadScenario(t *core.T) {
 	mock := &mockTextModel{
 		tokens: []inference.Token{
 			{ID: 1, Text: "partial"},
@@ -115,7 +115,7 @@ func TestMLXBackend_InferenceAdapter_Close_Good(t *core.T) {
 
 // TestMLXBackend_InferenceAdapter_ModelAccess_Good verifies that the
 // underlying TextModel is accessible for direct operations.
-func TestMLXBackend_InferenceAdapter_ModelAccess_Good(t *core.T) {
+func TestMLXBackendInferenceAdapterModelAccessGoodScenario(t *core.T) {
 	mock := &mockTextModel{modelType: "llama"}
 	adapter := NewInferenceAdapter(mock, "mlx")
 
@@ -127,7 +127,7 @@ func TestMLXBackend_InferenceAdapter_ModelAccess_Good(t *core.T) {
 // TestMLXBackend_InterfaceCompliance_Good verifies that InferenceAdapter
 // (the return type of NewMLXBackend) satisfies both Backend and
 // StreamingBackend at compile time.
-func TestMLXBackend_InterfaceCompliance_Good(t *core.T) {
+func TestMLXBackendInterfaceComplianceGoodScenario(t *core.T) {
 	adapter := NewInferenceAdapter(&mockTextModel{}, "mlx")
 	var backend Backend = adapter
 	var streaming StreamingBackend = adapter
@@ -147,7 +147,7 @@ func TestMLXBackend_ConvertOpts_Temperature_Good(t *core.T) {
 
 // TestMLXBackend_ConvertOpts_AllFields_Good verifies all GenOpts fields
 // produce the expected number of inference options.
-func TestMLXBackend_ConvertOpts_AllFields_Good(t *core.T) {
+func TestMLXBackendConvertOptsAllFieldsGoodScenario(t *core.T) {
 	opts := convertOpts(GenOpts{
 		Temperature:   0.7,
 		MaxTokens:     512,
@@ -172,37 +172,37 @@ func TestMLXBackend_SetMLXMemoryLimits_ZeroNoop_Good(t *core.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestBackendMlx_SetMLXMemoryLimits_Good(t *core.T) {
-	symbol := any(SetMLXMemoryLimits)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertNotPanics(t, func() { SetMLXMemoryLimits(1, 2) })
 }
 
 func TestBackendMlx_SetMLXMemoryLimits_Bad(t *core.T) {
-	symbol := any(SetMLXMemoryLimits)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertNotPanics(t, func() { SetMLXMemoryLimits(0, 0) })
 }
 
 func TestBackendMlx_SetMLXMemoryLimits_Ugly(t *core.T) {
-	symbol := any(SetMLXMemoryLimits)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertNotPanics(t, func() { SetMLXMemoryLimits(^uint64(0), 0) })
 }
 
 func TestBackendMlx_NewMLXBackend_Good(t *core.T) {
-	symbol := any(NewMLXBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend, err := NewMLXBackend(core.JoinPath(t.TempDir(), "missing-model"))
+	core.AssertNil(t, backend)
+	core.AssertError(t, err)
 }
 
 func TestBackendMlx_NewMLXBackend_Bad(t *core.T) {
-	symbol := any(NewMLXBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend, err := NewMLXBackend("")
+	core.AssertNil(t, backend)
+	core.AssertError(t, err)
 }
 
 func TestBackendMlx_NewMLXBackend_Ugly(t *core.T) {
-	symbol := any(NewMLXBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend, err := NewMLXBackend("/definitely-not-a-model")
+	core.AssertNil(t, backend)
+	core.AssertError(t, err)
 }

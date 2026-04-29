@@ -92,7 +92,7 @@ func TestServeModelInfo_Good(t *testing.T) {
 	}
 }
 
-func TestServeModelInfo_EncodedModelID_Good(t *testing.T) {
+func TestServeModelInfoEncodedModelIDGoodScenario(t *testing.T) {
 	backend := ml.NewInferenceAdapter(&serveInfoTextModel{
 		info: inference.ModelInfo{Architecture: "gemma3"},
 	}, "family/model q4")
@@ -117,7 +117,7 @@ func TestServeModelInfo_EncodedModelID_Good(t *testing.T) {
 	}
 }
 
-func TestServeModelInfo_UnknownModel_Bad(t *testing.T) {
+func TestServeModelInfoUnknownModelBadScenario(t *testing.T) {
 	backend := ml.NewInferenceAdapter(&serveInfoTextModel{}, "current")
 
 	mux := http.NewServeMux()

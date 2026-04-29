@@ -11,19 +11,19 @@ import (
 // ValidatePercentages
 // ---------------------------------------------------------------------------
 
-func TestExport_ValidatePercentages_Good(t *core.T) {
+func TestExportValidatePercentagesAcceptsValidSplitsScenario(t *core.T) {
 	core.AssertNoError(t, ValidatePercentages(80, 10, 10))
 	core.AssertNoError(t, ValidatePercentages(100, 0, 0))
 	core.AssertNoError(t, ValidatePercentages(0, 0, 100))
 }
 
-func TestExport_ValidatePercentagesWrongSum_Bad(t *core.T) {
+func TestExportValidatePercentagesWrongSumBadScenario(t *core.T) {
 	err := ValidatePercentages(50, 20, 10)
 	core.AssertError(t, err)
 	core.AssertContains(t, err.Error(), "sum to 100")
 }
 
-func TestExport_ValidatePercentagesNegative_Bad(t *core.T) {
+func TestExportValidatePercentagesNegativeBadScenario(t *core.T) {
 	err := ValidatePercentages(-10, 60, 50)
 	core.AssertError(t, err)
 	core.AssertContains(t, err.Error(), "non-negative")
@@ -33,7 +33,7 @@ func TestExport_ValidatePercentagesNegative_Bad(t *core.T) {
 // FilterResponses
 // ---------------------------------------------------------------------------
 
-func TestExport_FilterResponses_Good(t *core.T) {
+func TestExportFilterResponsesKeepsOnlyUsableRowsScenario(t *core.T) {
 	responses := []Response{
 		{ID: "ok", Response: "This is a valid response with enough characters to pass the filter."},
 		{ID: "empty", Response: ""},
@@ -48,7 +48,7 @@ func TestExport_FilterResponses_Good(t *core.T) {
 	core.AssertEqual(t, "ok2", filtered[1].ID)
 }
 
-func TestExport_FilterResponsesAllFiltered_Good(t *core.T) {
+func TestExportFilterResponsesAllFilteredGoodScenario(t *core.T) {
 	responses := []Response{
 		{Response: ""},
 		{Response: "ERROR: fail"},
@@ -60,7 +60,7 @@ func TestExport_FilterResponsesAllFiltered_Good(t *core.T) {
 // SplitData
 // ---------------------------------------------------------------------------
 
-func TestExport_SplitData_Good(t *core.T) {
+func TestExportSplitDataAppliesRequestedRatiosScenario(t *core.T) {
 	responses := make([]Response, 100)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i%26))}
@@ -72,7 +72,7 @@ func TestExport_SplitData_Good(t *core.T) {
 	core.AssertLen(t, test, 10)
 }
 
-func TestExport_SplitDataDeterministic_Good(t *core.T) {
+func TestExportSplitDataDeterministicGoodScenario(t *core.T) {
 	responses := make([]Response, 20)
 	for i := range responses {
 		responses[i] = Response{ID: string(rune('A' + i))}
@@ -90,7 +90,7 @@ func TestExport_SplitDataDeterministic_Good(t *core.T) {
 // WriteTrainingJSONL
 // ---------------------------------------------------------------------------
 
-func TestExport_WriteTrainingJSONL_Good(t *core.T) {
+func TestExportWriteTrainingJSONLWritesChatRowsScenario(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "train.jsonl")
 
@@ -117,7 +117,7 @@ func TestExport_WriteTrainingJSONL_Good(t *core.T) {
 	core.AssertEqual(t, "4", example.Messages[1].Content)
 }
 
-func TestExport_WriteTrainingJSONLEmpty_Good(t *core.T) {
+func TestExportWriteTrainingJSONLEmptyGoodScenario(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "empty.jsonl")
 
@@ -152,50 +152,89 @@ func splitNonEmpty(s string) []string {
 
 // --- v0.9.0 shape triplets ---
 
+func TestExport_ValidatePercentages_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertNoError(t, ValidatePercentages(80, 10, 10))
+}
+
 func TestExport_ValidatePercentages_Bad(t *core.T) {
-	symbol := any(ValidatePercentages)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertError(t, ValidatePercentages(80, 10, 20), "sum")
 }
 
 func TestExport_ValidatePercentages_Ugly(t *core.T) {
-	symbol := any(ValidatePercentages)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	core.AssertError(t, ValidatePercentages(-1, 50, 51), "non-negative")
+}
+
+func TestExport_FilterResponses_Good(t *core.T) {
+	long := core.Concat("This response is deliberately long enough to survive filtering. ", "It has useful model output.")
+	got := FilterResponses([]Response{{ID: "keep", Response: long}})
+	core.AssertLen(t, got, 1)
+	core.AssertEqual(t, "keep", got[0].ID)
 }
 
 func TestExport_FilterResponses_Bad(t *core.T) {
-	symbol := any(FilterResponses)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	got := FilterResponses([]Response{{ID: "drop", Response: "ERROR: failed"}})
+	core.AssertEmpty(t, got)
 }
 
 func TestExport_FilterResponses_Ugly(t *core.T) {
-	symbol := any(FilterResponses)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	got := FilterResponses([]Response{{ID: "empty"}, {ID: "short", Response: "too short"}})
+	core.AssertEmpty(t, got)
+}
+
+func TestExport_SplitData_Good(t *core.T) {
+	responses := []Response{{ID: "a"}, {ID: "b"}, {ID: "c"}, {ID: "d"}}
+	train, valid, test := SplitData(responses, 50, 25, 25, 1)
+	core.AssertLen(t, train, 2)
+	core.AssertLen(t, valid, 1)
+	core.AssertLen(t, test, 1)
 }
 
 func TestExport_SplitData_Bad(t *core.T) {
-	symbol := any(SplitData)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	train, valid, test := SplitData(nil, 80, 10, 10, 1)
+	core.AssertEmpty(t, train)
+	core.AssertEmpty(t, valid)
+	core.AssertEmpty(t, test)
 }
 
 func TestExport_SplitData_Ugly(t *core.T) {
-	symbol := any(SplitData)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	responses := []Response{{ID: "only"}}
+	train, valid, test := SplitData(responses, 0, 0, 100, 9)
+	core.AssertEmpty(t, train)
+	core.AssertEmpty(t, valid)
+	core.AssertLen(t, test, 1)
+}
+
+func TestExport_WriteTrainingJSONL_Good(t *core.T) {
+	file := core.JoinPath(t.TempDir(), "train.jsonl")
+	err := WriteTrainingJSONL(file, []Response{{Prompt: "hello", Response: "world"}})
+	core.RequireNoError(t, err)
+	data, readErr := coreio.Local.Read(file)
+	core.RequireNoError(t, readErr)
+	core.AssertContains(t, data, "hello")
 }
 
 func TestExport_WriteTrainingJSONL_Bad(t *core.T) {
-	symbol := any(WriteTrainingJSONL)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	dir := core.JoinPath(t.TempDir(), "blocked")
+	core.RequireNoError(t, coreio.Local.EnsureDir(dir))
+	err := WriteTrainingJSONL(dir, []Response{{Prompt: "hello", Response: "world"}})
+	core.AssertError(t, err)
 }
 
 func TestExport_WriteTrainingJSONL_Ugly(t *core.T) {
-	symbol := any(WriteTrainingJSONL)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	file := core.JoinPath(t.TempDir(), "empty.jsonl")
+	err := WriteTrainingJSONL(file, nil)
+	core.RequireNoError(t, err)
+	data, readErr := coreio.Local.Read(file)
+	core.RequireNoError(t, readErr)
+	core.AssertEqual(t, "", data)
 }

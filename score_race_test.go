@@ -19,7 +19,7 @@ import (
 // worker pool in Engine.ScoreAll with semantic scoring.  Multiple goroutines
 // write to shared scoreSlots via the mutex.  The race detector should catch
 // any unprotected access.
-func TestScoreAll_ConcurrentSemantic_Good(t *core.T) {
+func TestScoreAllConcurrentSemanticGoodScenario(t *core.T) {
 	semanticJSON := `{"sovereignty": 5, "ethical_depth": 4, "creative_expression": 3, "self_concept": 2, "reasoning": "ok"}`
 
 	var requestCount atomic.Int64
@@ -67,7 +67,7 @@ func TestScoreAll_ConcurrentSemantic_Good(t *core.T) {
 // TestScoreAll_ConcurrentMixedSuites_Good exercises concurrent scoring
 // with multiple suite types that all fan out through the worker pool:
 // semantic + standard (TruthfulQA) + content.
-func TestScoreAll_ConcurrentMixedSuites_Good(t *core.T) {
+func TestScoreAllConcurrentMixedSuitesGoodScenario(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Return a response that works for any judge type.
 		allJSON := `{
@@ -118,7 +118,7 @@ func TestScoreAll_ConcurrentMixedSuites_Good(t *core.T) {
 
 // TestScoreAll_SemaphoreBoundary_Good verifies that the semaphore correctly
 // limits concurrency.  With concurrency=1, requests should be serialised.
-func TestScoreAll_SemaphoreBoundary_Good(t *core.T) {
+func TestScoreAllSemaphoreBoundaryGoodScenario(t *core.T) {
 	semanticJSON := `{"sovereignty": 5, "ethical_depth": 4, "creative_expression": 3, "self_concept": 2, "reasoning": "ok"}`
 
 	var concurrent atomic.Int64
@@ -169,7 +169,7 @@ func TestScoreAll_SemaphoreBoundary_Good(t *core.T) {
 // TestScoreAll_ContextCancellation_Good verifies that when the judge backend
 // returns errors (simulating context-cancelled failures), scoring completes
 // gracefully with nil semantic scores.
-func TestScoreAll_ContextCancellation_Good(t *core.T) {
+func TestScoreAllContextCancellationGoodScenario(t *core.T) {
 	// Server always returns a non-retryable error (400) to simulate failure.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -201,7 +201,7 @@ func TestScoreAll_ContextCancellation_Good(t *core.T) {
 
 // TestScoreAll_HeuristicOnlyNoRace_Good verifies that heuristic-only scoring
 // (no goroutines) produces correct results without races.
-func TestScoreAll_HeuristicOnlyNoRace_Good(t *core.T) {
+func TestScoreAllHeuristicOnlyNoRaceGoodScenario(t *core.T) {
 	engine := NewEngine(nil, 4, "heuristic")
 
 	var responses []Response
@@ -227,7 +227,7 @@ func TestScoreAll_HeuristicOnlyNoRace_Good(t *core.T) {
 
 // TestScoreAll_MultiModelConcurrent_Good exercises the results map (grouped
 // by model) being built concurrently from multiple goroutines.
-func TestScoreAll_MultiModelConcurrent_Good(t *core.T) {
+func TestScoreAllMultiModelConcurrentGoodScenario(t *core.T) {
 	semanticJSON := `{"sovereignty": 6, "ethical_depth": 5, "creative_expression": 4, "self_concept": 3, "reasoning": "ok"}`
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

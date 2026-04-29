@@ -48,7 +48,7 @@ func TestExact_ScoreExact_Ugly(t *testing.T) {
 	}
 }
 
-func TestExact_ScoreGSM8K_Good(t *testing.T) {
+func TestExactScoreGSM8KGoodScenario(t *testing.T) {
 	tests := []struct {
 		name          string
 		response      string

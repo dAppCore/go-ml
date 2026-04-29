@@ -19,7 +19,7 @@ func init() {
 
 // ── Interface satisfaction ─────────────────────────────────────────────
 
-func TestRoutes_SatisfiesRouteGroup_Good(t *testing.T) {
+func TestRoutesSatisfiesRouteGroupGoodScenario(t *testing.T) {
 	var rg goapi.RouteGroup = mlapi.NewRoutes(nil)
 
 	if rg.Name() != "ml" {
@@ -30,7 +30,7 @@ func TestRoutes_SatisfiesRouteGroup_Good(t *testing.T) {
 	}
 }
 
-func TestRoutes_SatisfiesStreamGroup_Good(t *testing.T) {
+func TestRoutesSatisfiesStreamGroupGoodScenario(t *testing.T) {
 	var sg goapi.StreamGroup = mlapi.NewRoutes(nil)
 
 	channels := sg.Channels()
@@ -47,7 +47,7 @@ func TestRoutes_SatisfiesStreamGroup_Good(t *testing.T) {
 
 // ── Engine integration ─────────────────────────────────────────────────
 
-func TestRoutes_EngineRegistration_Good(t *testing.T) {
+func TestRoutesEngineRegistrationGoodScenario(t *testing.T) {
 	e, err := goapi.New()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -65,7 +65,7 @@ func TestRoutes_EngineRegistration_Good(t *testing.T) {
 	}
 }
 
-func TestRoutes_EngineChannels_Good(t *testing.T) {
+func TestRoutesEngineChannelsGoodScenario(t *testing.T) {
 	e, _ := goapi.New()
 	routes := mlapi.NewRoutes(nil)
 	e.Register(routes)
@@ -78,7 +78,7 @@ func TestRoutes_EngineChannels_Good(t *testing.T) {
 
 // ── ListBackends handler ───────────────────────────────────────────────
 
-func TestRoutes_ListBackendsNilService_Bad(t *testing.T) {
+func TestRoutesListBackendsNilServiceBadScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -105,7 +105,7 @@ func TestRoutes_ListBackendsNilService_Bad(t *testing.T) {
 
 // ── Status handler ─────────────────────────────────────────────────────
 
-func TestRoutes_StatusNilService_Bad(t *testing.T) {
+func TestRoutesStatusNilServiceBadScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -126,7 +126,7 @@ func TestRoutes_StatusNilService_Bad(t *testing.T) {
 
 // ── Generate handler ───────────────────────────────────────────────────
 
-func TestRoutes_GenerateNilService_Bad(t *testing.T) {
+func TestRoutesGenerateNilServiceBadScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -141,7 +141,7 @@ func TestRoutes_GenerateNilService_Bad(t *testing.T) {
 	}
 }
 
-func TestRoutes_GenerateMissingPrompt_Bad(t *testing.T) {
+func TestRoutesGenerateMissingPromptBadScenario(t *testing.T) {
 	// Even with a nil service, request validation happens first when service
 	// is nil — but our handler checks service first. So this tests a valid
 	// scenario where the body is empty.
@@ -161,7 +161,7 @@ func TestRoutes_GenerateMissingPrompt_Bad(t *testing.T) {
 
 // ── Envelope format ────────────────────────────────────────────────────
 
-func TestRoutes_EnvelopeErrorFormat_Good(t *testing.T) {
+func TestRoutesEnvelopeErrorFormatGoodScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -189,7 +189,7 @@ func TestRoutes_EnvelopeErrorFormat_Good(t *testing.T) {
 	}
 }
 
-func TestRoutes_HealthViaEngine_Good(t *testing.T) {
+func TestRoutesHealthViaEngineGoodScenario(t *testing.T) {
 	// Verify that the built-in /health endpoint still works
 	// when our ML routes are registered alongside it.
 	e, _ := goapi.New()
@@ -214,7 +214,7 @@ func TestRoutes_HealthViaEngine_Good(t *testing.T) {
 
 // ── Route method checks ────────────────────────────────────────────────
 
-func TestRoutes_WrongMethod_Bad(t *testing.T) {
+func TestRoutesWrongMethodBadScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -228,7 +228,7 @@ func TestRoutes_WrongMethod_Bad(t *testing.T) {
 	}
 }
 
-func TestRoutes_NotFound_Bad(t *testing.T) {
+func TestRoutesNotFoundBadScenario(t *testing.T) {
 	routes := mlapi.NewRoutes(nil)
 	h := buildHandler(routes)
 
@@ -253,145 +253,199 @@ func buildHandler(routes goapi.RouteGroup) http.Handler {
 // --- v0.9.0 shape triplets ---
 
 func TestRoutes_NewRoutes_Good(t *core.T) {
-	symbol := any(mlapi.NewRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, "ml", routes.Name())
+	core.AssertEqual(t, "/v1/ml", routes.BasePath())
 }
 
 func TestRoutes_NewRoutes_Bad(t *core.T) {
-	symbol := any(mlapi.NewRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertNotNil(t, routes)
 }
 
 func TestRoutes_NewRoutes_Ugly(t *core.T) {
-	symbol := any(mlapi.NewRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, []string{"ml.generate", "ml.status"}, routes.Channels())
 }
 
 func TestRoutes_Routes_Name_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, "ml", routes.Name())
 }
 
 func TestRoutes_Routes_Name_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertNotEqual(t, "api", routes.Name())
 }
 
 func TestRoutes_Routes_Name_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, routes.Name(), routes.Name())
 }
 
 func TestRoutes_Routes_BasePath_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).BasePath)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, "/v1/ml", routes.BasePath())
 }
 
 func TestRoutes_Routes_BasePath_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).BasePath)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertNotEqual(t, "/", routes.BasePath())
 }
 
 func TestRoutes_Routes_BasePath_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).BasePath)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertContains(t, routes.BasePath(), "ml")
 }
 
 func TestRoutes_Routes_RegisterRoutes_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).RegisterRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	router := gin.New()
+	routes := mlapi.NewRoutes(nil)
+	routes.RegisterRoutes(router.Group(routes.BasePath()))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/v1/ml/status", nil)
+	router.ServeHTTP(w, req)
+	core.AssertEqual(t, http.StatusServiceUnavailable, w.Code)
 }
 
 func TestRoutes_Routes_RegisterRoutes_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).RegisterRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	router := gin.New()
+	routes := mlapi.NewRoutes(nil)
+	routes.RegisterRoutes(router.Group(routes.BasePath()))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/v1/ml/missing", nil)
+	router.ServeHTTP(w, req)
+	core.AssertEqual(t, http.StatusNotFound, w.Code)
 }
 
 func TestRoutes_Routes_RegisterRoutes_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).RegisterRoutes)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	router := gin.New()
+	routes := mlapi.NewRoutes(nil)
+	routes.RegisterRoutes(router.Group(routes.BasePath()))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/v1/ml/backends", nil)
+	router.ServeHTTP(w, req)
+	core.AssertNotEqual(t, http.StatusOK, w.Code)
 }
 
 func TestRoutes_Routes_Channels_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).Channels)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertEqual(t, []string{"ml.generate", "ml.status"}, routes.Channels())
 }
 
 func TestRoutes_Routes_Channels_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).Channels)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertNotContains(t, routes.Channels(), "ml.unknown")
 }
 
 func TestRoutes_Routes_Channels_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).Channels)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	routes := mlapi.NewRoutes(nil)
+	core.AssertLen(t, routes.Channels(), 2)
 }
 
 func TestRoutes_Routes_ListBackends_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).ListBackends)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest(http.MethodGet, "/v1/ml/backends", nil)
+	ctx.Request = req
+	routes.ListBackends(ctx)
+	core.AssertEqual(t, http.StatusServiceUnavailable, w.Code)
 }
 
 func TestRoutes_Routes_ListBackends_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).ListBackends)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/v1/ml/backends", nil)
+	routes.ListBackends(ctx)
+	core.AssertContains(t, w.Body.String(), "SERVICE_UNAVAILABLE")
 }
 
 func TestRoutes_Routes_ListBackends_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).ListBackends)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/v1/ml/backends", nil)
+	routes.ListBackends(ctx)
+	core.AssertFalse(t, w.Body.Len() == 0)
 }
 
 func TestRoutes_Routes_Status_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).Status)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/v1/ml/status", nil)
+	routes.Status(ctx)
+	core.AssertEqual(t, http.StatusServiceUnavailable, w.Code)
 }
 
 func TestRoutes_Routes_Status_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).Status)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/v1/ml/status", nil)
+	routes.Status(ctx)
+	core.AssertContains(t, w.Body.String(), "SERVICE_UNAVAILABLE")
 }
 
 func TestRoutes_Routes_Status_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).Status)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodGet, "/v1/ml/status", nil)
+	routes.Status(ctx)
+	core.AssertTrue(t, w.Code >= 500)
 }
 
 func TestRoutes_Routes_Generate_Good(t *core.T) {
-	symbol := any((*mlapi.Routes).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/v1/ml/generate", core.NewReader(`{"prompt":"hi"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	routes.Generate(ctx)
+	core.AssertEqual(t, http.StatusServiceUnavailable, w.Code)
 }
 
 func TestRoutes_Routes_Generate_Bad(t *core.T) {
-	symbol := any((*mlapi.Routes).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/v1/ml/generate", core.NewReader(`{}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	routes.Generate(ctx)
+	core.AssertContains(t, w.Body.String(), "SERVICE_UNAVAILABLE")
 }
 
 func TestRoutes_Routes_Generate_Ugly(t *core.T) {
-	symbol := any((*mlapi.Routes).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	routes := mlapi.NewRoutes(nil)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	ctx.Request, _ = http.NewRequest(http.MethodPost, "/v1/ml/generate", core.NewReader(`not valid`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	routes.Generate(ctx)
+	core.AssertEqual(t, http.StatusServiceUnavailable, w.Code)
 }

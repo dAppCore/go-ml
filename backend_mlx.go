@@ -45,7 +45,7 @@ func SetMLXMemoryLimits(cacheLimit, memoryLimit uint64) {
 //	    inference.WithContextLen(8192),
 //	)
 func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*InferenceAdapter, error) {
-	slog.Info("mlx: loading model via go-inference", "path", modelPath)
+	slog.Info("mlx: loading model via go-inference", "model_path", modelPath)
 
 	m, err := inference.LoadModel(modelPath, loadOpts...)
 	if err != nil {

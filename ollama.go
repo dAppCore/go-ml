@@ -2,10 +2,8 @@ package ml
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
 	"net/http"
 	"time"
 
@@ -53,7 +51,7 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 		headResp.Body.Close()
 	}
 
-	req, err := http.NewRequest(http.MethodPost, ollamaURL+"/api/blobs/"+digest, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, ollamaURL+"/api/blobs/"+digest, core.NewBuffer(data))
 	if err != nil {
 		return "", coreerr.E("ml.ollamaUploadBlob", "blob request", err)
 	}
@@ -66,7 +64,7 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := readAll(resp.Body)
 		return "", coreerr.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 	return digest, nil
@@ -98,7 +96,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	})
 
 	client := &http.Client{Timeout: 10 * time.Minute}
-	resp, err := client.Post(ollamaURL+"/api/create", "application/json", bytes.NewReader([]byte(reqBody)))
+	resp, err := client.Post(ollamaURL+"/api/create", "application/json", core.NewReader(reqBody))
 	if err != nil {
 		return coreerr.E("ml.OllamaCreateModel", "ollama create", err)
 	}
@@ -135,7 +133,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 func OllamaDeleteModel(ollamaURL, modelName string) error {
 	body := core.JSONMarshalString(map[string]string{"model": modelName})
 
-	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", bytes.NewReader([]byte(body)))
+	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", core.NewReader(body))
 	if err != nil {
 		return coreerr.E("ml.OllamaDeleteModel", "ollama delete request", err)
 	}
@@ -149,7 +147,7 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := readAll(resp.Body)
 		return coreerr.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 	return nil

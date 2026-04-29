@@ -7,58 +7,98 @@
 package ml
 
 import (
-	"fmt"
-	"io"
-	"os"
-	"strings"
+	core "dappco.re/go"
 )
 
 // repeatStr repeats a string n times.
 //
 //	repeatStr("=", 60)  // "============..."
 func repeatStr(s string, count int) string {
-	return strings.Repeat(s, count)
+	if count <= 0 || s == "" {
+		return ""
+	}
+	b := core.NewBuilder()
+	for range count {
+		b.WriteString(s)
+	}
+	return b.String()
 }
 
 // splitSeq splits s by separator and returns an iter.Seq.
 // Wraps strings.SplitSeq for AX compliance.
 func splitSeq(s, sep string) func(yield func(string) bool) {
-	return strings.SplitSeq(s, sep)
+	parts := core.Split(s, sep)
+	return func(yield func(string) bool) {
+		for _, part := range parts {
+			if !yield(part) {
+				return
+			}
+		}
+	}
 }
 
 // compareStr compares two strings lexicographically.
 func compareStr(a, b string) int {
-	return strings.Compare(a, b)
+	return core.Compare(a, b)
 }
 
 // lastIndexAny returns the index of the last instance of any char in chars.
 func lastIndexAny(s, chars string) int {
-	return strings.LastIndexAny(s, chars)
+	for i := len(s) - 1; i >= 0; i-- {
+		for j := 0; j < len(chars); j++ {
+			if s[i] == chars[j] {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 // indexByte returns the index of the first occurrence of c in s.
 func indexByte(s string, c byte) int {
-	return strings.IndexByte(s, c)
+	for i := range len(s) {
+		if s[i] == c {
+			return i
+		}
+	}
+	return -1
 }
 
 // fieldsStr splits a string by whitespace.
 func fieldsStr(s string) []string {
-	return strings.Fields(s)
+	var fields []string
+	start := -1
+	for i := range len(s) {
+		if isSpaceByte(s[i]) {
+			if start >= 0 {
+				fields = append(fields, s[start:i])
+				start = -1
+			}
+			continue
+		}
+		if start < 0 {
+			start = i
+		}
+	}
+	if start >= 0 {
+		fields = append(fields, s[start:])
+	}
+	return fields
 }
 
 // toLower returns s in lowercase.
 func toLower(s string) string {
-	return strings.ToLower(s)
+	return core.Lower(s)
 }
 
 // joinStrings joins parts with sep.
 func joinStrings(parts []string, sep string) string {
-	return strings.Join(parts, sep)
+	return core.Join(sep, parts...)
 }
 
 // replaceAll replaces all occurrences of old with new in s.
 func replaceAll(s, old, new string) string {
-	return strings.ReplaceAll(s, old, new)
+	return core.Replace(s, old, new)
 }
 
 // applyStopSequences truncates text at the first occurrence of any stop
@@ -73,7 +113,7 @@ func applyStopSequences(text string, stopSequences []string) string {
 		if stop == "" {
 			continue
 		}
-		if idx := strings.Index(text, stop); idx >= 0 && idx < cut {
+		if idx := indexSubstr(text, stop); idx >= 0 && idx < cut {
 			cut = idx
 		}
 	}
@@ -84,50 +124,84 @@ func applyStopSequences(text string, stopSequences []string) string {
 // isErrorResponse reports whether the response should be treated as an
 // error prefix regardless of case or leading whitespace.
 func isErrorResponse(s string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(s)), "error")
-}
-
-// sscanf wraps fmt.Sscanf for parsing formatted strings.
-func sscanf(s, format string, args ...any) (int, error) {
-	return fmt.Sscanf(s, format, args...)
+	return core.HasPrefix(core.Lower(core.Trim(s)), "error")
 }
 
 // fprintf writes a formatted string to a writer.
 func fprintf(w any, format string, args ...any) {
 	if f, ok := w.(interface{ Write([]byte) (int, error) }); ok {
-		fmt.Fprintf(f, format, args...)
+		_, _ = f.Write([]byte(core.Sprintf(format, args...)))
 	}
 }
 
 // printf writes a formatted string to stdout.
 func printf(format string, args ...any) {
-	fmt.Printf(format, args...)
+	core.WriteString(core.Stdout(), core.Sprintf(format, args...))
 }
 
 // envGet returns the value of an environment variable.
 func envGet(key string) string {
-	return os.Getenv(key)
+	return core.Getenv(key)
 }
 
 // userHomeDir returns the user's home directory.
 func userHomeDir() (string, error) {
-	return os.UserHomeDir()
+	r := core.UserHomeDir()
+	if !r.OK {
+		return "", r.Value.(error)
+	}
+	return r.Value.(string), nil
 }
 
 // hostname returns the system hostname.
 func hostname() (string, error) {
-	return os.Hostname()
+	r := core.Hostname()
+	if !r.OK {
+		return "", r.Value.(error)
+	}
+	return r.Value.(string), nil
 }
 
 // lastIndexStr returns the index of the last instance of substr in s.
 func lastIndexStr(s, substr string) int {
-	return strings.LastIndex(s, substr)
+	last := -1
+	for offset := 0; offset <= len(s)-len(substr); offset++ {
+		if substr == "" || s[offset:offset+len(substr)] == substr {
+			last = offset
+		}
+	}
+	return last
 }
 
 // readAll reads all bytes from a reader.
-func readAll(r io.Reader) ([]byte, error) {
-	return io.ReadAll(r)
+func readAll(r any) ([]byte, error) {
+	result := core.ReadAll(r)
+	if !result.OK {
+		return nil, result.Value.(error)
+	}
+	return []byte(result.Value.(string)), nil
 }
 
-// ioEOF is io.EOF for use outside the helpers package.
-var ioEOF = io.EOF
+func indexSubstr(s, substr string) int {
+	if substr == "" {
+		return 0
+	}
+	if len(substr) > len(s) {
+		return -1
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
+
+func isSpaceByte(b byte) bool {
+	switch b {
+	case ' ', '\n', '\r', '\t', '\v', '\f':
+		return true
+	default:
+		return false
+	}
+}

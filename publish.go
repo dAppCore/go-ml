@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"time"
@@ -133,7 +132,7 @@ func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 
 	url := core.Sprintf("https://huggingface.co/api/datasets/%s/upload/main/%s", repoID, remotePath)
 
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader([]byte(raw)))
+	req, err := http.NewRequest(http.MethodPut, url, core.NewReader(raw))
 	if err != nil {
 		return coreerr.E("ml.uploadFileToHF", "create request", err)
 	}
@@ -148,7 +147,7 @@ func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := readAll(resp.Body)
 		return coreerr.E("ml.uploadFileToHF", core.Sprintf("upload failed: HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 

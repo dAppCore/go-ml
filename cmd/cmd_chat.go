@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"log/slog"
 	"runtime"
@@ -78,7 +77,7 @@ func runChat(cmd *cli.Command, args []string) error {
 	sandwich := kbText != "" && kernelText != ""
 
 	// Load model
-	slog.Info("chat: loading model", "path", chatModelPath)
+	slog.Info("chat: loading model", "model_path", chatModelPath)
 	backend, err := ml.NewMLXBackend(chatModelPath)
 	if err != nil {
 		return coreerr.E("cmd.runChat", "load model", err)
@@ -333,12 +332,7 @@ func cloneMessages(msgs []ml.Message) []ml.Message {
 }
 
 func chatFields(input string) []string {
-	raw := bytes.Fields([]byte(input))
-	out := make([]string, len(raw))
-	for i := range raw {
-		out[i] = string(raw[i])
-	}
-	return out
+	return fieldsStr(input)
 }
 
 func writeChatText(w io.Writer, text string) error {

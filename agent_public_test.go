@@ -12,7 +12,7 @@ import (
 // Agent — spec §8 Agent orchestrator
 // ---------------------------------------------------------------------------
 
-func TestAgent_NewAgent_Good(t *core.T) {
+func TestAgentNewAgentStoresConfigScenario(t *core.T) {
 	cfg := &AgentConfig{
 		M3Host:     "testhost",
 		M3User:     "tester",
@@ -122,7 +122,7 @@ func TestAgent_Evaluate_Bad(t *core.T) {
 	}
 }
 
-func TestAgent_ResolveCheckpointTarget_String_Good(t *core.T) {
+func TestAgentResolveCheckpointTargetStringGoodScenario(t *core.T) {
 	ft := newFakeTransport()
 	base := "/data/training"
 

@@ -298,235 +298,299 @@ func TestLlamaTextModel_Close_Good(t *core.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestBackendHttpTextmodel_NewHTTPTextModel_Good(t *core.T) {
-	symbol := any(NewHTTPTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := NewHTTPBackend("http://127.0.0.1", "model")
+	model := NewHTTPTextModel(backend)
+	core.AssertNotNil(t, model)
+	core.AssertEqual(t, "model", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_NewHTTPTextModel_Bad(t *core.T) {
-	symbol := any(NewHTTPTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("", ""))
+	core.AssertEqual(t, "http", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_NewHTTPTextModel_Ugly(t *core.T) {
-	symbol := any(NewHTTPTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := NewHTTPBackend("http://127.0.0.1", "edge")
+	model := NewHTTPTextModel(backend)
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Generate_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServer(t, "generated")
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
+	var got []inference.Token
+	for tok := range model.Generate(context.Background(), "prompt") {
+		got = append(got, tok)
+	}
+	core.AssertLen(t, got, 1)
+	core.AssertEqual(t, "generated", got[0].Text)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Generate_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
+	var got []inference.Token
+	for tok := range model.Generate(context.Background(), "prompt") {
+		got = append(got, tok)
+	}
+	core.AssertEmpty(t, got)
+	core.AssertError(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Generate_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServer(t, "configured")
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
+	var got string
+	for tok := range model.Generate(context.Background(), "prompt", inference.WithMaxTokens(2)) {
+		got = tok.Text
+	}
+	core.AssertEqual(t, "configured", got)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Chat_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServer(t, "chat")
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
+	var got []inference.Token
+	for tok := range model.Chat(context.Background(), []inference.Message{{Role: "user", Content: "hi"}}) {
+		got = append(got, tok)
+	}
+	core.AssertLen(t, got, 1)
+	core.AssertEqual(t, "chat", got[0].Text)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Chat_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
+	for range model.Chat(context.Background(), nil) {
+	}
+	core.AssertError(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Chat_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServer(t, "empty")
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
+	var got string
+	for tok := range model.Chat(context.Background(), nil) {
+		got = tok.Text
+	}
+	core.AssertEqual(t, "empty", got)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Classify)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	result, err := model.Classify(context.Background(), []string{"sample"})
+	core.AssertNil(t, result)
+	core.AssertError(t, err, "not supported")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Classify)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("", ""))
+	result, err := model.Classify(context.Background(), nil)
+	core.AssertNil(t, result)
+	core.AssertError(t, err)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Classify)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	result, err := model.Classify(context.Background(), []string{})
+	core.AssertNil(t, result)
+	core.AssertError(t, err, "classify")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).BatchGenerate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServerMulti(t)
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
+	results, err := model.BatchGenerate(context.Background(), []string{"a", "b"})
+	core.RequireNoError(t, err)
+	core.AssertLen(t, results, 2)
+	core.AssertEqual(t, "reply:a", results[0].Tokens[0].Text)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).BatchGenerate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
+	results, err := model.BatchGenerate(context.Background(), []string{"a"})
+	core.RequireNoError(t, err)
+	core.AssertLen(t, results, 1)
+	core.AssertError(t, results[0].Err)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).BatchGenerate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	results, err := model.BatchGenerate(context.Background(), nil)
+	core.RequireNoError(t, err)
+	core.AssertEmpty(t, results)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_ModelType_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "named"))
+	core.AssertEqual(t, "named", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_ModelType_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", ""))
+	core.AssertEqual(t, "http", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_ModelType_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("", "edge:model"))
+	core.AssertEqual(t, "edge:model", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Info_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Info)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	core.AssertEqual(t, "http", model.Info().Architecture)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Info_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Info)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("", ""))
+	info := model.Info()
+	core.AssertEqual(t, 0, info.NumLayers)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Info_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Info)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "edge"))
+	core.AssertEqual(t, "http", model.Info().Architecture)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Metrics_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Metrics)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	core.AssertEqual(t, inference.GenerateMetrics{}, model.Metrics())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Metrics_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Metrics)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("", ""))
+	core.AssertEqual(t, uint64(0), model.Metrics().PeakMemoryBytes)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Metrics_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Metrics)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "edge"))
+	core.AssertEqual(t, 0.0, model.Metrics().DecodeTokensPerSec)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Err_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Err)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	core.AssertNoError(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Err_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Err)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
+	for range model.Generate(context.Background(), "prompt") {
+	}
+	core.AssertError(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Err_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Err)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := newTestServer(t, "ok")
+	defer srv.Close()
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
+	for range model.Generate(context.Background(), "prompt") {
+	}
+	model.http = NewHTTPBackend(srv.URL, "model")
+	for range model.Generate(context.Background(), "prompt") {
+	}
+	core.AssertNoError(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Good(t *core.T) {
-	symbol := any((*HTTPTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Bad(t *core.T) {
-	symbol := any((*HTTPTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewHTTPTextModel(NewHTTPBackend("", ""))
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Ugly(t *core.T) {
-	symbol := any((*HTTPTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
+	core.AssertNoError(t, model.Close())
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_NewLlamaTextModel_Good(t *core.T) {
-	symbol := any(NewLlamaTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend())
+	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_NewLlamaTextModel_Bad(t *core.T) {
-	symbol := any(NewLlamaTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend(LlamaOpts{Port: 19090}))
+	core.AssertNotNil(t, model.HTTPTextModel)
 }
 
 func TestBackendHttpTextmodel_NewLlamaTextModel_Ugly(t *core.T) {
-	symbol := any(NewLlamaTextModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := NewLlamaBackend("model.gguf")
+	model := NewLlamaTextModel(backend)
+	core.AssertEqual(t, backend, model.llama)
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_ModelType_Good(t *core.T) {
-	symbol := any((*LlamaTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend())
+	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_ModelType_Bad(t *core.T) {
-	symbol := any((*LlamaTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend(nil))
+	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_ModelType_Ugly(t *core.T) {
-	symbol := any((*LlamaTextModel).ModelType)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend(LlamaOpts{LoraPath: "adapter.gguf"}))
+	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Good(t *core.T) {
-	symbol := any((*LlamaTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	model := NewLlamaTextModel(NewLlamaBackend())
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Bad(t *core.T) {
-	symbol := any((*LlamaTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := NewLlamaBackend()
+	backend.procID = "proc"
+	model := NewLlamaTextModel(backend)
+	core.AssertError(t, model.Close(), "process service")
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Ugly(t *core.T) {
-	symbol := any((*LlamaTextModel).Close)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	model := NewLlamaTextModel(NewLlamaBackend())
+	core.AssertNoError(t, model.Close())
+	core.AssertNoError(t, model.Close())
 }

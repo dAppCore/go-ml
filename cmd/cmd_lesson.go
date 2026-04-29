@@ -199,7 +199,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	)
 
 	// Load model
-	slog.Info("lesson: loading model", "path", lessonModelPath)
+	slog.Info("lesson: loading model", "model_path", lessonModelPath)
 	backend, err := ml.NewMLXBackend(lessonModelPath)
 	if err != nil {
 		return coreerr.E("cmd.runLesson", "load model", err)

@@ -74,7 +74,7 @@ func TestHTTPBackend_StopSequences_Good(t *testing.T) {
 	}
 }
 
-func TestHTTPBackend_Retry_Ugly(t *testing.T) {
+func TestHTTPBackendRetryUglyScenario(t *testing.T) {
 	attempts := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -151,253 +151,322 @@ func TestHTTPBackend_WithHTTPClient_Ugly(t *testing.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestBackendHttp_WithHTTPClient_Good(t *core.T) {
-	symbol := any(WithHTTPClient)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	client := &http.Client{}
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithHTTPClient(client))
+	core.AssertEqual(t, client, b.httpClient)
 }
 
 func TestBackendHttp_WithHTTPClient_Bad(t *core.T) {
-	symbol := any(WithHTTPClient)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithHTTPClient(nil))
+	core.AssertNotNil(t, b.httpClient)
+}
+
+func TestBackendHttp_WithHTTPClient_Ugly(t *core.T) {
+	client := &http.Client{}
+	opt := WithHTTPClient(client)
+	b := NewHTTPBackend("", "", opt, WithHTTPClient(nil))
+	core.AssertEqual(t, client, b.httpClient)
+}
+
+func TestBackendHttp_WithMedium_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithMedium(nil))
+	core.AssertNil(t, b.Medium())
 }
 
 func TestBackendHttp_WithMedium_Bad(t *core.T) {
-	symbol := any(WithMedium)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	WithMedium(nil)(b)
+	core.AssertNil(t, b.Medium())
 }
 
 func TestBackendHttp_WithMedium_Ugly(t *core.T) {
-	symbol := any(WithMedium)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("", "", WithMedium(nil))
+	core.AssertNil(t, b.Medium())
+}
+
+func TestBackendHttp_WithHTTPMaxTokens_Good(t *core.T) {
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithHTTPMaxTokens(77))
+	core.AssertEqual(t, 77, b.maxTokens)
 }
 
 func TestBackendHttp_WithHTTPMaxTokens_Bad(t *core.T) {
-	symbol := any(WithHTTPMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithHTTPMaxTokens(-1))
+	core.AssertEqual(t, -1, b.maxTokens)
 }
 
 func TestBackendHttp_WithHTTPMaxTokens_Ugly(t *core.T) {
-	symbol := any(WithHTTPMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	WithHTTPMaxTokens(0)(b)
+	core.AssertEqual(t, 0, b.maxTokens)
 }
 
 func TestBackendHttp_Error_Error_Good(t *core.T) {
-	symbol := any((*retryableError).Error)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	err := &retryableError{core.NewError("temporary")}
+	core.AssertEqual(t, "temporary", err.Error())
 }
 
 func TestBackendHttp_Error_Error_Bad(t *core.T) {
-	symbol := any((*retryableError).Error)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	err := &retryableError{core.NewError("")}
+	core.AssertEqual(t, "", err.Error())
 }
 
 func TestBackendHttp_Error_Error_Ugly(t *core.T) {
-	symbol := any((*retryableError).Error)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	err := &retryableError{core.NewError("edge")}
+	core.AssertContains(t, err.Error(), "edge")
 }
 
 func TestBackendHttp_Error_Unwrap_Good(t *core.T) {
-	symbol := any((*retryableError).Unwrap)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	cause := core.NewError("cause")
+	err := &retryableError{cause}
+	core.AssertErrorIs(t, err.Unwrap(), cause)
 }
 
 func TestBackendHttp_Error_Unwrap_Bad(t *core.T) {
-	symbol := any((*retryableError).Unwrap)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	err := &retryableError{core.NewError("bad")}
+	core.AssertError(t, err.Unwrap())
 }
 
 func TestBackendHttp_Error_Unwrap_Ugly(t *core.T) {
-	symbol := any((*retryableError).Unwrap)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	cause := core.NewError("edge")
+	err := &retryableError{cause}
+	core.AssertEqual(t, cause, err.Unwrap())
 }
 
 func TestBackendHttp_NewHTTPBackend_Good(t *core.T) {
-	symbol := any(NewHTTPBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	core.AssertEqual(t, "http://127.0.0.1", b.BaseURL())
+	core.AssertEqual(t, "model", b.Model())
 }
 
 func TestBackendHttp_NewHTTPBackend_Bad(t *core.T) {
-	symbol := any(NewHTTPBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("", "")
+	core.AssertFalse(t, b.Available())
+	core.AssertEqual(t, "", b.Model())
 }
 
 func TestBackendHttp_NewHTTPBackend_Ugly(t *core.T) {
-	symbol := any(NewHTTPBackend)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithHTTPMaxTokens(1))
+	core.AssertEqual(t, 1, b.maxTokens)
 }
 
 func TestBackendHttp_HTTPBackend_Medium_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Medium)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model", WithMedium(nil))
+	core.AssertNil(t, b.Medium())
 }
 
 func TestBackendHttp_HTTPBackend_Medium_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Medium)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	var b HTTPBackend
+	core.AssertNil(t, b.Medium())
 }
 
 func TestBackendHttp_HTTPBackend_Medium_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Medium)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("", "")
+	core.AssertNil(t, b.Medium())
 }
 
 func TestBackendHttp_HTTPBackend_Name_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	core.AssertEqual(t, "http", b.Name())
 }
 
 func TestBackendHttp_HTTPBackend_Name_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	var b HTTPBackend
+	core.AssertEqual(t, "http", b.Name())
 }
 
 func TestBackendHttp_HTTPBackend_Name_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Name)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("", "")
+	core.AssertEqual(t, "http", b.Name())
 }
 
 func TestBackendHttp_HTTPBackend_Available_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	core.AssertTrue(t, b.Available())
 }
 
 func TestBackendHttp_HTTPBackend_Available_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("", "model")
+	core.AssertFalse(t, b.Available())
 }
 
 func TestBackendHttp_HTTPBackend_Available_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Available)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend(" ", "model")
+	core.AssertTrue(t, b.Available())
 }
 
 func TestBackendHttp_HTTPBackend_Model_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Model)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	core.AssertEqual(t, "model", b.Model())
 }
 
 func TestBackendHttp_HTTPBackend_Model_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Model)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "")
+	core.AssertEqual(t, "", b.Model())
 }
 
 func TestBackendHttp_HTTPBackend_Model_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Model)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model:tag")
+	core.AssertEqual(t, "model:tag", b.Model())
 }
 
 func TestBackendHttp_HTTPBackend_BaseURL_Good(t *core.T) {
-	symbol := any((*HTTPBackend).BaseURL)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	core.AssertEqual(t, "http://127.0.0.1", b.BaseURL())
 }
 
 func TestBackendHttp_HTTPBackend_BaseURL_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).BaseURL)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("", "model")
+	core.AssertEqual(t, "", b.BaseURL())
 }
 
 func TestBackendHttp_HTTPBackend_BaseURL_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).BaseURL)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	stubName := t.Name()
+	core.AssertNotEmpty(t, stubName)
+	b := NewHTTPBackend("http://127.0.0.1/", "model")
+	core.AssertEqual(t, "http://127.0.0.1/", b.BaseURL())
 }
 
 func TestBackendHttp_HTTPBackend_SetMaxTokens_Good(t *core.T) {
-	symbol := any((*HTTPBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	b.SetMaxTokens(128)
+	core.AssertEqual(t, 128, b.maxTokens)
 }
 
 func TestBackendHttp_HTTPBackend_SetMaxTokens_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	b.SetMaxTokens(-2)
+	core.AssertEqual(t, -2, b.maxTokens)
 }
 
 func TestBackendHttp_HTTPBackend_SetMaxTokens_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).SetMaxTokens)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	var b HTTPBackend
+	b.SetMaxTokens(9)
+	core.AssertEqual(t, 9, b.maxTokens)
 }
 
 func TestBackendHttp_HTTPBackend_LoadModel_Good(t *core.T) {
-	symbol := any((*HTTPBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "model")
+	model, err := b.LoadModel("ignored")
+	core.RequireNoError(t, err)
+	core.AssertNotNil(t, model)
+	core.AssertEqual(t, "model", model.ModelType())
 }
 
 func TestBackendHttp_HTTPBackend_LoadModel_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("", "")
+	model, err := b.LoadModel("")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "http", model.ModelType())
 }
 
 func TestBackendHttp_HTTPBackend_LoadModel_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).LoadModel)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1", "edge")
+	model, err := b.LoadModel("unused")
+	core.RequireNoError(t, err)
+	core.AssertNoError(t, model.Close())
 }
 
 func TestBackendHttp_HTTPBackend_Generate_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mustWriteJSONResponse(t, w, chatResponse{Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "ok"}}}})
+	}))
+	defer srv.Close()
+	b := NewHTTPBackend(srv.URL, "model")
+	result, err := b.Generate(context.Background(), "hello", GenOpts{})
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "ok", result.Text)
 }
 
 func TestBackendHttp_HTTPBackend_Generate_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusBadRequest) }))
+	defer srv.Close()
+	b := NewHTTPBackend(srv.URL, "model")
+	_, err := b.Generate(context.Background(), "hello", GenOpts{})
+	core.AssertError(t, err)
 }
 
 func TestBackendHttp_HTTPBackend_Generate_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Generate)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mustWriteJSONResponse(t, w, chatResponse{Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "cut STOP rest"}}}})
+	}))
+	defer srv.Close()
+	b := NewHTTPBackend(srv.URL, "model")
+	result, err := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "cut ", result.Text)
 }
 
 func TestBackendHttp_HTTPBackend_Chat_Good(t *core.T) {
-	symbol := any((*HTTPBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mustWriteJSONResponse(t, w, chatResponse{Choices: []chatChoice{{Message: Message{Role: "assistant", Content: "chat"}}}})
+	}))
+	defer srv.Close()
+	b := NewHTTPBackend(srv.URL, "model")
+	result, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, "chat", result.Text)
 }
 
 func TestBackendHttp_HTTPBackend_Chat_Bad(t *core.T) {
-	symbol := any((*HTTPBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	b := NewHTTPBackend("http://127.0.0.1:1", "model")
+	_, err := b.Chat(context.Background(), nil, GenOpts{})
+	core.AssertError(t, err)
 }
 
 func TestBackendHttp_HTTPBackend_Chat_Ugly(t *core.T) {
-	symbol := any((*HTTPBackend).Chat)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mustWriteJSONResponse(t, w, chatResponse{})
+	}))
+	defer srv.Close()
+	b := NewHTTPBackend(srv.URL, "model")
+	_, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
+	core.AssertError(t, err, "no choices")
 }

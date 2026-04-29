@@ -4,7 +4,6 @@ package ml
 
 import (
 	"context"
-	"strings"
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
@@ -75,7 +74,7 @@ func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, op
 		return a.model.Err()
 	}
 
-	var full strings.Builder
+	full := core.NewBuilder()
 	emitted := 0
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 		full.WriteString(tok.Text)
@@ -107,7 +106,7 @@ func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, o
 		return a.model.Err()
 	}
 
-	var full strings.Builder
+	full := core.NewBuilder()
 	emitted := 0
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 		full.WriteString(tok.Text)

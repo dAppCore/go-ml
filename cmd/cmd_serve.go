@@ -5,7 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/signal"
 	"runtime"
 	"sync/atomic"
@@ -123,11 +122,11 @@ func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxReq
 		errCh <- srv.ListenAndServe()
 	}()
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
 
 	select {
-	case <-sigCh:
+	case <-signalCtx.Done():
 		slog.Info("ml serve: shutting down", "reason", "signal")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

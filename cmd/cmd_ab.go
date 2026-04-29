@@ -81,7 +81,7 @@ type abProbe struct {
 // abKernelDef is a named kernel condition.
 type abKernelDef struct {
 	Name string `json:"name"`
-	Path string `json:"path"`
+	Path string `json:"file_path"`
 	Text string `json:"text"`
 }
 
@@ -223,7 +223,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 
 	// Load model
-	slog.Info("ab: loading model", "path", abModelPath)
+	slog.Info("ab: loading model", "model_path", abModelPath)
 	backend, err := ml.NewMLXBackend(abModelPath)
 	if err != nil {
 		return coreerr.E("cmd.runAB", "load model", err)

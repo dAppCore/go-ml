@@ -6,52 +6,82 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"strings"
+	core "dappco.re/go"
 )
 
 // repeatStr repeats a string n times.
 func repeatStr(s string, count int) string {
-	return strings.Repeat(s, count)
+	if count <= 0 || s == "" {
+		return ""
+	}
+	b := core.NewBuilder()
+	for range count {
+		b.WriteString(s)
+	}
+	return b.String()
 }
 
 // fieldsStr splits a string by whitespace.
 func fieldsStr(s string) []string {
-	return strings.Fields(s)
+	var fields []string
+	start := -1
+	for i := range len(s) {
+		if isSpaceByte(s[i]) {
+			if start >= 0 {
+				fields = append(fields, s[start:i])
+				start = -1
+			}
+			continue
+		}
+		if start < 0 {
+			start = i
+		}
+	}
+	if start >= 0 {
+		fields = append(fields, s[start:])
+	}
+	return fields
 }
 
 // joinStrings joins parts with sep.
 func joinStrings(parts []string, sep string) string {
-	return strings.Join(parts, sep)
+	return core.Join(sep, parts...)
 }
 
 // cutStr cuts s around the first instance of sep.
 func cutStr(s, sep string) (string, string, bool) {
-	return strings.Cut(s, sep)
+	idx := indexSubstr(s, sep)
+	if idx < 0 {
+		return s, "", false
+	}
+	return s[:idx], s[idx+len(sep):], true
 }
 
 // printf writes a formatted string to stdout.
 func printf(format string, args ...any) {
-	fmt.Printf(format, args...)
+	core.WriteString(core.Stdout(), core.Sprintf(format, args...))
 }
 
-// scanln reads a line from stdin.
-func scanln(a ...any) (int, error) {
-	return fmt.Scanln(a...)
+func indexSubstr(s, substr string) int {
+	if substr == "" {
+		return 0
+	}
+	if len(substr) > len(s) {
+		return -1
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }
 
-// stdinFile returns os.Stdin.
-func stdinFile() *os.File {
-	return os.Stdin
-}
-
-// stdoutFile returns os.Stdout.
-func stdoutFile() *os.File {
-	return os.Stdout
-}
-
-// signalNotify wraps signal.Notify for OS signal handling.
-func signalChan() chan os.Signal {
-	return make(chan os.Signal, 1)
+func isSpaceByte(b byte) bool {
+	switch b {
+	case ' ', '\n', '\r', '\t', '\v', '\f':
+		return true
+	default:
+		return false
+	}
 }

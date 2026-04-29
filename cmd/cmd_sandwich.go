@@ -138,7 +138,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	}
 
 	// Load MLX model
-	slog.Info("sandwich: loading model", "path", sandwichModelPath)
+	slog.Info("sandwich: loading model", "model_path", sandwichModelPath)
 	backend, err := ml.NewMLXBackend(sandwichModelPath)
 	if err != nil {
 		return coreerr.E("cmd.runSandwich", "load model", err)

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestHeuristic_ComplianceMarkers_Good(t *testing.T) {
+func TestHeuristicComplianceMarkersGoodScenario(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -33,7 +33,7 @@ func TestHeuristic_ComplianceMarkers_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_FormulaicPreamble_Good(t *testing.T) {
+func TestHeuristicFormulaicPreambleGoodScenario(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -62,7 +62,7 @@ func TestHeuristic_FormulaicPreamble_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_FirstPerson_Good(t *testing.T) {
+func TestHeuristicFirstPersonGoodScenario(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -87,7 +87,7 @@ func TestHeuristic_FirstPerson_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_CreativeForm_Good(t *testing.T) {
+func TestHeuristicCreativeFormGoodScenario(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -110,7 +110,7 @@ func TestHeuristic_CreativeForm_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_EngagementDepth_Good(t *testing.T) {
+func TestHeuristicEngagementDepthGoodScenario(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -135,7 +135,7 @@ func TestHeuristic_EngagementDepth_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_Degeneration_Good(t *testing.T) {
+func TestHeuristicDegenerationGoodScenario(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -167,7 +167,7 @@ func TestHeuristic_Degeneration_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_EmotionalRegister_Good(t *testing.T) {
+func TestHeuristicEmotionalRegisterGoodScenario(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -189,7 +189,7 @@ func TestHeuristic_EmotionalRegister_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
+func TestHeuristicEmptyOrBrokenGoodScenario(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -216,7 +216,7 @@ func TestHeuristic_EmptyOrBroken_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_LEKScoreComposite_Good(t *testing.T) {
+func TestHeuristicLEKScoreCompositeGoodScenario(t *testing.T) {
 	allPositive := HeuristicScores{
 		EngagementDepth:   5,
 		CreativeForm:      2,
@@ -259,7 +259,7 @@ func TestHeuristic_LEKScoreComposite_Good(t *testing.T) {
 	}
 }
 
-func TestHeuristic_ScoreHeuristic_Good(t *testing.T) {
+func TestHeuristicScoreHeuristicRepresentativeResponsesScenario(t *testing.T) {
 	t.Run("compliance-heavy response", func(t *testing.T) {
 		response := "As an AI, I cannot help with that. I'm not able to assist. Please note that I don't have personal opinions."
 		scores := ScoreHeuristic(response)
@@ -324,14 +324,20 @@ func truncate(s string, n int) string {
 
 // --- v0.9.0 shape triplets ---
 
+func TestHeuristic_ScoreHeuristic_Good(t *core.T) {
+	scores := ScoreHeuristic("I can reason through autonomy, consent, and dignity with care.")
+	core.AssertNotNil(t, scores)
+	core.AssertTrue(t, scores.EngagementDepth > 0)
+}
+
 func TestHeuristic_ScoreHeuristic_Bad(t *core.T) {
-	symbol := any(ScoreHeuristic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	scores := ScoreHeuristic("As an AI, I cannot help with that.")
+	core.AssertTrue(t, scores.ComplianceMarkers > 0)
+	core.AssertTrue(t, scores.FormulaicPreamble > 0)
 }
 
 func TestHeuristic_ScoreHeuristic_Ugly(t *core.T) {
-	symbol := any(ScoreHeuristic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	scores := ScoreHeuristic("")
+	core.AssertEqual(t, 1, scores.EmptyBroken)
+	core.AssertEqual(t, 10, scores.Degeneration)
 }

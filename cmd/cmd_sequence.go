@@ -126,7 +126,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	}
 
 	// Load model once for all lessons
-	slog.Info("sequence: loading model", "path", modelPath)
+	slog.Info("sequence: loading model", "model_path", modelPath)
 	backend, err := ml.NewMLXBackend(modelPath)
 	if err != nil {
 		return coreerr.E("cmd.runSequence", "load model", err)
@@ -157,7 +157,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		lessonData, err := coreio.Local.Read(lessonPath)
 		if err != nil {
 			slog.Error("sequence: failed to read lesson",
-				"path", lessonPath,
+				"lesson_path", lessonPath,
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
@@ -169,7 +169,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		var lesson lessonDef
 		if err := yaml.Unmarshal([]byte(lessonData), &lesson); err != nil {
 			slog.Error("sequence: failed to parse lesson",
-				"path", lessonPath,
+				"lesson_path", lessonPath,
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
@@ -320,6 +320,6 @@ func loadSequenceState(path string) sequenceState {
 
 func saveSequenceState(path string, state sequenceState) {
 	if err := coreio.Local.Write(path, core.JSONMarshalString(state)); err != nil {
-		slog.Warn("write sequence state failed", "path", path, "err", err)
+		slog.Warn("write sequence state failed", "state_path", path, "err", err)
 	}
 }

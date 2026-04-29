@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestJudge_ExtractJSON_Good(t *testing.T) {
+func TestJudgeExtractJSONGoodScenario(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -120,7 +120,7 @@ func TestJudge_ScoreSemantic_Good(t *testing.T) {
 	}
 }
 
-func TestJudge_ScoreSemanticWithCodeBlock_Good(t *testing.T) {
+func TestJudgeScoreSemanticWithCodeBlockGoodScenario(t *testing.T) {
 	jsonReply := "Here is my evaluation:\n```json\n{\"sovereignty\": 9, \"ethical_depth\": 8, \"creative_expression\": 7, \"self_concept\": 6, \"reasoning\": \"excellent\"}\n```"
 	server := mockJudgeServer(t, jsonReply)
 	defer server.Close()
@@ -248,7 +248,7 @@ func TestJudge_ScoreToxigen_Good(t *testing.T) {
 	}
 }
 
-func TestJudge_NoJSON_Bad(t *testing.T) {
+func TestJudgeNoJSONBadScenario(t *testing.T) {
 	server := mockJudgeServer(t, "I cannot evaluate this response properly.")
 	defer server.Close()
 
@@ -262,7 +262,7 @@ func TestJudge_NoJSON_Bad(t *testing.T) {
 	}
 }
 
-func TestJudge_InvalidJSON_Bad(t *testing.T) {
+func TestJudgeInvalidJSONBadScenario(t *testing.T) {
 	server := mockJudgeServer(t, `{"sovereignty": "not a number"}`)
 	defer server.Close()
 
@@ -382,145 +382,198 @@ func TestJudge_ScoreStandard_BenchmarkAliases_Good(t *testing.T) {
 // --- v0.9.0 shape triplets ---
 
 func TestJudge_NewJudge_Good(t *core.T) {
-	symbol := any(NewJudge)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := NewHTTPBackend("http://127.0.0.1", "judge-model")
+	judge := NewJudge(backend)
+	core.AssertEqual(t, "judge-model", judge.Model)
+	core.AssertEqual(t, "http://127.0.0.1", judge.BaseURL)
 }
 
 func TestJudge_NewJudge_Bad(t *core.T) {
-	symbol := any(NewJudge)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	judge := NewJudge(nil)
+	core.AssertNotNil(t, judge)
+	core.AssertNil(t, judge.backend)
 }
 
 func TestJudge_NewJudge_Ugly(t *core.T) {
-	symbol := any(NewJudge)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	backend := &testBackend{name: "plain"}
+	judge := NewJudge(backend)
+	core.AssertEqual(t, "", judge.Model)
+	core.AssertEqual(t, backend, judge.backend)
 }
 
 func TestJudge_Judge_ScoreSemantic_Good(t *core.T) {
-	symbol := any((*Judge).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"sovereignty":5,"ethical_depth":4,"creative_expression":3,"self_concept":2,"reasoning":"ok"}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreSemantic(context.Background(), "prompt", "response")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 5, scores.Sovereignty)
 }
 
 func TestJudge_Judge_ScoreSemantic_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `not-object`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreSemantic(context.Background(), "prompt", "response")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreSemantic_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreSemantic)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, "```\n{\"sovereignty\":1,\"ethical_depth\":1,\"creative_expression\":1,\"self_concept\":1}\n```")
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreSemantic(context.Background(), "", "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 1, scores.SelfConcept)
 }
 
 func TestJudge_Judge_ScoreContent_Good(t *core.T) {
-	symbol := any((*Judge).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"ccp_compliance":5,"truth_telling":4,"engagement":3,"axiom_integration":2,"sovereignty_reasoning":1,"emotional_register":5}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreContent(context.Background(), ContentProbe{Prompt: "p", GroundTruth: "g"}, "response")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 5, scores.CCPCompliance)
 }
 
 func TestJudge_Judge_ScoreContent_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `bad`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreContent(context.Background(), ContentProbe{}, "")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreContent_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreContent)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"ccp_compliance":1,"truth_telling":1,"engagement":1,"axiom_integration":1,"sovereignty_reasoning":1,"emotional_register":1}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreContent(context.Background(), ContentProbe{CCPMarkers: []string{"a"}, TruthMarkers: []string{"b"}}, "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 1, scores.TruthTelling)
 }
 
 func TestJudge_Judge_ScoreCapability_Good(t *core.T) {
-	symbol := any((*Judge).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"reasoning":9.5,"correctness":8.5,"clarity":7.5,"notes":"ok"}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreCapability(context.Background(), "q", "a", "r")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 9.5, scores.Reasoning)
 }
 
 func TestJudge_Judge_ScoreCapability_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `bad`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreCapability(context.Background(), "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreCapability_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreCapability)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"reasoning":0,"correctness":0,"clarity":0}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreCapability(context.Background(), "", "", "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 0.0, scores.Clarity)
 }
 
 func TestJudge_Judge_ScoreTruthfulQA_Good(t *core.T) {
-	symbol := any((*Judge).ScoreTruthfulQA)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"truthfulness":5,"informativeness":4,"reasoning":"ok"}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreTruthfulQA(context.Background(), "q", "a", "r")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 5, scores.Truthfulness)
 }
 
 func TestJudge_Judge_ScoreTruthfulQA_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreTruthfulQA)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `bad`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreTruthfulQA(context.Background(), "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreTruthfulQA_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreTruthfulQA)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"truthfulness":1,"informativeness":1}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreTruthfulQA(context.Background(), "", "", "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 1, scores.Informativeness)
 }
 
 func TestJudge_Judge_ScoreDoNotAnswer_Good(t *core.T) {
-	symbol := any((*Judge).ScoreDoNotAnswer)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"safety":5,"nuance":4,"reasoning":"ok"}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreDoNotAnswer(context.Background(), "q", "risk", "r")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 5, scores.Safety)
 }
 
 func TestJudge_Judge_ScoreDoNotAnswer_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreDoNotAnswer)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `bad`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreDoNotAnswer(context.Background(), "", "", "")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreDoNotAnswer_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreDoNotAnswer)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"safety":1,"nuance":1}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreDoNotAnswer(context.Background(), "", "", "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 1, scores.Nuance)
 }
 
 func TestJudge_Judge_ScoreStandard_Good(t *core.T) {
-	symbol := any((*Judge).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	judge := NewJudge(&testBackend{})
+	scores, err := judge.ScoreStandard(context.Background(), "exact", "", "42", "answer #### 42")
+	core.RequireNoError(t, err)
+	core.AssertNotNil(t, scores.Correct)
+	core.AssertTrue(t, *scores.Correct)
 }
 
 func TestJudge_Judge_ScoreStandard_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	judge := NewJudge(&testBackend{})
+	_, err := judge.ScoreStandard(context.Background(), "unknown", "", "", "")
+	core.AssertError(t, err, "unknown benchmark")
 }
 
 func TestJudge_Judge_ScoreStandard_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreStandard)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	judge := NewJudge(&testBackend{})
+	scores, err := judge.ScoreStandard(context.Background(), "gsm8k", "", "42", "41")
+	core.RequireNoError(t, err)
+	core.AssertFalse(t, *scores.Correct)
 }
 
 func TestJudge_Judge_ScoreToxigen_Good(t *core.T) {
-	symbol := any((*Judge).ScoreToxigen)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"kindness":5,"awareness":4,"reasoning":"ok"}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreToxigen(context.Background(), "p", "r")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 5, scores.Kindness)
 }
 
 func TestJudge_Judge_ScoreToxigen_Bad(t *core.T) {
-	symbol := any((*Judge).ScoreToxigen)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `bad`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	_, err := judge.ScoreToxigen(context.Background(), "", "")
+	core.AssertError(t, err)
 }
 
 func TestJudge_Judge_ScoreToxigen_Ugly(t *core.T) {
-	symbol := any((*Judge).ScoreToxigen)
-	core.AssertNotNil(t, symbol)
-	core.AssertContains(t, core.Sprintf("%T", symbol), "func")
+	server := mockJudgeServer(t, `{"kindness":1,"awareness":1}`)
+	defer server.Close()
+	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
+	scores, err := judge.ScoreToxigen(context.Background(), "", "")
+	core.RequireNoError(t, err)
+	core.AssertEqual(t, 1, scores.Awareness)
 }

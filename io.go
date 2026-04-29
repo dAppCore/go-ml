@@ -2,7 +2,6 @@ package ml
 
 import (
 	"bufio"
-	"encoding/json"
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
@@ -47,12 +46,12 @@ func ReadResponses(path string) ([]Response, error) {
 
 // WriteScores writes a ScorerOutput to a JSON file with 2-space indentation.
 func WriteScores(path string, output *ScorerOutput) error {
-	data, err := json.MarshalIndent(output, "", "  ")
-	if err != nil {
-		return coreerr.E("ml.WriteScores", "marshal scores", err)
+	r := core.JSONMarshalIndent(output, "", "  ")
+	if !r.OK {
+		return coreerr.E("ml.WriteScores", "marshal scores", r.Value.(error))
 	}
 
-	if err := coreio.Local.Write(path, string(data)); err != nil {
+	if err := coreio.Local.Write(path, string(r.Value.([]byte))); err != nil {
 		return coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err)
 	}
 
