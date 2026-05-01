@@ -47,14 +47,17 @@ func NewInfluxClient(url, db string) *InfluxClient {
 }
 
 // WriteLp writes line protocol data to InfluxDB.
-func (c *InfluxClient) WriteLp(lines []string) error {
+//
+//	r := client.WriteLp([]string{"cpu,host=local usage=0.5"})
+//	if !r.OK { return r }
+func (c *InfluxClient) WriteLp(lines []string) core.Result {
 	body := core.Join("\n", lines...)
 
 	url := core.Sprintf("%s/api/v3/write_lp?db=%s", c.url, c.db)
 
 	req, err := http.NewRequest(http.MethodPost, url, core.NewReader(body))
 	if err != nil {
-		return coreerr.E("ml.InfluxClient.WriteLp", "create write request", err)
+		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", "create write request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "text/plain")
@@ -62,20 +65,28 @@ func (c *InfluxClient) WriteLp(lines []string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return coreerr.E("ml.InfluxClient.WriteLp", "write request", err)
+		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", "write request", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		respBody, _ := readAll(resp.Body)
-		return coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, string(respBody)), nil)
+		rBody := readAll(resp.Body)
+		var bodyStr string
+		if rBody.OK {
+			bodyStr = string(rBody.Value.([]byte))
+		}
+		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, bodyStr), nil))
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // QuerySQL runs a SQL query against InfluxDB and returns the result rows.
-func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
+//
+//	r := client.QuerySQL("SELECT * FROM metrics LIMIT 10")
+//	if !r.OK { return r }
+//	rows := r.Value.([]map[string]any)
+func (c *InfluxClient) QuerySQL(sql string) core.Result {
 	reqBody := map[string]string{
 		"db": c.db,
 		"q":  sql,
@@ -87,7 +98,7 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 
 	req, err := http.NewRequest(http.MethodPost, url, core.NewBuffer(jsonBody))
 	if err != nil {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "create query request", err)
+		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "create query request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
@@ -95,25 +106,26 @@ func (c *InfluxClient) QuerySQL(sql string) ([]map[string]any, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "query request", err)
+		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "query request", err))
 	}
 	defer resp.Body.Close()
 
-	respBody, err := readAll(resp.Body)
-	if err != nil {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "read query response", err)
+	rBody := readAll(resp.Body)
+	if !rBody.OK {
+		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "read query response", rBody.Value.(error)))
 	}
+	respBody := rBody.Value.([]byte)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", core.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil)
+		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", core.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil))
 	}
 
 	var rows []map[string]any
 	if r := core.JSONUnmarshal(respBody, &rows); !r.OK {
-		return nil, coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", r.Value.(error))
+		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", r.Value.(error)))
 	}
 
-	return rows, nil
+	return core.Ok(rows)
 }
 
 // EscapeLp escapes spaces, commas, and equals signs for InfluxDB line protocol

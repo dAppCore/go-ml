@@ -138,9 +138,12 @@ func (b *LlamaBackend) Available() bool {
 }
 
 // Start launches the llama-server process.
-func (b *LlamaBackend) Start(ctx context.Context) error {
+//
+//	r := b.Start(ctx)
+//	if !r.OK { return r }
+func (b *LlamaBackend) Start(ctx context.Context) core.Result {
 	if b.processSvc == nil {
-		return log.E("ml.LlamaBackend.Start", "process service not configured", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Start", "process service not configured", nil))
 	}
 
 	args := []string{
@@ -157,7 +160,7 @@ func (b *LlamaBackend) Start(ctx context.Context) error {
 		Args:    args,
 	})
 	if err != nil {
-		return log.E("ml.LlamaBackend.Start", "failed to start llama-server", err)
+		return core.Fail(log.E("ml.LlamaBackend.Start", "failed to start llama-server", err))
 	}
 	b.procID = proc.ID
 
@@ -165,43 +168,54 @@ func (b *LlamaBackend) Start(ctx context.Context) error {
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if b.Available() {
-			return nil
+			return core.Ok(nil)
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return log.E("ml.LlamaBackend.Start", "llama-server did not become healthy within 30s", nil)
+	return core.Fail(log.E("ml.LlamaBackend.Start", "llama-server did not become healthy within 30s", nil))
 }
 
 // Stop terminates the llama-server process.
-func (b *LlamaBackend) Stop() error {
+//
+//	r := b.Stop()
+//	if !r.OK { return r }
+func (b *LlamaBackend) Stop() core.Result {
 	if b.procID == "" {
-		return nil
+		return core.Ok(nil)
 	}
 	if b.processSvc == nil {
-		return log.E("ml.LlamaBackend.Stop", "process service not configured", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Stop", "process service not configured", nil))
 	}
-	return b.processSvc.Kill(b.procID)
+	return core.ResultOf(nil, b.processSvc.Kill(b.procID))
 }
 
 // Generate sends a prompt to the managed llama-server.
-func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
+//
+//	r := b.Generate(ctx, "hello", ml.DefaultGenOpts())
+//	if !r.OK { return r }
+//	resp := r.Value.(ml.Result)
+func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts) core.Result {
 	if !b.Available() {
-		return Result{}, log.E("ml.LlamaBackend.Generate", "llama-server not available", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Generate", "llama-server not available", nil))
 	}
 	if b.http == nil {
-		return Result{}, log.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil))
 	}
 	return b.http.Generate(ctx, prompt, opts)
 }
 
 // Chat sends a conversation to the managed llama-server.
-func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
+//
+//	r := b.Chat(ctx, messages, ml.DefaultGenOpts())
+//	if !r.OK { return r }
+//	resp := r.Value.(ml.Result)
+func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) core.Result {
 	if !b.Available() {
-		return Result{}, log.E("ml.LlamaBackend.Chat", "llama-server not available", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Chat", "llama-server not available", nil))
 	}
 	if b.http == nil {
-		return Result{}, log.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil)
+		return core.Fail(log.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil))
 	}
 	return b.http.Chat(ctx, messages, opts)
 }

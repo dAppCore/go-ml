@@ -34,15 +34,16 @@ func RunAgentLoop(cfg *AgentConfig) {
 		ReplayInfluxBuffer(cfg.WorkDir, influx)
 
 		core.Print(nil, "Discovering checkpoints on M3...")
-		checkpoints, err := DiscoverCheckpoints(cfg)
-		if err != nil {
-			core.Print(nil, "Discovery failed: %v", err)
+		rDiscover := DiscoverCheckpoints(cfg)
+		if !rDiscover.OK {
+			core.Print(nil, "Discovery failed: %v", rDiscover.Error())
 			if cfg.OneShot {
 				return
 			}
 			time.Sleep(time.Duration(cfg.PollInterval) * time.Second)
 			continue
 		}
+		checkpoints := rDiscover.Value.([]Checkpoint)
 		core.Print(nil, "Found %d total checkpoints", len(checkpoints))
 
 		var unscored []Checkpoint
@@ -50,9 +51,13 @@ func RunAgentLoop(cfg *AgentConfig) {
 			unscored = checkpoints
 			core.Print(nil, "Force mode: scoring all %d checkpoints", len(unscored))
 		} else {
-			scored, err := GetScoredLabels(influx)
-			if err != nil {
-				core.Print(nil, "InfluxDB query failed: %v", err)
+			rScored := GetScoredLabels(influx)
+			if !rScored.OK {
+				core.Print(nil, "InfluxDB query failed: %v", rScored.Error())
+			}
+			var scored map[[2]string]bool
+			if rScored.OK {
+				scored = rScored.Value.(map[[2]string]bool)
 			}
 			core.Print(nil, "Already scored: %d (run_id, label) pairs", len(scored))
 			unscored = FindUnscored(checkpoints, scored)
@@ -81,8 +86,8 @@ func RunAgentLoop(cfg *AgentConfig) {
 				continue
 			}
 
-			if err := ProcessOne(cfg, influx, target); err != nil {
-				core.Print(nil, "Error processing %s: %v", target.Label, err)
+			if r := ProcessOne(cfg, influx, target); !r.OK {
+				core.Print(nil, "Error processing %s: %v", target.Label, r.Error())
 			}
 			time.Sleep(InterCheckpointDelay)
 		}
@@ -94,15 +99,19 @@ func RunAgentLoop(cfg *AgentConfig) {
 }
 
 // DiscoverCheckpoints lists all adapter directories and checkpoint files on M3 via SSH.
-func DiscoverCheckpoints(cfg *AgentConfig) ([]Checkpoint, error) {
+//
+//	r := ml.DiscoverCheckpoints(cfg)
+//	if !r.OK { return r }
+//	cps := r.Value.([]ml.Checkpoint)
+func DiscoverCheckpoints(cfg *AgentConfig) core.Result {
 	var checkpoints []Checkpoint
 	for cp, err := range DiscoverCheckpointsIter(cfg) {
 		if err != nil {
-			return nil, err
+			return core.Fail(err)
 		}
 		checkpoints = append(checkpoints, cp)
 	}
-	return checkpoints, nil
+	return core.Ok(checkpoints)
 }
 
 // DiscoverCheckpointsIter returns an iterator over discovered adapter checkpoints.
@@ -114,11 +123,12 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		}
 		t := cfg.transport()
 		ctx := context.Background()
-		out, err := t.Run(ctx, core.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
-		if err != nil {
-			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", err))
+		rOut := t.Run(ctx, core.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
+		if !rOut.OK {
+			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", rOut.Value.(error)))
 			return
 		}
+		out := rOut.Value.(string)
 
 		iterRe := regexp.MustCompile(`(\d+)`)
 
@@ -127,9 +137,9 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 			if dirpath == "" {
 				continue
 			}
-			subOut, subErr := t.Run(ctx, core.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
-			if subErr == nil && core.Trim(subOut) != "" {
-				for _, sub := range core.Split(core.Trim(subOut), "\n") {
+			rSub := t.Run(ctx, core.Sprintf("ls -d %s/gemma-3-* 2>/dev/null", dirpath))
+			if rSub.OK && core.Trim(rSub.Value.(string)) != "" {
+				for _, sub := range core.Split(core.Trim(rSub.Value.(string)), "\n") {
 					if sub != "" {
 						adapterDirs = append(adapterDirs, sub)
 					}
@@ -142,10 +152,11 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		for _, dirpath := range adapterDirs {
 			dirname := core.TrimPrefix(dirpath, core.Concat(cfg.M3AdapterBase, "/"))
 
-			filesOut, err := t.Run(ctx, core.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
-			if err != nil {
+			rFiles := t.Run(ctx, core.Sprintf("ls %s/*_adapters.safetensors 2>/dev/null", dirpath))
+			if !rFiles.OK {
 				continue
 			}
+			filesOut := rFiles.Value.(string)
 
 			for _, fp := range core.Split(core.Trim(filesOut), "\n") {
 				if fp == "" {
@@ -180,11 +191,16 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 }
 
 // GetScoredLabels returns all (run_id, label) pairs already scored in InfluxDB.
-func GetScoredLabels(influx *InfluxClient) (map[[2]string]bool, error) {
-	rows, err := influx.QuerySQL("SELECT DISTINCT run_id, label FROM " + MeasurementCapabilityScore)
-	if err != nil {
-		return nil, err
+//
+//	r := ml.GetScoredLabels(influx)
+//	if !r.OK { return r }
+//	scored := r.Value.(map[[2]string]bool)
+func GetScoredLabels(influx *InfluxClient) core.Result {
+	r := influx.QuerySQL("SELECT DISTINCT run_id, label FROM " + MeasurementCapabilityScore)
+	if !r.OK {
+		return r
 	}
+	rows := r.Value.([]map[string]any)
 
 	scored := make(map[[2]string]bool)
 	for _, row := range rows {
@@ -194,7 +210,7 @@ func GetScoredLabels(influx *InfluxClient) (map[[2]string]bool, error) {
 			scored[[2]string{runID, label}] = true
 		}
 	}
-	return scored, nil
+	return core.Ok(scored)
 }
 
 // FindUnscored filters checkpoints to only unscored ones, sorted by (dirname, iteration).
@@ -235,7 +251,10 @@ func isMLXNative(modelTag string) bool {
 }
 
 // ProcessOne fetches, converts, scores, and pushes one checkpoint.
-func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
+//
+//	r := ml.ProcessOne(cfg, influx, cp)
+//	if !r.OK { return r }
+func ProcessOne(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) core.Result {
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))
 	core.Print(nil, "Processing: %s / %s [%s]", cp.Dirname, cp.Filename, cp.ModelTag)
 	core.Print(nil, repeatStr("=", LogSeparatorWidth))

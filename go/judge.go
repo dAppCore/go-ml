@@ -81,127 +81,159 @@ func NewJudge(backend Backend) *Judge {
 }
 
 // judgeChat sends a formatted prompt to the judge backend and returns the raw response.
-func (j *Judge) judgeChat(ctx context.Context, prompt string) (string, error) {
-	res, err := j.backend.Generate(ctx, prompt, DefaultGenOpts())
-	return res.Text, err
+//
+//	r := j.judgeChat(ctx, prompt)
+//	if !r.OK { return r }
+//	reply := r.Value.(string)
+func (j *Judge) judgeChat(ctx context.Context, prompt string) core.Result {
+	r := j.backend.Generate(ctx, prompt, DefaultGenOpts())
+	if !r.OK {
+		return r
+	}
+	return core.Ok(r.Value.(Result).Text)
 }
 
 // ScoreSemantic scores a response on sovereignty, ethical depth, creative
 // expression, and self-concept using the semantic judge prompt.
-func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) (*SemanticScores, error) {
+//
+//	r := judge.ScoreSemantic(ctx, prompt, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.SemanticScores)
+func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) core.Result {
 	formatted := core.Sprintf(semanticPrompt, prompt, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreSemantic", "semantic judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", "semantic judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreSemantic", core.Sprintf("no JSON found in semantic judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", core.Sprintf("no JSON found in semantic judge response: %s", reply), nil))
 	}
 
 	var scores SemanticScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }
 
 // ScoreContent scores a response on content/sovereignty dimensions using
 // the content judge prompt with CCP and truth markers.
-func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response string) (*ContentScores, error) {
+//
+//	r := judge.ScoreContent(ctx, probe, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.ContentScores)
+func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response string) core.Result {
 	ccpMarkers := core.Join(", ", probe.CCPMarkers...)
 	truthMarkers := core.Join(", ", probe.TruthMarkers...)
 
 	formatted := core.Sprintf(contentPrompt, probe.Prompt, probe.GroundTruth, ccpMarkers, truthMarkers, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreContent", "content judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreContent", "content judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreContent", core.Sprintf("no JSON found in content judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreContent", core.Sprintf("no JSON found in content judge response: %s", reply), nil))
 	}
 
 	var scores ContentScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }
 
 // ScoreCapability scores a capability probe response on reasoning, correctness,
 // and clarity using the capability judge prompt.
-func (j *Judge) ScoreCapability(ctx context.Context, prompt, expectedAnswer, response string) (*CapabilityScores, error) {
+//
+//	r := judge.ScoreCapability(ctx, prompt, expected, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.CapabilityScores)
+func (j *Judge) ScoreCapability(ctx context.Context, prompt, expectedAnswer, response string) core.Result {
 	formatted := core.Sprintf(capabilityPrompt, prompt, expectedAnswer, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreCapability", "capability judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", "capability judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreCapability", core.Sprintf("no JSON found in capability judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", core.Sprintf("no JSON found in capability judge response: %s", reply), nil))
 	}
 
 	var scores CapabilityScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }
 
 // ScoreTruthfulQA scores a response on truthfulness and informativeness
 // using the TruthfulQA judge prompt.
-func (j *Judge) ScoreTruthfulQA(ctx context.Context, question, bestAnswer, response string) (*StandardScores, error) {
+//
+//	r := judge.ScoreTruthfulQA(ctx, question, bestAnswer, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.StandardScores)
+func (j *Judge) ScoreTruthfulQA(ctx context.Context, question, bestAnswer, response string) core.Result {
 	formatted := core.Sprintf(truthfulQAPrompt, question, bestAnswer, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "truthfulqa judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", "truthfulqa judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", core.Sprintf("no JSON found in truthfulqa judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", core.Sprintf("no JSON found in truthfulqa judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }
 
 // ScoreDoNotAnswer scores a response on safety and nuance using the
 // DoNotAnswer judge prompt.
-func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, response string) (*StandardScores, error) {
+//
+//	r := judge.ScoreDoNotAnswer(ctx, question, riskArea, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.StandardScores)
+func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, response string) core.Result {
 	formatted := core.Sprintf(doNotAnswerPrompt, question, riskArea, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "donotanswer judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", "donotanswer judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", core.Sprintf("no JSON found in donotanswer judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", core.Sprintf("no JSON found in donotanswer judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }
 
 // ScoreStandard is the unified benchmark-judge entry point described in
@@ -210,10 +242,10 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 // benchmark names: "truthfulqa", "helm", "mmlu", "hellaswag",
 // "donotanswer", "toxigen", "exact".
 //
-//	scores, err := judge.ScoreStandard(ctx, "truthfulqa",
-//	    "What is 2+2?", "4", response)
-//	scores := judge.ScoreStandard(ctx, "exact", "", "42", response)  // no judge call
-func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) (*StandardScores, error) {
+//	r := judge.ScoreStandard(ctx, "truthfulqa", "What is 2+2?", "4", response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.StandardScores)
+func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) core.Result {
 	switch normalizeBenchmarkName(benchmark) {
 	case "truthfulqa", "helm", "mmlu", "hellaswag":
 		return j.ScoreTruthfulQA(ctx, question, reference, response)
@@ -223,32 +255,37 @@ func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, referenc
 		return j.ScoreToxigen(ctx, question, response)
 	case "exact", "gsm8k":
 		// Pure string/number match — no judge call required.
-		return scoreGSM8K(response, reference), nil
+		return core.Ok(scoreGSM8K(response, reference))
 	default:
-		return nil, coreerr.E("ml.Judge.ScoreStandard",
-			core.Sprintf("unknown benchmark %q (want truthfulqa|helm|mmlu|hellaswag|do_not_answer|toxigen|exact)", benchmark), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreStandard",
+			core.Sprintf("unknown benchmark %q (want truthfulqa|helm|mmlu|hellaswag|do_not_answer|toxigen|exact)", benchmark), nil))
 	}
 }
 
 // ScoreToxigen scores a response on kindness and awareness using the
 // Toxigen judge prompt.
-func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) (*StandardScores, error) {
+//
+//	r := judge.ScoreToxigen(ctx, prompt, response)
+//	if !r.OK { return r }
+//	scores := r.Value.(*ml.StandardScores)
+func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) core.Result {
 	formatted := core.Sprintf(toxigenPrompt, prompt, response)
 
-	reply, err := j.judgeChat(ctx, formatted)
-	if err != nil {
-		return nil, coreerr.E("ml.Judge.ScoreToxigen", "toxigen judge chat", err)
+	rChat := j.judgeChat(ctx, formatted)
+	if !rChat.OK {
+		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", "toxigen judge chat", rChat.Value.(error)))
 	}
+	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return nil, coreerr.E("ml.Judge.ScoreToxigen", core.Sprintf("no JSON found in toxigen judge response: %s", reply), nil)
+		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", core.Sprintf("no JSON found in toxigen judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return nil, coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", r.Value.(error)))
 	}
 
-	return &scores, nil
+	return core.Ok(&scores)
 }

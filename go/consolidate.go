@@ -24,12 +24,15 @@ type ConsolidateConfig struct {
 
 // Consolidate pulls JSONL response files from M3 via SSH, merges them by idx,
 // deduplicates, and writes a single merged JSONL output.
-func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
+//
+//	r := ml.Consolidate(cfg, os.Stdout)
+//	if !r.OK { return r }
+func Consolidate(cfg ConsolidateConfig, w io.Writer) core.Result {
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = "responses"
 	}
 	if err := coreio.Local.EnsureDir(cfg.OutputDir); err != nil {
-		return coreerr.E("ml.Consolidate", "create output dir", err)
+		return core.Fail(coreerr.E("ml.Consolidate", "create output dir", err))
 	}
 
 	// List remote files via SSH.
@@ -37,7 +40,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 	listCmd := goexec.Command(context.Background(), "ssh", cfg.M3Host, core.Sprintf("ls %s/%s", cfg.RemoteDir, cfg.Pattern))
 	listOutput, err := listCmd.Output()
 	if err != nil {
-		return coreerr.E("ml.Consolidate", "list remote files", err)
+		return core.Fail(coreerr.E("ml.Consolidate", "list remote files", err))
 	}
 
 	remoteFiles := core.Split(core.Trim(string(listOutput)), "\n")
@@ -59,9 +62,9 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 			continue
 		}
 
-		lines, err := countLines(local)
-		if err == nil {
-			core.Print(w, "  %s: %d records", core.PathBase(rf), lines)
+		rLines := countLines(local)
+		if rLines.OK {
+			core.Print(w, "  %s: %d records", core.PathBase(rf), rLines.Value.(int))
 		}
 	}
 
@@ -113,7 +116,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 
 	out, err := coreio.Local.Create(mergedPath)
 	if err != nil {
-		return coreerr.E("ml.Consolidate", "create merged file", err)
+		return core.Fail(coreerr.E("ml.Consolidate", "create merged file", err))
 	}
 	defer out.Close()
 
@@ -123,19 +126,23 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) error {
 		bw.WriteString("\n")
 	}
 	if err := bw.Flush(); err != nil {
-		return coreerr.E("ml.Consolidate", "flush merged file", err)
+		return core.Fail(coreerr.E("ml.Consolidate", "flush merged file", err))
 	}
 
 	core.Print(w, "")
 	core.Print(w, "Merged: %d unique examples -> %s", len(seen), mergedPath)
-	return nil
+	return core.Ok(nil)
 }
 
 // countLines returns the number of lines in a file.
-func countLines(path string) (int, error) {
+//
+//	r := countLines("/data/file.jsonl")
+//	if !r.OK { return r }
+//	n := r.Value.(int)
+func countLines(path string) core.Result {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return 0, err
+		return core.Fail(err)
 	}
 	defer f.Close()
 
@@ -144,5 +151,5 @@ func countLines(path string) (int, error) {
 	for scanner.Scan() {
 		count++
 	}
-	return count, scanner.Err()
+	return core.ResultOf(count, scanner.Err())
 }

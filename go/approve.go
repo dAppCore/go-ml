@@ -22,7 +22,10 @@ type ApproveConfig struct {
 // the heuristic passed AND the judge either passed or has not yet scored.
 // Each approved row is written as a chat-format JSONL line with user/assistant
 // messages.
-func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
+//
+//	r := ml.ApproveExpansions(db, cfg, os.Stdout)
+//	if !r.OK { return r }
+func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) core.Result {
 	rows, err := db.Conn().Query(`
 		SELECT r.idx, r.seed_id, r.region, r.domain, r.prompt, r.response,
 		       r.gen_time, r.model, s.heuristic_score
@@ -33,13 +36,13 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 		ORDER BY r.idx
 	`)
 	if err != nil {
-		return coreerr.E("ml.ApproveExpansions", "query approved expansions", err)
+		return core.Fail(coreerr.E("ml.ApproveExpansions", "query approved expansions", err))
 	}
 	defer rows.Close()
 
 	f, err := coreio.Local.Create(cfg.Output)
 	if err != nil {
-		return coreerr.E("ml.ApproveExpansions", core.Sprintf("create output %s", cfg.Output), err)
+		return core.Fail(coreerr.E("ml.ApproveExpansions", core.Sprintf("create output %s", cfg.Output), err))
 	}
 	defer f.Close()
 
@@ -52,7 +55,7 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 		var seedID, region, domain, prompt, response, model string
 		var genTime, score float64
 		if err := rows.Scan(&idx, &seedID, &region, &domain, &prompt, &response, &genTime, &model, &score); err != nil {
-			return coreerr.E("ml.ApproveExpansions", "scan approved row", err)
+			return core.Fail(coreerr.E("ml.ApproveExpansions", "scan approved row", err))
 		}
 
 		example := TrainingExample{
@@ -63,7 +66,7 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 		}
 
 		if _, err := f.Write([]byte(core.Concat(core.JSONMarshalString(example), "\n"))); err != nil {
-			return coreerr.E("ml.ApproveExpansions", "encode example", err)
+			return core.Fail(coreerr.E("ml.ApproveExpansions", "encode example", err))
 		}
 
 		regionSet[region] = true
@@ -72,12 +75,12 @@ func ApproveExpansions(db *store.DuckDB, cfg ApproveConfig, w io.Writer) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		return coreerr.E("ml.ApproveExpansions", "iterate approved rows", err)
+		return core.Fail(coreerr.E("ml.ApproveExpansions", "iterate approved rows", err))
 	}
 
 	core.Print(w, "Approved: %d responses (threshold: heuristic > 0)", count)
 	core.Print(w, "Exported: %s", cfg.Output)
 	core.Print(w, "  Regions: %d, Domains: %d", len(regionSet), len(domainSet))
 
-	return nil
+	return core.Ok(nil)
 }

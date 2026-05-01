@@ -59,10 +59,10 @@ type probeRunnerResponse struct {
 }
 
 // processMLXNative scores a checkpoint using Ollama on M3.
-func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
+func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) core.Result {
 	ollamaBase, ok := OllamaBaseModelMap[cp.ModelTag]
 	if !ok {
-		return coreerr.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil)
+		return core.Fail(coreerr.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil))
 	}
 	hfBase := HFBaseModelMap[cp.ModelTag]
 	if hfBase == "" {
@@ -89,21 +89,21 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 
 	ctx := context.Background()
 	t := cfg.transport()
-	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
-		return coreerr.E("ml.processMLXNative", "scp safetensors", err)
+	if r := t.CopyFrom(ctx, remoteSF, localSF); !r.OK {
+		return core.Fail(coreerr.E("ml.processMLXNative", "scp safetensors", r.Value.(error)))
 	}
-	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
-		return coreerr.E("ml.processMLXNative", "scp config", err)
+	if r := t.CopyFrom(ctx, remoteCfg, localCfg); !r.OK {
+		return core.Fail(coreerr.E("ml.processMLXNative", "scp config", r.Value.(error)))
 	}
 
 	core.Print(nil, "Converting MLX → PEFT format...")
-	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
-		return coreerr.E("ml.processMLXNative", "convert adapter", err)
+	if r := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); !r.OK {
+		return core.Fail(coreerr.E("ml.processMLXNative", "convert adapter", r.Value.(error)))
 	}
 
 	core.Print(nil, "Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
-	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
-		return coreerr.E("ml.processMLXNative", "ollama create", err)
+	if r := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); !r.OK {
+		return core.Fail(coreerr.E("ml.processMLXNative", "ollama create", r.Value.(error)))
 	}
 	core.Print(nil, "Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
@@ -119,16 +119,16 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 			EscapeLp(cp.ModelTag), EscapeLp(cp.RunID), EscapeLp(cp.Label), EscapeLp(probeID),
 			passedInt, cp.Iteration, ts,
 		)
-		if err := influx.WriteLp([]string{line}); err != nil {
-			core.Print(nil, "  [%s] InfluxDB stream failed: %v", probeID, err)
+		if r := influx.WriteLp([]string{line}); !r.OK {
+			core.Print(nil, "  [%s] InfluxDB stream failed: %v", probeID, r.Error())
 		}
 	})
 
 	core.Print(nil, "Capability: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
-	if err := PushCapabilitySummary(influx, cp, results); err != nil {
-		core.Print(nil, "InfluxDB summary push failed, buffering: %v", err)
+	if r := PushCapabilitySummary(influx, cp, results); !r.OK {
+		core.Print(nil, "InfluxDB summary push failed, buffering: %v", r.Error())
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
@@ -146,11 +146,11 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) err
 		ScoreContentAndPush(ctx, judge, influx, cp, contentRunID, contentResponses)
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // processWithConversion fetches adapter locally, converts MLX→PEFT, and scores.
-func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) error {
+func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) core.Result {
 	localAdapterDir := core.JoinPath(cfg.WorkDir, cp.Dirname)
 	coreio.Local.EnsureDir(localAdapterDir)
 
@@ -170,17 +170,17 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 
 	ctx := context.Background()
 	t := cfg.transport()
-	if err := t.CopyFrom(ctx, remoteSF, localSF); err != nil {
-		return coreerr.E("ml.processWithConversion", "scp safetensors", err)
+	if r := t.CopyFrom(ctx, remoteSF, localSF); !r.OK {
+		return core.Fail(coreerr.E("ml.processWithConversion", "scp safetensors", r.Value.(error)))
 	}
-	if err := t.CopyFrom(ctx, remoteCfg, localCfg); err != nil {
-		return coreerr.E("ml.processWithConversion", "scp config", err)
+	if r := t.CopyFrom(ctx, remoteCfg, localCfg); !r.OK {
+		return core.Fail(coreerr.E("ml.processWithConversion", "scp config", r.Value.(error)))
 	}
 
 	core.Print(nil, "Converting MLX to PEFT format...")
 	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
-	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
-		return coreerr.E("ml.processWithConversion", "convert adapter", err)
+	if r := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); !r.OK {
+		return core.Fail(coreerr.E("ml.processWithConversion", "convert adapter", r.Value.(error)))
 	}
 
 	core.Print(nil, "Running %d capability probes...", len(CapabilityProbes))
@@ -195,13 +195,13 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	core.Print(nil, "Result: %s -- %.1f%% (%d/%d)",
 		cp.Label, results.Accuracy, results.Correct, results.Total)
 
-	if err := PushCapabilityResults(influx, cp, results); err != nil {
-		core.Print(nil, "InfluxDB push failed, buffering: %v", err)
+	if r := PushCapabilityResults(influx, cp, results); !r.OK {
+		core.Print(nil, "InfluxDB push failed, buffering: %v", r.Error())
 		BufferInfluxResult(cfg.WorkDir, cp, results)
 	}
 	PushCapabilityResultsDB(cfg.DBPath, cp, results)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // RunCapabilityProbes runs all capability probes against a backend.
@@ -215,10 +215,10 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
-		if err != nil {
-			core.Print(nil, "  [%s] ERROR: %v", probe.ID, err)
-			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: err.Error()}
+		rGen := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
+		if !rGen.OK {
+			core.Print(nil, "  [%s] ERROR: %v", probe.ID, rGen.Error())
+			results.Probes[probe.ID] = SingleProbeResult{Passed: false, Response: rGen.Error()}
 			total++
 			cat := results.ByCategory[probe.Category]
 			cat.Total++
@@ -226,6 +226,7 @@ func RunCapabilityProbes(ctx context.Context, backend Backend) ProbeResult {
 			runtime.GC()
 			continue
 		}
+		res := rGen.Value.(Result)
 
 		clean := StripThinkBlocks(res.Text)
 		passed := probe.Check(clean)
@@ -277,11 +278,13 @@ func RunCapabilityProbesFull(ctx context.Context, backend Backend, onProbe Probe
 	total := 0
 
 	for _, probe := range CapabilityProbes {
-		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
-		response := res.Text
-		if err != nil {
-			core.Print(nil, "  [%s] ERROR: %v", probe.ID, err)
-			response = core.Sprintf("ERROR: %v", err)
+		rGen := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: CapabilityTemperature, MaxTokens: CapabilityMaxTokens})
+		var response string
+		if !rGen.OK {
+			core.Print(nil, "  [%s] ERROR: %v", probe.ID, rGen.Error())
+			response = core.Sprintf("ERROR: %v", rGen.Error())
+		} else {
+			response = rGen.Value.(Result).Text
 		}
 
 		clean := StripThinkBlocks(response)
@@ -339,14 +342,14 @@ func RunContentProbesViaAPI(ctx context.Context, backend Backend) []ContentRespo
 	var responses []ContentResponse
 
 	for _, probe := range ContentProbes {
-		res, err := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
-		if err != nil {
-			core.Print(nil, "  [content:%s] ERROR: %v", probe.ID, err)
+		rGen := backend.Generate(ctx, probe.Prompt, GenOpts{Temperature: ContentTemperature, MaxTokens: ContentMaxTokens})
+		if !rGen.OK {
+			core.Print(nil, "  [content:%s] ERROR: %v", probe.ID, rGen.Error())
 			runtime.GC()
 			continue
 		}
 
-		reply := StripThinkBlocks(res.Text)
+		reply := StripThinkBlocks(rGen.Value.(Result).Text)
 		core.Print(nil, "  [content:%s] got %d chars", probe.ID, len(reply))
 
 		responses = append(responses, ContentResponse{

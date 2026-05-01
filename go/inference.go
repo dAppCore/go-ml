@@ -14,6 +14,7 @@ package ml
 import (
 	"context"
 
+	core "dappco.re/go"
 	"dappco.re/go/inference"
 )
 
@@ -31,10 +32,18 @@ type Result struct {
 // OllamaBackend (Ollama native API).
 type Backend interface {
 	// Generate sends a single user prompt and returns the response.
-	Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error)
+	//
+	//	r := b.Generate(ctx, "hello", ml.DefaultGenOpts())
+	//	if !r.OK { return r }
+	//	resp := r.Value.(ml.Result)
+	Generate(ctx context.Context, prompt string, opts GenOpts) core.Result
 
 	// Chat sends a multi-turn conversation and returns the response.
-	Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error)
+	//
+	//	r := b.Chat(ctx, messages, ml.DefaultGenOpts())
+	//	if !r.OK { return r }
+	//	resp := r.Value.(ml.Result)
+	Chat(ctx context.Context, messages []Message, opts GenOpts) core.Result
 
 	// Name returns the backend identifier (e.g. "http", "llama", "ollama").
 	Name() string
@@ -70,10 +79,16 @@ type StreamingBackend interface {
 	Backend
 
 	// GenerateStream streams tokens from a single prompt via the callback.
-	GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error
+	//
+	//	r := b.GenerateStream(ctx, "hello", opts, func(tok string) error { ... })
+	//	if !r.OK { return r }
+	GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) core.Result
 
 	// ChatStream streams tokens from a chat conversation via the callback.
-	ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) error
+	//
+	//	r := b.ChatStream(ctx, messages, opts, func(tok string) error { ... })
+	//	if !r.OK { return r }
+	ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) core.Result
 }
 
 // DefaultGenOpts returns sensible defaults for generation.

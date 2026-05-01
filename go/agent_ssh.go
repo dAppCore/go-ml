@@ -15,13 +15,23 @@ import (
 // Implementations may use SSH/SCP, Docker exec, or in-memory fakes for testing.
 type RemoteTransport interface {
 	// Run executes a command on the remote host and returns combined output.
-	Run(ctx context.Context, cmd string) (string, error)
+	//
+	//	r := t.Run(ctx, "ls /tmp")
+	//	if !r.OK { return r }
+	//	out := r.Value.(string)
+	Run(ctx context.Context, cmd string) core.Result
 
 	// CopyFrom copies a file from the remote host to a local path.
-	CopyFrom(ctx context.Context, remote, local string) error
+	//
+	//	r := t.CopyFrom(ctx, "/remote/path", "/local/path")
+	//	if !r.OK { return r }
+	CopyFrom(ctx context.Context, remote, local string) core.Result
 
 	// CopyTo copies a local file to the remote host.
-	CopyTo(ctx context.Context, local, remote string) error
+	//
+	//	r := t.CopyTo(ctx, "/local/path", "/remote/path")
+	//	if !r.OK { return r }
+	CopyTo(ctx context.Context, local, remote string) core.Result
 }
 
 // SSHTransport implements RemoteTransport using the ssh and scp binaries.
@@ -102,20 +112,27 @@ func (t *SSHTransport) sshPortArgs() []string {
 }
 
 // Run executes a command on the remote host via ssh.
-func (t *SSHTransport) Run(ctx context.Context, cmd string) (string, error) {
+//
+//	r := t.Run(ctx, "ls /tmp")
+//	if !r.OK { return r }
+//	out := r.Value.(string)
+func (t *SSHTransport) Run(ctx context.Context, cmd string) core.Result {
 	args := t.sshPortArgs()
 	args = append(args, core.Sprintf("%s@%s", t.User, t.Host), cmd)
 
 	c := goexec.Command(ctx, "ssh", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return "", coreerr.E("ml.SSHTransport.Run", core.Sprintf("ssh %q: %s", cmd, core.Trim(string(result))), err)
+		return core.Fail(coreerr.E("ml.SSHTransport.Run", core.Sprintf("ssh %q: %s", cmd, core.Trim(string(result))), err))
 	}
-	return string(result), nil
+	return core.Ok(string(result))
 }
 
 // CopyFrom copies a file from the remote host to a local path via scp.
-func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) error {
+//
+//	r := t.CopyFrom(ctx, "/remote/model.gguf", "/local/model.gguf")
+//	if !r.OK { return r }
+func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) core.Result {
 	coreio.Local.EnsureDir(core.PathDir(local))
 	args := t.commonArgs()
 	args = append(args, core.Sprintf("%s@%s:%s", t.User, t.Host, remote), local)
@@ -123,39 +140,52 @@ func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) error
 	c := goexec.Command(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return coreerr.E("ml.SSHTransport.CopyFrom", core.Sprintf("scp %s: %s", remote, core.Trim(string(result))), err)
+		return core.Fail(coreerr.E("ml.SSHTransport.CopyFrom", core.Sprintf("scp %s: %s", remote, core.Trim(string(result))), err))
 	}
-	return nil
+	return core.Ok(nil)
 }
 
 // CopyTo copies a local file to the remote host via scp.
-func (t *SSHTransport) CopyTo(ctx context.Context, local, remote string) error {
+//
+//	r := t.CopyTo(ctx, "/local/adapter.safetensors", "/remote/adapter.safetensors")
+//	if !r.OK { return r }
+func (t *SSHTransport) CopyTo(ctx context.Context, local, remote string) core.Result {
 	args := t.commonArgs()
 	args = append(args, local, core.Sprintf("%s@%s:%s", t.User, t.Host, remote))
 
 	c := goexec.Command(ctx, "scp", args...)
 	result, err := c.CombinedOutput()
 	if err != nil {
-		return coreerr.E("ml.SSHTransport.CopyTo", core.Sprintf("scp to %s: %s", remote, core.Trim(string(result))), err)
+		return core.Fail(coreerr.E("ml.SSHTransport.CopyTo", core.Sprintf("scp to %s: %s", remote, core.Trim(string(result))), err))
 	}
-	return nil
+	return core.Ok(nil)
 }
 
 // SSHCommand executes a command on M3 via SSH.
 // Deprecated: Use AgentConfig.Transport.Run() instead.
-func SSHCommand(cfg *AgentConfig, cmd string) (string, error) {
+//
+//	r := ml.SSHCommand(cfg, "ls /tmp")
+//	if !r.OK { return r }
+//	out := r.Value.(string)
+func SSHCommand(cfg *AgentConfig, cmd string) core.Result {
 	return cfg.transport().Run(context.Background(), cmd)
 }
 
 // SCPFrom copies a file from M3 to a local path.
 // Deprecated: Use AgentConfig.Transport.CopyFrom() instead.
-func SCPFrom(cfg *AgentConfig, remotePath, localPath string) error {
+//
+//	r := ml.SCPFrom(cfg, "/remote/model.gguf", "/local/model.gguf")
+//	if !r.OK { return r }
+func SCPFrom(cfg *AgentConfig, remotePath, localPath string) core.Result {
 	return cfg.transport().CopyFrom(context.Background(), remotePath, localPath)
 }
 
 // SCPTo copies a local file to M3.
 // Deprecated: Use AgentConfig.Transport.CopyTo() instead.
-func SCPTo(cfg *AgentConfig, localPath, remotePath string) error {
+//
+//	r := ml.SCPTo(cfg, "/local/adapter.safetensors", "/remote/adapter.safetensors")
+//	if !r.OK { return r }
+func SCPTo(cfg *AgentConfig, localPath, remotePath string) core.Result {
 	return cfg.transport().CopyTo(context.Background(), localPath, remotePath)
 }
 

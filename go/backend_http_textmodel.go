@@ -39,13 +39,13 @@ func (m *HTTPTextModel) Generate(ctx context.Context, prompt string, opts ...inf
 			MaxTokens:   cfg.MaxTokens,
 			Model:       m.http.Model(),
 		}
-		result, err := m.http.Generate(ctx, prompt, genOpts)
-		if err != nil {
-			m.lastErr = err
+		r := m.http.Generate(ctx, prompt, genOpts)
+		if !r.OK {
+			m.lastErr = r.Value.(error)
 			return
 		}
 		m.lastErr = nil
-		yield(inference.Token{Text: result.Text})
+		yield(inference.Token{Text: r.Value.(Result).Text})
 	}
 }
 
@@ -61,13 +61,13 @@ func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, 
 		}
 
 		// ml.Message is now a type alias for inference.Message — no conversion needed.
-		result, err := m.http.Chat(ctx, messages, genOpts)
-		if err != nil {
-			m.lastErr = err
+		r := m.http.Chat(ctx, messages, genOpts)
+		if !r.OK {
+			m.lastErr = r.Value.(error)
 			return
 		}
 		m.lastErr = nil
-		yield(inference.Token{Text: result.Text})
+		yield(inference.Token{Text: r.Value.(Result).Text})
 	}
 }
 
@@ -147,5 +147,9 @@ func (m *LlamaTextModel) ModelType() string {
 
 // Close stops the managed llama-server process.
 func (m *LlamaTextModel) Close() error {
-	return m.llama.Stop()
+	r := m.llama.Stop()
+	if !r.OK {
+		return r.Value.(error)
+	}
+	return nil
 }

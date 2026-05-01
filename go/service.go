@@ -55,11 +55,11 @@ type Options struct {
 
 // NewService creates an ML service factory for Core registration.
 //
-//	core, _ := core.New(
-//	    core.WithName("ml", ml.NewService(ml.Options{})),
+//	core.New(
+//	    core.WithService(ml.NewService(ml.Options{})),
 //	)
-func NewService(opts Options) func(*core.Core) (any, error) {
-	return func(c *core.Core) (any, error) {
+func NewService(opts Options) func(*core.Core) core.Result {
+	return func(c *core.Core) core.Result {
 		if opts.Concurrency == 0 {
 			opts.Concurrency = 4
 		}
@@ -71,12 +71,15 @@ func NewService(opts Options) func(*core.Core) (any, error) {
 			ServiceRuntime: core.NewServiceRuntime(c, opts),
 			backends:       make(map[string]Backend),
 		}
-		return svc, nil
+		return core.Ok(svc)
 	}
 }
 
 // OnStartup initializes backends and scoring engine.
-func (s *Service) OnStartup(ctx context.Context) error {
+//
+//	r := svc.OnStartup(ctx)
+//	if !r.OK { return r }
+func (s *Service) OnStartup(ctx context.Context) core.Result {
 	opts := s.Options()
 
 	// Register Ollama backend if URL provided.
@@ -91,12 +94,15 @@ func (s *Service) OnStartup(ctx context.Context) error {
 		s.engine = NewEngine(s.judge, opts.Concurrency, opts.Suites)
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // OnShutdown cleans up resources.
-func (s *Service) OnShutdown(ctx context.Context) error {
-	return nil
+//
+//	r := svc.OnShutdown(ctx)
+//	if !r.OK { return r }
+func (s *Service) OnShutdown(ctx context.Context) core.Result {
+	return core.Ok(nil)
 }
 
 // RegisterBackend adds or replaces a named inference backend.
@@ -153,21 +159,29 @@ func (s *Service) Engine() *Engine {
 }
 
 // Generate generates text using the named backend (or default).
-func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts GenOpts) (Result, error) {
+//
+//	r := svc.Generate(ctx, "ollama", "hello", ml.DefaultGenOpts())
+//	if !r.OK { return r }
+//	resp := r.Value.(ml.Result)
+func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts GenOpts) core.Result {
 	b := s.Backend(backendName)
 	if b == nil {
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return Result{}, coreerr.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil)
+		return core.Fail(coreerr.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil))
 	}
 	return b.Generate(ctx, prompt, opts)
 }
 
 // ScoreResponses scores a batch of responses using the configured engine.
-func (s *Service) ScoreResponses(ctx context.Context, responses []Response) (map[string][]PromptScore, error) {
+//
+//	r := svc.ScoreResponses(ctx, responses)
+//	if !r.OK { return r }
+//	scores := r.Value.(map[string][]ml.PromptScore)
+func (s *Service) ScoreResponses(ctx context.Context, responses []Response) core.Result {
 	if s.engine == nil {
-		return nil, coreerr.E("ml.Service.ScoreResponses", "scoring engine not configured (set JudgeURL and JudgeModel)", nil)
+		return core.Fail(coreerr.E("ml.Service.ScoreResponses", "scoring engine not configured (set JudgeURL and JudgeModel)", nil))
 	}
-	return s.engine.ScoreAll(ctx, responses), nil
+	return core.Ok(s.engine.ScoreAll(ctx, responses))
 }

@@ -59,17 +59,20 @@ func (a *Agent) Execute(ctx context.Context, override ...*AgentConfig) {
 // either a Checkpoint (direct struct) or a model path string that is
 // resolved via DiscoverCheckpoints. Spec §8.
 //
-//	results, err := agent.Evaluate(ctx, ml.Checkpoint{...})
-//	results, err := agent.Evaluate(ctx, "/models/adapter-42")
-func (a *Agent) Evaluate(ctx context.Context, target any) error {
+//	r := agent.Evaluate(ctx, ml.Checkpoint{...})
+//	if !r.OK { return r }
+//	r = agent.Evaluate(ctx, "/models/adapter-42")
+//	if !r.OK { return r }
+func (a *Agent) Evaluate(ctx context.Context, target any) core.Result {
 	if a == nil || a.cfg == nil {
-		return corelog.E("ml.Agent.Evaluate", "agent config not set", nil)
+		return core.Fail(corelog.E("ml.Agent.Evaluate", "agent config not set", nil))
 	}
 
-	cp, err := a.resolveCheckpointTarget(ctx, target)
-	if err != nil {
-		return err
+	r := a.resolveCheckpointTarget(ctx, target)
+	if !r.OK {
+		return r
 	}
+	cp := r.Value.(Checkpoint)
 
 	return ProcessOne(a.cfg, a.influxClient(), cp)
 }
@@ -78,34 +81,36 @@ func (a *Agent) Evaluate(ctx context.Context, target any) error {
 // Checkpoint. String targets are first resolved via DiscoverCheckpoints and
 // then fall back to path-based metadata extraction when no exact match is
 // found.
-func (a *Agent) resolveCheckpointTarget(ctx context.Context, target any) (Checkpoint, error) {
+func (a *Agent) resolveCheckpointTarget(ctx context.Context, target any) core.Result {
 	switch v := target.(type) {
 	case Checkpoint:
-		return v, nil
+		return core.Ok(v)
 	case *Checkpoint:
 		if v == nil {
-			return Checkpoint{}, corelog.E("ml.Agent.Evaluate", "nil checkpoint", nil)
+			return core.Fail(corelog.E("ml.Agent.Evaluate", "nil checkpoint", nil))
 		}
-		return *v, nil
+		return core.Ok(*v)
 	case string:
 		return a.resolveCheckpointPath(ctx, v)
 	default:
-		return Checkpoint{}, corelog.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil)
+		return core.Fail(corelog.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil))
 	}
 }
 
 // resolveCheckpointPath tries to match a string target against the discovered
 // checkpoint list before falling back to a path-derived checkpoint shape.
-func (a *Agent) resolveCheckpointPath(ctx context.Context, target string) (Checkpoint, error) {
+func (a *Agent) resolveCheckpointPath(ctx context.Context, target string) core.Result {
 	target = core.Trim(target)
 	if target == "" {
-		return Checkpoint{}, corelog.E("ml.Agent.Evaluate", "empty checkpoint path", nil)
+		return core.Fail(corelog.E("ml.Agent.Evaluate", "empty checkpoint path", nil))
 	}
 
 	if a != nil && a.cfg != nil {
-		if checkpoints, err := a.DiscoverCheckpoints(ctx); err == nil {
+		r := a.DiscoverCheckpoints(ctx)
+		if r.OK {
+			checkpoints := r.Value.([]Checkpoint)
 			if cp, ok := matchCheckpointTarget(checkpoints, target); ok {
-				return cp, nil
+				return core.Ok(cp)
 			}
 		}
 	}
@@ -146,14 +151,14 @@ func (a *Agent) resolveCheckpointPath(ctx context.Context, target string) (Check
 		runID = dirname
 	}
 
-	return Checkpoint{
+	return core.Ok(Checkpoint{
 		RemoteDir: remoteDir,
 		Filename:  filename,
 		Dirname:   dirname,
 		ModelTag:  modelTag,
 		Label:     label,
 		RunID:     core.Sprintf("%s-capability-auto", runID),
-	}, nil
+	})
 }
 
 // matchCheckpointTarget returns the first checkpoint that matches the target
@@ -190,12 +195,15 @@ func matchCheckpointTarget(checkpoints []Checkpoint, target string) (Checkpoint,
 // (useful when the caller does not want to rebuild the whole AgentConfig).
 // Spec §8.
 //
-//	out, err := agent.ExecuteRemote(ctx, "ls /models")
-//	out, err := agent.ExecuteRemote(ctx, "host.example", "2222", "uptime")
-func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) (string, error) {
+//	r := agent.ExecuteRemote(ctx, "ls /models")
+//	if !r.OK { return r }
+//	out := r.Value.(string)
+//	r = agent.ExecuteRemote(ctx, "host.example", "2222", "uptime")
+//	if !r.OK { return r }
+func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) core.Result {
 	switch len(args) {
 	case 0:
-		return "", corelog.E("ml.Agent.ExecuteRemote", "no command supplied", nil)
+		return core.Fail(corelog.E("ml.Agent.ExecuteRemote", "no command supplied", nil))
 	case 1:
 		return a.cfg.transport().Run(ctx, args[0])
 	case 3:
@@ -209,8 +217,8 @@ func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) (string, erro
 		transport := NewSSHTransport(host, user, keyPath, WithPort(port))
 		return transport.Run(ctx, command)
 	default:
-		return "", corelog.E("ml.Agent.ExecuteRemote",
-			core.Sprintf("expected 1 arg (command) or 3 args (host,port,command); got %d", len(args)), nil)
+		return core.Fail(corelog.E("ml.Agent.ExecuteRemote",
+			core.Sprintf("expected 1 arg (command) or 3 args (host,port,command); got %d", len(args)), nil))
 	}
 }
 
@@ -219,22 +227,24 @@ func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) (string, erro
 // timer for long-running workflows. When influxURL is supplied, it
 // replaces the agent's configured URL for this call only.
 //
-//	agent.CollectMetrics(ctx)
-//	agent.CollectMetrics(ctx, "http://influx.local:8086")
-func (a *Agent) CollectMetrics(ctx context.Context, influxURL ...string) error {
+//	r := agent.CollectMetrics(ctx)
+//	if !r.OK { return r }
+func (a *Agent) CollectMetrics(ctx context.Context, influxURL ...string) core.Result {
 	influx := a.influxClient()
 	if len(influxURL) > 0 && influxURL[0] != "" {
 		influx = NewInfluxClient(influxURL[0], a.cfg.InfluxDB)
 	}
 	ReplayInfluxBuffer(a.cfg.WorkDir, influx)
 	_ = ctx
-	return nil
+	return core.Ok(nil)
 }
 
 // DiscoverCheckpoints lists all adapter checkpoints on the remote host.
 //
-//	cps, err := agent.DiscoverCheckpoints(ctx)
-func (a *Agent) DiscoverCheckpoints(ctx context.Context) ([]Checkpoint, error) {
+//	r := agent.DiscoverCheckpoints(ctx)
+//	if !r.OK { return r }
+//	cps := r.Value.([]ml.Checkpoint)
+func (a *Agent) DiscoverCheckpoints(ctx context.Context) core.Result {
 	_ = ctx
 	return DiscoverCheckpoints(a.cfg)
 }
