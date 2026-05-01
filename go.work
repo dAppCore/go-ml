@@ -1,10 +1,10 @@
-go 1.26.0
+go 1.26.2
 
 use (
 	./go
 	./external/go
 	./external/api/go
-	./external/cli
+	./external/cli/go
 	./external/go-i18n/go
 	./external/go-inference/go
 	./external/go-io/go
