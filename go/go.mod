@@ -7,11 +7,11 @@ require (
 	dappco.re/go/api v0.8.0-alpha.1
 	dappco.re/go/cli v0.8.0-alpha.1
 	dappco.re/go/i18n v0.8.0-alpha.1
-	dappco.re/go/inference v0.8.0-alpha.1
-	dappco.re/go/io v0.8.0-alpha.1
-	dappco.re/go/log v0.8.0-alpha.1
+	dappco.re/go/inference v0.9.0
+	dappco.re/go/io v0.9.0
+	dappco.re/go/log v0.9.0
 	dappco.re/go/mlx v0.8.0-alpha.1
-	dappco.re/go/process v0.8.0-alpha.1
+	dappco.re/go/process v0.10.0
 	dappco.re/go/store v0.8.0-alpha.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/gin-gonic/gin v1.12.0
@@ -154,15 +154,3 @@ require (
 	modernc.org/sqlite v1.47.0 // indirect
 )
 
-replace (
-	dappco.re/go => /Users/snider/Code/core/go
-	dappco.re/go/api => /Users/snider/Code/core/api
-	dappco.re/go/cli => /Users/snider/Code/core/cli
-	dappco.re/go/i18n => /Users/snider/Code/core/go-i18n
-	dappco.re/go/inference => /Users/snider/Code/core/go-inference
-	dappco.re/go/io => /Users/snider/Code/core/go-io
-	dappco.re/go/log => /Users/snider/Code/core/go-log
-	dappco.re/go/mlx => /Users/snider/Code/core/go-mlx
-	dappco.re/go/process => /Users/snider/Code/core/go-process
-	dappco.re/go/store => /Users/snider/Code/core/go-store
-)
