@@ -11,10 +11,14 @@ import (
 // ReadResponses reads a JSONL file and returns a slice of Response structs.
 // Each line must be a valid JSON object. Empty lines are skipped.
 // The scanner buffer is set to 1MB to handle long responses.
-func ReadResponses(path string) ([]Response, error) {
+//
+//	r := ml.ReadResponses("/data/responses.jsonl")
+//	if !r.OK { return r }
+//	responses := r.Value.([]ml.Response)
+func ReadResponses(path string) core.Result {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("open %s", path), err)
+		return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("open %s", path), err))
 	}
 	defer f.Close()
 
@@ -30,47 +34,54 @@ func ReadResponses(path string) ([]Response, error) {
 			continue
 		}
 
-		var r Response
-		if rj := core.JSONUnmarshalString(line, &r); !rj.OK {
-			return nil, coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error))
+		var resp Response
+		if rj := core.JSONUnmarshalString(line, &resp); !rj.OK {
+			return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error)))
 		}
-		responses = append(responses, r)
+		responses = append(responses, resp)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, coreerr.E("ml.ReadResponses", core.Sprintf("scan %s", path), err)
+		return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("scan %s", path), err))
 	}
 
-	return responses, nil
+	return core.Ok(responses)
 }
 
 // WriteScores writes a ScorerOutput to a JSON file with 2-space indentation.
-func WriteScores(path string, output *ScorerOutput) error {
+//
+//	r := ml.WriteScores("/data/scores.json", output)
+//	if !r.OK { return r }
+func WriteScores(path string, output *ScorerOutput) core.Result {
 	r := core.JSONMarshalIndent(output, "", "  ")
 	if !r.OK {
-		return coreerr.E("ml.WriteScores", "marshal scores", r.Value.(error))
+		return core.Fail(coreerr.E("ml.WriteScores", "marshal scores", r.Value.(error)))
 	}
 
 	if err := coreio.Local.Write(path, string(r.Value.([]byte))); err != nil {
-		return coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err)
+		return core.Fail(coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err))
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // ReadScorerOutput reads a JSON file into a ScorerOutput struct.
-func ReadScorerOutput(path string) (*ScorerOutput, error) {
+//
+//	r := ml.ReadScorerOutput("/data/scores.json")
+//	if !r.OK { return r }
+//	output := r.Value.(*ml.ScorerOutput)
+func ReadScorerOutput(path string) core.Result {
 	data, err := coreio.Local.Read(path)
 	if err != nil {
-		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err)
+		return core.Fail(coreerr.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err))
 	}
 
 	var output ScorerOutput
 	if r := core.JSONUnmarshalString(data, &output); !r.OK {
-		return nil, coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error))
+		return core.Fail(coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error)))
 	}
 
-	return &output, nil
+	return core.Ok(&output)
 }
 
 // ComputeAverages calculates per-model average scores across all prompts.

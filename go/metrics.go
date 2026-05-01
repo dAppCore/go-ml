@@ -11,7 +11,10 @@ import (
 
 // PushMetrics queries golden_set stats from DuckDB and writes them to InfluxDB
 // as golden_set_stats, golden_set_domain, and golden_set_voice measurements.
-func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
+//
+//	r := ml.PushMetrics(db, influx, os.Stdout)
+//	if !r.OK { return r }
+func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) core.Result {
 	// Overall stats.
 	var total, domains, voices int
 	var avgGenTime, avgChars float64
@@ -20,12 +23,12 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 			"coalesce(avg(gen_time), 0), coalesce(avg(char_count), 0) FROM golden_set",
 	).Scan(&total, &domains, &voices, &avgGenTime, &avgChars)
 	if err != nil {
-		return coreerr.E("ml.PushMetrics", "query golden_set stats", err)
+		return core.Fail(coreerr.E("ml.PushMetrics", "query golden_set stats", err))
 	}
 
 	if total == 0 {
 		core.Print(w, "golden_set is empty, nothing to push")
-		return nil
+		return core.Ok(nil)
 	}
 
 	completionPct := float64(total) / float64(TargetTotal) * 100.0
@@ -44,7 +47,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		"SELECT domain, count(*) AS cnt, coalesce(avg(gen_time), 0) AS avg_gt FROM golden_set GROUP BY domain ORDER BY domain",
 	)
 	if err != nil {
-		return coreerr.E("ml.PushMetrics", "query golden_set domains", err)
+		return core.Fail(coreerr.E("ml.PushMetrics", "query golden_set domains", err))
 	}
 	defer domainRows.Close()
 
@@ -53,7 +56,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		var count int
 		var avgGT float64
 		if err := domainRows.Scan(&domain, &count, &avgGT); err != nil {
-			return coreerr.E("ml.PushMetrics", "scan domain row", err)
+			return core.Fail(coreerr.E("ml.PushMetrics", "scan domain row", err))
 		}
 		lines = append(lines, core.Sprintf(
 			"golden_set_domain,domain=%s count=%di,avg_gen_time=%.2f %d",
@@ -61,7 +64,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		))
 	}
 	if err := domainRows.Err(); err != nil {
-		return coreerr.E("ml.PushMetrics", "iterate domain rows", err)
+		return core.Fail(coreerr.E("ml.PushMetrics", "iterate domain rows", err))
 	}
 
 	// Per-voice breakdown.
@@ -69,7 +72,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		"SELECT voice, count(*) AS cnt, coalesce(avg(char_count), 0) AS avg_cc, coalesce(avg(gen_time), 0) AS avg_gt FROM golden_set GROUP BY voice ORDER BY voice",
 	)
 	if err != nil {
-		return coreerr.E("ml.PushMetrics", "query golden_set voices", err)
+		return core.Fail(coreerr.E("ml.PushMetrics", "query golden_set voices", err))
 	}
 	defer voiceRows.Close()
 
@@ -78,7 +81,7 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		var count int
 		var avgCC, avgGT float64
 		if err := voiceRows.Scan(&voice, &count, &avgCC, &avgGT); err != nil {
-			return coreerr.E("ml.PushMetrics", "scan voice row", err)
+			return core.Fail(coreerr.E("ml.PushMetrics", "scan voice row", err))
 		}
 		lines = append(lines, core.Sprintf(
 			"golden_set_voice,voice=%s count=%di,avg_chars=%.0f,avg_gen_time=%.2f %d",
@@ -86,12 +89,12 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		))
 	}
 	if err := voiceRows.Err(); err != nil {
-		return coreerr.E("ml.PushMetrics", "iterate voice rows", err)
+		return core.Fail(coreerr.E("ml.PushMetrics", "iterate voice rows", err))
 	}
 
 	// Write all points to InfluxDB.
-	if err := influx.WriteLp(lines); err != nil {
-		return coreerr.E("ml.PushMetrics", "write metrics to influxdb", err)
+	if rWrite := influx.WriteLp(lines); !rWrite.OK {
+		return core.Fail(coreerr.E("ml.PushMetrics", "write metrics to influxdb", rWrite.Value.(error)))
 	}
 
 	core.Print(w, "Pushed %d points to InfluxDB", len(lines))
@@ -99,5 +102,5 @@ func PushMetrics(db *store.DuckDB, influx *InfluxClient, w io.Writer) error {
 		total, domains, voices, completionPct)
 	core.Print(w, "  avg_gen_time=%.2fs  avg_chars=%.0f", avgGenTime, avgChars)
 
-	return nil
+	return core.Ok(nil)
 }

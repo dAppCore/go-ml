@@ -18,7 +18,10 @@ type SeedInfluxConfig struct {
 // gold_gen measurement points. This is a one-time migration tool;
 // it skips the write when InfluxDB already contains all records
 // unless Force is set.
-func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer) error {
+//
+//	r := ml.SeedInflux(db, influx, cfg, os.Stdout)
+//	if !r.OK { return r }
+func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w io.Writer) core.Result {
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 500
 	}
@@ -26,15 +29,18 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 	// Count source rows in DuckDB.
 	var total int
 	if err := db.Conn().QueryRow("SELECT count(*) FROM golden_set").Scan(&total); err != nil {
-		return coreerr.E("ml.SeedInflux", "no golden_set table", err)
+		return core.Fail(coreerr.E("ml.SeedInflux", "no golden_set table", err))
 	}
 
 	// Check how many distinct records InfluxDB already has.
 	existing := 0
-	rows, err := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
-	if err == nil && len(rows) > 0 {
-		if n, ok := rows[0]["n"].(float64); ok {
-			existing = int(n)
+	rQuery := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
+	if rQuery.OK {
+		rows := rQuery.Value.([]map[string]any)
+		if len(rows) > 0 {
+			if n, ok := rows[0]["n"].(float64); ok {
+				existing = int(n)
+			}
 		}
 	}
 
@@ -42,7 +48,7 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 
 	if existing >= total && !cfg.Force {
 		core.Print(w, "InfluxDB already has all records. Use --force to re-seed.")
-		return nil
+		return core.Ok(nil)
 	}
 
 	// Query all golden_set rows from DuckDB.
@@ -50,7 +56,7 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		"SELECT idx, seed_id, domain, voice, gen_time, char_count FROM golden_set ORDER BY idx",
 	)
 	if err != nil {
-		return coreerr.E("ml.SeedInflux", "query golden_set", err)
+		return core.Fail(coreerr.E("ml.SeedInflux", "query golden_set", err))
 	}
 	defer dbRows.Close()
 
@@ -64,7 +70,7 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		var charCount int
 
 		if err := dbRows.Scan(&idx, &seedID, &domain, &voice, &genTime, &charCount); err != nil {
-			return coreerr.E("ml.SeedInflux", core.Sprintf("scan row %d", written), err)
+			return core.Fail(coreerr.E("ml.SeedInflux", core.Sprintf("scan row %d", written), err))
 		}
 
 		// Build line protocol point.
@@ -84,8 +90,8 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 		batch = append(batch, line)
 
 		if len(batch) >= cfg.BatchSize {
-			if err := influx.WriteLp(batch); err != nil {
-				return coreerr.E("ml.SeedInflux", core.Sprintf("write batch at row %d", written), err)
+			if rWrite := influx.WriteLp(batch); !rWrite.OK {
+				return core.Fail(coreerr.E("ml.SeedInflux", core.Sprintf("write batch at row %d", written), rWrite.Value.(error)))
 			}
 			written += len(batch)
 			batch = batch[:0]
@@ -97,17 +103,17 @@ func SeedInflux(db *store.DuckDB, influx *InfluxClient, cfg SeedInfluxConfig, w 
 	}
 
 	if err := dbRows.Err(); err != nil {
-		return coreerr.E("ml.SeedInflux", "iterate golden_set rows", err)
+		return core.Fail(coreerr.E("ml.SeedInflux", "iterate golden_set rows", err))
 	}
 
 	// Flush remaining batch.
 	if len(batch) > 0 {
-		if err := influx.WriteLp(batch); err != nil {
-			return coreerr.E("ml.SeedInflux", "write final batch", err)
+		if rWrite := influx.WriteLp(batch); !rWrite.OK {
+			return core.Fail(coreerr.E("ml.SeedInflux", "write final batch", rWrite.Value.(error)))
 		}
 		written += len(batch)
 	}
 
 	core.Print(w, "Seeded %d records into InfluxDB golden_gen", written)
-	return nil
+	return core.Ok(nil)
 }
