@@ -1,0 +1,40 @@
+[submodule "external/go"]
+	path = external/go
+	url = https://github.com/dappcore/go.git
+	branch = dev
+[submodule "external/api"]
+	path = external/api
+	url = https://github.com/dappcore/api.git
+	branch = dev
+[submodule "external/cli"]
+	path = external/cli
+	url = https://github.com/dappcore/cli.git
+	branch = dev
+[submodule "external/go-i18n"]
+	path = external/go-i18n
+	url = https://github.com/dappcore/go-i18n.git
+	branch = dev
+[submodule "external/go-inference"]
+	path = external/go-inference
+	url = https://github.com/dappcore/go-inference.git
+	branch = dev
+[submodule "external/go-io"]
+	path = external/go-io
+	url = https://github.com/dappcore/go-io.git
+	branch = dev
+[submodule "external/go-log"]
+	path = external/go-log
+	url = https://github.com/dappcore/go-log.git
+	branch = dev
+[submodule "external/go-mlx"]
+	path = external/go-mlx
+	url = https://github.com/dappcore/go-mlx.git
+	branch = dev
+[submodule "external/go-process"]
+	path = external/go-process
+	url = https://github.com/dappcore/go-process.git
+	branch = dev
+[submodule "external/go-store"]
+	path = external/go-store
+	url = https://github.com/dappcore/go-store.git
+	branch = dev
