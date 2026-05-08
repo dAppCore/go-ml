@@ -1,0 +1,38 @@
+// SPDX-Licence-Identifier: EUPL-1.2
+
+package ml
+
+import "dappco.re/go/inference"
+
+// CapabilityReportForBackend returns the shared inference capability report for
+// a go-ml backend without requiring callers to import a concrete runtime.
+func CapabilityReportForBackend(name string, backend Backend) inference.CapabilityReport {
+	if backend == nil {
+		return inference.CapabilityReport{Runtime: inference.RuntimeIdentity{Backend: name}}
+	}
+	if reporter, ok := backend.(inference.CapabilityReporter); ok {
+		report := reporter.Capabilities()
+		if report.Runtime.Backend == "" {
+			report.Runtime.Backend = firstNonEmptyString(name, backend.Name())
+		}
+		return report
+	}
+	backendName := firstNonEmptyString(name, backend.Name())
+	return inference.CapabilityReport{
+		Runtime:   inference.RuntimeIdentity{Backend: backendName},
+		Available: backend.Available(),
+		Capabilities: []inference.Capability{
+			inference.SupportedCapability(inference.CapabilityGenerate, inference.CapabilityGroupModel),
+			inference.SupportedCapability(inference.CapabilityChat, inference.CapabilityGroupModel),
+		},
+	}
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}

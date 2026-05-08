@@ -136,8 +136,10 @@ type MLBackendsOutput struct {
 
 // MLBackendInfo describes a single backend.
 type MLBackendInfo struct {
-	Name      string `json:"name"`
-	Available bool   `json:"available"`
+	Name         string   `json:"name"`
+	Available    bool     `json:"available"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	Native       bool     `json:"native,omitempty"`
 }
 
 // --- Tool handlers ---
@@ -274,19 +276,32 @@ func (m *MLSubsystem) mlBackends(ctx context.Context, _ *mcp.CallToolRequest, in
 	backends := make([]MLBackendInfo, 0, len(names))
 	for _, name := range names {
 		b, ok := inference.Get(name)
-		backends = append(backends, MLBackendInfo{
-			Name:      name,
-			Available: ok && b.Available(),
-		})
+		info := MLBackendInfo{Name: name, Available: ok && b.Available()}
+		if ok {
+			report, _ := inference.CapabilitiesOf(b)
+			info.Capabilities = capabilityIDStrings(report.SupportedCapabilityIDs())
+			info.Native = report.Runtime.NativeRuntime
+		}
+		backends = append(backends, info)
 	}
 
 	defaultName := ""
-	if db, err := inference.Default(); err == nil {
-		defaultName = db.Name()
+	if result := inference.Default(); result.OK {
+		if backend, ok := result.Value.(inference.Backend); ok && backend != nil {
+			defaultName = backend.Name()
+		}
 	}
 
 	return nil, MLBackendsOutput{
 		Backends: backends,
 		Default:  defaultName,
 	}, nil
+}
+
+func capabilityIDStrings(ids []inference.CapabilityID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = string(id)
+	}
+	return out
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"dappco.re/go"
+	"dappco.re/go/inference"
 	coreerr "dappco.re/go/log"
 )
 
@@ -146,6 +147,15 @@ func (s *Service) BackendsIter() iter.Seq[string] {
 			}
 		}
 	}
+}
+
+// BackendCapabilities returns the shared capability report for a registered backend.
+func (s *Service) BackendCapabilities(name string) (inference.CapabilityReport, bool) {
+	backend := s.Backend(name)
+	if backend == nil {
+		return inference.CapabilityReport{}, false
+	}
+	return CapabilityReportForBackend(name, backend), true
 }
 
 // Judge returns the configured judge, or nil if not set up.

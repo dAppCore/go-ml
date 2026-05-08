@@ -23,6 +23,7 @@ type InferenceAdapter struct {
 // Compile-time checks.
 var _ Backend = (*InferenceAdapter)(nil)
 var _ StreamingBackend = (*InferenceAdapter)(nil)
+var _ inference.CapabilityReporter = (*InferenceAdapter)(nil)
 
 // NewInferenceAdapter wraps a go-inference TextModel as an ml.Backend and
 // ml.StreamingBackend. The name is used for Backend.Name() (e.g. "mlx").
@@ -153,6 +154,26 @@ func (a *InferenceAdapter) Close() core.Result {
 // Model returns the underlying go-inference TextModel for direct access
 // to Classify, BatchGenerate, Metrics, Info, etc.
 func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
+
+// Capabilities returns the shared feature report for the wrapped inference model.
+func (a *InferenceAdapter) Capabilities() inference.CapabilityReport {
+	if a == nil || a.model == nil {
+		name := ""
+		if a != nil {
+			name = a.name
+		}
+		return inference.CapabilityReport{Runtime: inference.RuntimeIdentity{Backend: name}}
+	}
+	report, ok := inference.CapabilitiesOf(a.model)
+	if !ok {
+		report = inference.TextModelCapabilities(inference.RuntimeIdentity{Backend: a.name}, a.model)
+	}
+	if report.Runtime.Backend == "" {
+		report.Runtime.Backend = a.name
+	}
+	report.Available = a.Available()
+	return report
+}
 
 // InspectAttention delegates to the underlying TextModel if it implements
 // inference.AttentionInspector. Returns an error if the backend does not support
