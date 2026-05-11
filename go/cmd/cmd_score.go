@@ -29,10 +29,11 @@ func addScoreCommand(c *core.Core) {
 			output := opts.String("output")
 			concurrency := optInt(opts, "concurrency", 4)
 
-			responses, err := ml.ReadResponses(input)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runScore", "read input", err))
+			readResult := ml.ReadResponses(input)
+			if !readResult.OK {
+				return resultFromError(coreerr.E("cmd.runScore", "read input", errorFromResult(readResult)))
 			}
+			responses := readResult.Value.([]ml.Response)
 
 			var judge *ml.Judge
 			if judgeURL != "" {
@@ -57,8 +58,8 @@ func addScoreCommand(c *core.Core) {
 					ModelAverages: averages,
 					PerPrompt:     perPrompt,
 				}
-				if err := ml.WriteScores(output, out); err != nil {
-					return resultFromError(coreerr.E("cmd.runScore", "write output", err))
+				if result := ml.WriteScores(output, out); !result.OK {
+					return resultFromError(coreerr.E("cmd.runScore", "write output", errorFromResult(result)))
 				}
 				core.Print(nil, "Scores written to %s", output)
 			} else {

@@ -64,8 +64,9 @@ func TestInferenceAdapter_Generate_Good(t *core.T) {
 	}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "Hello world", result.Text)
 	core.AssertNotNil(t, result.Metrics)
 }
@@ -74,8 +75,9 @@ func TestInferenceAdapter_Generate_Empty_Good(t *core.T) {
 	mock := &mockTextModel{tokens: nil}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "", result.Text)
 	core.AssertNotNil(t, result.Metrics)
 }
@@ -89,13 +91,9 @@ func TestInferenceAdapter_Generate_ModelError_Bad(t *core.T) {
 	}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "out of memory")
-	// Partial output is still returned.
-	core.AssertEqual(t, "partial", result.Text)
-	// Metrics are nil on error.
-	core.AssertNil(t, result.Metrics)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "out of memory")
 }
 
 func TestInferenceAdapter_GenerateStream_Good(t *core.T) {
@@ -109,11 +107,11 @@ func TestInferenceAdapter_GenerateStream_Good(t *core.T) {
 	adapter := NewInferenceAdapter(mock, "test")
 
 	var collected []string
-	err := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
 		collected = append(collected, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"one", "two", "three"}, collected)
 }
 
@@ -129,14 +127,14 @@ func TestInferenceAdapter_GenerateStream_CallbackError_Bad(t *core.T) {
 	adapter := NewInferenceAdapter(mock, "test")
 
 	count := 0
-	err := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
 		count++
 		if count >= 2 {
 			return callbackErr
 		}
 		return nil
 	})
-	core.AssertErrorIs(t, err, callbackErr)
+	assertResultError(t, rStream, "client disconnected")
 	core.AssertEqual(t, 2, count, "callback should have been called exactly twice")
 }
 
@@ -151,8 +149,9 @@ func TestInferenceAdapterContextCancellationBadScenario(t *core.T) {
 	mock.err = ctx.Err()
 
 	adapter := NewInferenceAdapter(mock, "test")
-	_, err := adapter.Generate(ctx, "prompt", GenOpts{})
-	core.AssertErrorIs(t, err, context.Canceled)
+	r := adapter.Generate(ctx, "prompt", GenOpts{})
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), context.Canceled.Error())
 }
 
 func TestInferenceAdapter_Chat_Good(t *core.T) {
@@ -169,8 +168,9 @@ func TestInferenceAdapter_Chat_Good(t *core.T) {
 		{Role: "assistant", Content: "Hi"},
 		{Role: "user", Content: "How are you?"},
 	}
-	result, err := adapter.Chat(context.Background(), messages, GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Chat(context.Background(), messages, GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "Hi there", result.Text)
 	core.AssertNotNil(t, result.Metrics)
 }
@@ -186,11 +186,11 @@ func TestInferenceAdapter_ChatStream_Good(t *core.T) {
 
 	messages := []Message{{Role: "user", Content: "test"}}
 	var collected []string
-	err := adapter.ChatStream(context.Background(), messages, GenOpts{}, func(token string) error {
+	rStream := adapter.ChatStream(context.Background(), messages, GenOpts{}, func(token string) error {
 		collected = append(collected, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"reply", "!"}, collected)
 }
 
@@ -204,16 +204,17 @@ func TestInferenceAdapter_StopSequences_Good(t *core.T) {
 	}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "hello ", result.Text)
 
 	var collected []string
-	err = adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
 		collected = append(collected, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"hello "}, collected)
 }
 
@@ -292,8 +293,7 @@ func TestInferenceAdapter_Close_Good(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "test")
 
-	err := adapter.Close()
-	core.RequireNoError(t, err)
+	requireResultOK(t, adapter.Close())
 	core.AssertTrue(t, mock.closed)
 }
 
@@ -324,55 +324,59 @@ func TestAdapter_NewInferenceAdapter_Bad(t *core.T) {
 func TestAdapter_NewInferenceAdapter_Ugly(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "edge"}}}
 	adapter := NewInferenceAdapter(mock, "edge")
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "edge", result.Text)
 }
 
 func TestAdapter_InferenceAdapter_Generate_Good(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "hello"}, {Text: " world"}}}
 	adapter := NewInferenceAdapter(mock, "gen")
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "hello world", result.Text)
 }
 
 func TestAdapter_InferenceAdapter_Generate_Bad(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "partial"}}, err: core.NewError("generate failed")}
 	adapter := NewInferenceAdapter(mock, "gen")
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err, "generate failed")
-	core.AssertEqual(t, "partial", result.Text)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r, "generate failed")
 }
 
 func TestAdapter_InferenceAdapter_Generate_Ugly(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "before"}, {Text: "STOP after"}}}
 	adapter := NewInferenceAdapter(mock, "gen")
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
-	core.RequireNoError(t, err)
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "before", result.Text)
 }
 
 func TestAdapter_InferenceAdapter_Chat_Good(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "reply"}}}
 	adapter := NewInferenceAdapter(mock, "chat")
-	result, err := adapter.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "reply", result.Text)
 }
 
 func TestAdapter_InferenceAdapter_Chat_Bad(t *core.T) {
 	mock := &mockTextModel{err: core.NewError("chat failed")}
 	adapter := NewInferenceAdapter(mock, "chat")
-	_, err := adapter.Chat(context.Background(), nil, GenOpts{})
-	core.AssertError(t, err, "chat failed")
+	r := adapter.Chat(context.Background(), nil, GenOpts{})
+	assertResultError(t, r, "chat failed")
 }
 
 func TestAdapter_InferenceAdapter_Chat_Ugly(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "first"}, {Text: "END ignored"}}}
 	adapter := NewInferenceAdapter(mock, "chat")
-	result, err := adapter.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{StopSequences: []string{"END"}})
-	core.RequireNoError(t, err)
+	r := adapter.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{StopSequences: []string{"END"}})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "first", result.Text)
 }
 
@@ -380,11 +384,11 @@ func TestAdapter_InferenceAdapter_GenerateStream_Good(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "a"}, {Text: "b"}}}
 	adapter := NewInferenceAdapter(mock, "stream")
 	var got []string
-	err := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
 		got = append(got, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"a", "b"}, got)
 }
 
@@ -392,24 +396,24 @@ func TestAdapter_InferenceAdapter_GenerateStream_Bad(t *core.T) {
 	stopErr := core.NewError("callback stopped")
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "a"}, {Text: "b"}}}
 	adapter := NewInferenceAdapter(mock, "stream")
-	err := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{}, func(token string) error {
 		if token == "b" {
 			return stopErr
 		}
 		return nil
 	})
-	core.AssertErrorIs(t, err, stopErr)
+	assertResultError(t, rStream, "callback stopped")
 }
 
 func TestAdapter_InferenceAdapter_GenerateStream_Ugly(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "one"}, {Text: "STOP two"}}}
 	adapter := NewInferenceAdapter(mock, "stream")
 	var got []string
-	err := adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
+	rStream := adapter.GenerateStream(context.Background(), "prompt", GenOpts{StopSequences: []string{"STOP"}}, func(token string) error {
 		got = append(got, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"one"}, got)
 }
 
@@ -417,11 +421,11 @@ func TestAdapter_InferenceAdapter_ChatStream_Good(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "x"}, {Text: "y"}}}
 	adapter := NewInferenceAdapter(mock, "chat-stream")
 	var got []string
-	err := adapter.ChatStream(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{}, func(token string) error {
+	rStream := adapter.ChatStream(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{}, func(token string) error {
 		got = append(got, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"x", "y"}, got)
 }
 
@@ -429,19 +433,19 @@ func TestAdapter_InferenceAdapter_ChatStream_Bad(t *core.T) {
 	stopErr := core.NewError("chat callback stopped")
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "x"}}}
 	adapter := NewInferenceAdapter(mock, "chat-stream")
-	err := adapter.ChatStream(context.Background(), nil, GenOpts{}, func(string) error { return stopErr })
-	core.AssertErrorIs(t, err, stopErr)
+	rStream := adapter.ChatStream(context.Background(), nil, GenOpts{}, func(string) error { return stopErr })
+	assertResultError(t, rStream, "chat callback stopped")
 }
 
 func TestAdapter_InferenceAdapter_ChatStream_Ugly(t *core.T) {
 	mock := &mockTextModel{tokens: []inference.Token{{Text: "ok"}, {Text: "CUT ignored"}}}
 	adapter := NewInferenceAdapter(mock, "chat-stream")
 	var got []string
-	err := adapter.ChatStream(context.Background(), nil, GenOpts{StopSequences: []string{"CUT"}}, func(token string) error {
+	rStream := adapter.ChatStream(context.Background(), nil, GenOpts{StopSequences: []string{"CUT"}}, func(token string) error {
 		got = append(got, token)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"ok"}, got)
 }
 
@@ -490,7 +494,7 @@ func TestAdapter_InferenceAdapter_Available_Ugly(t *core.T) {
 func TestAdapter_InferenceAdapter_Close_Good(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "close")
-	core.RequireNoError(t, adapter.Close())
+	requireResultOK(t, adapter.Close())
 	core.AssertTrue(t, mock.closed)
 }
 
@@ -498,14 +502,14 @@ func TestAdapter_InferenceAdapter_Close_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	adapter := NewInferenceAdapter(&mockTextModel{}, "close")
-	core.AssertNoError(t, adapter.Close())
+	assertResultOK(t, adapter.Close())
 }
 
 func TestAdapter_InferenceAdapter_Close_Ugly(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "close")
-	core.RequireNoError(t, adapter.Close())
-	core.RequireNoError(t, adapter.Close())
+	requireResultOK(t, adapter.Close())
+	requireResultOK(t, adapter.Close())
 	core.AssertTrue(t, mock.closed)
 }
 
@@ -530,19 +534,18 @@ func TestAdapter_InferenceAdapter_Model_Ugly(t *core.T) {
 
 func TestAdapter_InferenceAdapter_InspectAttention_Good(t *core.T) {
 	adapter := NewInferenceAdapter(&mockTextModel{}, "plain")
-	snapshot, err := adapter.InspectAttention(context.Background(), "prompt")
-	core.AssertNil(t, snapshot)
-	core.AssertError(t, err, "does not support attention")
+	r := adapter.InspectAttention(context.Background(), "prompt")
+	assertResultError(t, r, "does not support attention")
 }
 
 func TestAdapter_InferenceAdapter_InspectAttention_Bad(t *core.T) {
 	adapter := NewInferenceAdapter(&mockTextModel{}, "bad")
-	_, err := adapter.InspectAttention(context.Background(), "")
-	core.AssertError(t, err, "does not support attention")
+	r := adapter.InspectAttention(context.Background(), "")
+	assertResultError(t, r, "does not support attention")
 }
 
 func TestAdapter_InferenceAdapter_InspectAttention_Ugly(t *core.T) {
 	adapter := NewInferenceAdapter(&mockTextModel{}, "unicode")
-	_, err := adapter.InspectAttention(context.Background(), "λ")
-	core.AssertError(t, err, "does not support attention")
+	r := adapter.InspectAttention(context.Background(), "λ")
+	assertResultError(t, r, "does not support attention")
 }

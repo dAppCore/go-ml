@@ -22,9 +22,9 @@ func addNormalizeCommand(c *core.Core) {
 				return resultFromError(coreerr.E("cmd.runNormalize", "--db or LEM_DB env is required", nil))
 			}
 
-			db, err := store.OpenDuckDBReadWrite(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runNormalize", "open db", err))
+			db, result := store.OpenDuckDBReadWrite(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runNormalize", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 

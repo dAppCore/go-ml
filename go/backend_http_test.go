@@ -29,10 +29,11 @@ func TestHTTPBackend_Generate_Good(t *testing.T) {
 	defer srv.Close()
 
 	b := NewHTTPBackend(srv.URL, "test-model")
-	result, err := b.Generate(context.Background(), "hello", DefaultGenOpts())
-	if err != nil {
-		t.Fatalf("Generate: %v", err)
+	rGen := b.Generate(context.Background(), "hello", DefaultGenOpts())
+	if !rGen.OK {
+		t.Fatalf("Generate: %s", rGen.Error())
 	}
+	result := rGen.Value.(Result)
 	if result.Text != "world" {
 		t.Errorf("got %q, want %q", result.Text, "world")
 	}
@@ -49,8 +50,7 @@ func TestHTTPBackend_Generate_Bad(t *testing.T) {
 	defer srv.Close()
 
 	b := NewHTTPBackend(srv.URL, "test-model")
-	_, err := b.Generate(context.Background(), "hello", DefaultGenOpts())
-	if err == nil {
+	if rGen := b.Generate(context.Background(), "hello", DefaultGenOpts()); rGen.OK {
 		t.Fatal("expected error for 400 response")
 	}
 }
@@ -65,10 +65,11 @@ func TestHTTPBackend_StopSequences_Good(t *testing.T) {
 	defer srv.Close()
 
 	b := NewHTTPBackend(srv.URL, "test-model")
-	result, err := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
-	if err != nil {
-		t.Fatalf("Generate: %v", err)
+	rGen := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
+	if !rGen.OK {
+		t.Fatalf("Generate: %s", rGen.Error())
 	}
+	result := rGen.Value.(Result)
 	if result.Text != "hello " {
 		t.Errorf("got %q, want %q", result.Text, "hello ")
 	}
@@ -91,10 +92,11 @@ func TestHTTPBackendRetryUglyScenario(t *testing.T) {
 	defer srv.Close()
 
 	b := NewHTTPBackend(srv.URL, "test-model")
-	result, err := b.Generate(context.Background(), "test", DefaultGenOpts())
-	if err != nil {
-		t.Fatalf("Generate after retry: %v", err)
+	rGen := b.Generate(context.Background(), "test", DefaultGenOpts())
+	if !rGen.OK {
+		t.Fatalf("Generate after retry: %s", rGen.Error())
 	}
+	result := rGen.Value.(Result)
 	if result.Text != "recovered" {
 		t.Errorf("got %q, want %q", result.Text, "recovered")
 	}
@@ -420,8 +422,9 @@ func TestBackendHttp_HTTPBackend_Generate_Good(t *core.T) {
 	}))
 	defer srv.Close()
 	b := NewHTTPBackend(srv.URL, "model")
-	result, err := b.Generate(context.Background(), "hello", GenOpts{})
-	core.RequireNoError(t, err)
+	rGen := b.Generate(context.Background(), "hello", GenOpts{})
+	requireResultOK(t, rGen)
+	result := rGen.Value.(Result)
 	core.AssertEqual(t, "ok", result.Text)
 }
 
@@ -429,8 +432,8 @@ func TestBackendHttp_HTTPBackend_Generate_Bad(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusBadRequest) }))
 	defer srv.Close()
 	b := NewHTTPBackend(srv.URL, "model")
-	_, err := b.Generate(context.Background(), "hello", GenOpts{})
-	core.AssertError(t, err)
+	rGen := b.Generate(context.Background(), "hello", GenOpts{})
+	assertResultError(t, rGen)
 }
 
 func TestBackendHttp_HTTPBackend_Generate_Ugly(t *core.T) {
@@ -439,8 +442,9 @@ func TestBackendHttp_HTTPBackend_Generate_Ugly(t *core.T) {
 	}))
 	defer srv.Close()
 	b := NewHTTPBackend(srv.URL, "model")
-	result, err := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
-	core.RequireNoError(t, err)
+	rGen := b.Generate(context.Background(), "hello", GenOpts{StopSequences: []string{"STOP"}})
+	requireResultOK(t, rGen)
+	result := rGen.Value.(Result)
 	core.AssertEqual(t, "cut ", result.Text)
 }
 
@@ -450,15 +454,16 @@ func TestBackendHttp_HTTPBackend_Chat_Good(t *core.T) {
 	}))
 	defer srv.Close()
 	b := NewHTTPBackend(srv.URL, "model")
-	result, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
-	core.RequireNoError(t, err)
+	rChat := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
+	requireResultOK(t, rChat)
+	result := rChat.Value.(Result)
 	core.AssertEqual(t, "chat", result.Text)
 }
 
 func TestBackendHttp_HTTPBackend_Chat_Bad(t *core.T) {
 	b := NewHTTPBackend("http://127.0.0.1:1", "model")
-	_, err := b.Chat(context.Background(), nil, GenOpts{})
-	core.AssertError(t, err)
+	rChat := b.Chat(context.Background(), nil, GenOpts{})
+	assertResultError(t, rChat)
 }
 
 func TestBackendHttp_HTTPBackend_Chat_Ugly(t *core.T) {
@@ -467,6 +472,6 @@ func TestBackendHttp_HTTPBackend_Chat_Ugly(t *core.T) {
 	}))
 	defer srv.Close()
 	b := NewHTTPBackend(srv.URL, "model")
-	_, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
-	core.AssertError(t, err, "no choices")
+	rChat := b.Chat(context.Background(), []Message{{Role: "user", Content: "hello"}}, GenOpts{})
+	assertResultError(t, rChat, "no choices")
 }

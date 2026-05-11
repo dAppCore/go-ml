@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 )
 
 // Engine orchestrates concurrent scoring across multiple suites.
@@ -56,7 +55,7 @@ func (e *Engine) ScoreHeuristic(response string) *HeuristicScores {
 //	scores := r.Value.(*ml.SemanticScores)
 func (e *Engine) ScoreSemantic(ctx context.Context, prompt, response string) core.Result {
 	if e == nil || e.judge == nil {
-		return core.Fail(coreerr.E("ml.Engine.ScoreSemantic", "semantic scoring requires a judge", nil))
+		return core.Fail(core.E("ml.Engine.ScoreSemantic", "semantic scoring requires a judge", nil))
 	}
 	return e.judge.ScoreSemantic(ctx, prompt, response)
 }
@@ -68,7 +67,7 @@ func (e *Engine) ScoreSemantic(ctx context.Context, prompt, response string) cor
 //	scores := r.Value.(*ml.ContentScores)
 func (e *Engine) ScoreContent(ctx context.Context, probe ContentProbe, response string) core.Result {
 	if e == nil || e.judge == nil {
-		return core.Fail(coreerr.E("ml.Engine.ScoreContent", "content scoring requires a judge", nil))
+		return core.Fail(core.E("ml.Engine.ScoreContent", "content scoring requires a judge", nil))
 	}
 	return e.judge.ScoreContent(ctx, probe, response)
 }
@@ -80,7 +79,7 @@ func (e *Engine) ScoreContent(ctx context.Context, probe ContentProbe, response 
 //	scores := r.Value.(*ml.CapabilityScores)
 func (e *Engine) ScoreCapability(ctx context.Context, prompt, expectedAnswer, response string) core.Result {
 	if e == nil || e.judge == nil {
-		return core.Fail(coreerr.E("ml.Engine.ScoreCapability", "capability scoring requires a judge", nil))
+		return core.Fail(core.E("ml.Engine.ScoreCapability", "capability scoring requires a judge", nil))
 	}
 	return e.judge.ScoreCapability(ctx, prompt, expectedAnswer, response)
 }
@@ -92,7 +91,7 @@ func (e *Engine) ScoreCapability(ctx context.Context, prompt, expectedAnswer, re
 //	scores := r.Value.(*ml.StandardScores)
 func (e *Engine) ScoreStandard(ctx context.Context, benchmark, question, reference, response string) core.Result {
 	if e == nil || e.judge == nil {
-		return core.Fail(coreerr.E("ml.Engine.ScoreStandard", "standard scoring requires a judge", nil))
+		return core.Fail(core.E("ml.Engine.ScoreStandard", "standard scoring requires a judge", nil))
 	}
 	return e.judge.ScoreStandard(ctx, benchmark, question, reference, response)
 }
@@ -308,7 +307,7 @@ func (e *Engine) String() string {
 //	scores := r.Value.(*ml.SemanticScores)
 func ScoreSemantic(judge *Judge, prompt, response string) core.Result {
 	if judge == nil {
-		return core.Fail(coreerr.E("ml.ScoreSemantic", "semantic scoring requires a judge", nil))
+		return core.Fail(core.E("ml.ScoreSemantic", "semantic scoring requires a judge", nil))
 	}
 	return judge.ScoreSemantic(context.Background(), prompt, response)
 }
@@ -321,7 +320,7 @@ func ScoreSemantic(judge *Judge, prompt, response string) core.Result {
 //	scores := r.Value.(*ml.ContentScores)
 func ScoreContent(judge *Judge, probe ContentProbe, response string) core.Result {
 	if judge == nil {
-		return core.Fail(coreerr.E("ml.ScoreContent", "content scoring requires a judge", nil))
+		return core.Fail(core.E("ml.ScoreContent", "content scoring requires a judge", nil))
 	}
 	return judge.ScoreContent(context.Background(), probe, response)
 }
@@ -334,7 +333,7 @@ func ScoreContent(judge *Judge, probe ContentProbe, response string) core.Result
 //	scores := r.Value.(*ml.CapabilityScores)
 func ScoreCapability(judge *Judge, prompt, expectedAnswer, response string) core.Result {
 	if judge == nil {
-		return core.Fail(coreerr.E("ml.ScoreCapability", "capability scoring requires a judge", nil))
+		return core.Fail(core.E("ml.ScoreCapability", "capability scoring requires a judge", nil))
 	}
 	return judge.ScoreCapability(context.Background(), prompt, expectedAnswer, response)
 }
@@ -347,7 +346,7 @@ func ScoreCapability(judge *Judge, prompt, expectedAnswer, response string) core
 //	scores := r.Value.(*ml.StandardScores)
 func ScoreStandard(judge *Judge, benchmark, question, reference, response string) core.Result {
 	if judge == nil {
-		return core.Fail(coreerr.E("ml.ScoreStandard", "standard scoring requires a judge", nil))
+		return core.Fail(core.E("ml.ScoreStandard", "standard scoring requires a judge", nil))
 	}
 	return judge.ScoreStandard(context.Background(), benchmark, question, reference, response)
 }

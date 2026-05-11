@@ -5,7 +5,6 @@ import (
 	"regexp"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 )
 
 // extractJSON extracts the first JSON object {...} from text.
@@ -104,18 +103,18 @@ func (j *Judge) ScoreSemantic(ctx context.Context, prompt, response string) core
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", "semantic judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreSemantic", "semantic judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", core.Sprintf("no JSON found in semantic judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreSemantic", core.Sprintf("no JSON found in semantic judge response: %s", reply), nil))
 	}
 
 	var scores SemanticScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreSemantic", "unmarshal semantic scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)
@@ -135,18 +134,18 @@ func (j *Judge) ScoreContent(ctx context.Context, probe ContentProbe, response s
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreContent", "content judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreContent", "content judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreContent", core.Sprintf("no JSON found in content judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreContent", core.Sprintf("no JSON found in content judge response: %s", reply), nil))
 	}
 
 	var scores ContentScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreContent", "unmarshal content scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreContent", "unmarshal content scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)
@@ -163,18 +162,18 @@ func (j *Judge) ScoreCapability(ctx context.Context, prompt, expectedAnswer, res
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", "capability judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreCapability", "capability judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", core.Sprintf("no JSON found in capability judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreCapability", core.Sprintf("no JSON found in capability judge response: %s", reply), nil))
 	}
 
 	var scores CapabilityScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreCapability", "unmarshal capability scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreCapability", "unmarshal capability scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)
@@ -191,18 +190,18 @@ func (j *Judge) ScoreTruthfulQA(ctx context.Context, question, bestAnswer, respo
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", "truthfulqa judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreTruthfulQA", "truthfulqa judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", core.Sprintf("no JSON found in truthfulqa judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreTruthfulQA", core.Sprintf("no JSON found in truthfulqa judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreTruthfulQA", "unmarshal truthfulqa scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)
@@ -219,18 +218,18 @@ func (j *Judge) ScoreDoNotAnswer(ctx context.Context, question, riskArea, respon
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", "donotanswer judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreDoNotAnswer", "donotanswer judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", core.Sprintf("no JSON found in donotanswer judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreDoNotAnswer", core.Sprintf("no JSON found in donotanswer judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreDoNotAnswer", "unmarshal donotanswer scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)
@@ -257,7 +256,7 @@ func (j *Judge) ScoreStandard(ctx context.Context, benchmark, question, referenc
 		// Pure string/number match — no judge call required.
 		return core.Ok(scoreGSM8K(response, reference))
 	default:
-		return core.Fail(coreerr.E("ml.Judge.ScoreStandard",
+		return core.Fail(core.E("ml.Judge.ScoreStandard",
 			core.Sprintf("unknown benchmark %q (want truthfulqa|helm|mmlu|hellaswag|do_not_answer|toxigen|exact)", benchmark), nil))
 	}
 }
@@ -273,18 +272,18 @@ func (j *Judge) ScoreToxigen(ctx context.Context, prompt, response string) core.
 
 	rChat := j.judgeChat(ctx, formatted)
 	if !rChat.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", "toxigen judge chat", rChat.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreToxigen", "toxigen judge chat", rChat.Value.(error)))
 	}
 	reply := rChat.Value.(string)
 
 	raw := extractJSON(reply)
 	if raw == "" {
-		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", core.Sprintf("no JSON found in toxigen judge response: %s", reply), nil))
+		return core.Fail(core.E("ml.Judge.ScoreToxigen", core.Sprintf("no JSON found in toxigen judge response: %s", reply), nil))
 	}
 
 	var scores StandardScores
 	if r := core.JSONUnmarshalString(raw, &scores); !r.OK {
-		return core.Fail(coreerr.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", r.Value.(error)))
+		return core.Fail(core.E("ml.Judge.ScoreToxigen", "unmarshal toxigen scores", r.Value.(error)))
 	}
 
 	return core.Ok(&scores)

@@ -26,8 +26,9 @@ func (m *mockAttentionModel) InspectAttention(_ context.Context, _ string, _ ...
 
 func TestInferenceAdapter_InspectAttention_Good(t *core.T) {
 	adapter := NewInferenceAdapter(&mockAttentionModel{}, "test")
-	snap, err := adapter.InspectAttention(context.Background(), "hello")
-	core.RequireNoError(t, err)
+	r := adapter.InspectAttention(context.Background(), "hello")
+	requireResultOK(t, r)
+	snap := r.Value.(*inference.AttentionSnapshot)
 	core.AssertEqual(t, 28, snap.NumLayers)
 	core.AssertEqual(t, 8, snap.NumHeads)
 	core.AssertEqual(t, 10, snap.SeqLen)
@@ -38,7 +39,7 @@ func TestInferenceAdapter_InspectAttention_Good(t *core.T) {
 func TestInferenceAdapter_InspectAttention_Unsupported_Bad(t *core.T) {
 	// Plain mockTextModel does not implement AttentionInspector.
 	adapter := NewInferenceAdapter(&mockTextModel{}, "test")
-	_, err := adapter.InspectAttention(context.Background(), "hello")
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "does not support attention inspection")
+	r := adapter.InspectAttention(context.Background(), "hello")
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "does not support attention inspection")
 }

@@ -70,120 +70,121 @@ func TestAgentSsh_SSHTransport_Run_Good(t *core.T) {
 	transport := NewSSHTransport("127.0.0.1", "nobody", "/missing", WithTimeout(time.Millisecond))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := transport.Run(ctx, "true")
-	core.AssertError(t, err)
+	r := transport.Run(ctx, "true")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_Run_Bad(t *core.T) {
 	transport := NewSSHTransport("", "", "", WithTimeout(time.Millisecond))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := transport.Run(ctx, "true")
-	core.AssertError(t, err)
+	r := transport.Run(ctx, "true")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_Run_Ugly(t *core.T) {
 	transport := &SSHTransport{Host: "127.0.0.1", User: "nobody", KeyPath: "/missing", Timeout: -1}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := transport.Run(ctx, "true")
-	core.AssertError(t, err)
+	r := transport.Run(ctx, "true")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyFrom_Good(t *core.T) {
 	transport := NewSSHTransport("127.0.0.1", "nobody", "/missing", WithTimeout(time.Millisecond))
-	err := transport.CopyFrom(context.Background(), "/remote/file", core.JoinPath(t.TempDir(), "local"))
-	core.AssertError(t, err)
+	r := transport.CopyFrom(context.Background(), "/remote/file", core.JoinPath(t.TempDir(), "local"))
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyFrom_Bad(t *core.T) {
 	transport := NewSSHTransport("", "", "", WithTimeout(time.Millisecond))
-	err := transport.CopyFrom(context.Background(), "", core.JoinPath(t.TempDir(), "local"))
-	core.AssertError(t, err)
+	r := transport.CopyFrom(context.Background(), "", core.JoinPath(t.TempDir(), "local"))
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyFrom_Ugly(t *core.T) {
 	transport := &SSHTransport{Host: "127.0.0.1", User: "nobody", KeyPath: "/missing", Timeout: -1}
-	err := transport.CopyFrom(context.Background(), "/remote/file", core.JoinPath(t.TempDir(), "local"))
-	core.AssertError(t, err)
+	r := transport.CopyFrom(context.Background(), "/remote/file", core.JoinPath(t.TempDir(), "local"))
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyTo_Good(t *core.T) {
 	transport := NewSSHTransport("127.0.0.1", "nobody", "/missing", WithTimeout(time.Millisecond))
-	err := transport.CopyTo(context.Background(), core.JoinPath(t.TempDir(), "local"), "/remote/file")
-	core.AssertError(t, err)
+	r := transport.CopyTo(context.Background(), core.JoinPath(t.TempDir(), "local"), "/remote/file")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyTo_Bad(t *core.T) {
 	transport := NewSSHTransport("", "", "", WithTimeout(time.Millisecond))
-	err := transport.CopyTo(context.Background(), "", "")
-	core.AssertError(t, err)
+	r := transport.CopyTo(context.Background(), "", "")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHTransport_CopyTo_Ugly(t *core.T) {
 	transport := &SSHTransport{Host: "127.0.0.1", User: "nobody", KeyPath: "/missing", Timeout: -1}
-	err := transport.CopyTo(context.Background(), core.JoinPath(t.TempDir(), "local"), "/remote/file")
-	core.AssertError(t, err)
+	r := transport.CopyTo(context.Background(), core.JoinPath(t.TempDir(), "local"), "/remote/file")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHCommand_Good(t *core.T) {
 	ft := newFakeTransport()
 	ft.On("echo ok", "ok\n", nil)
-	out, err := SSHCommand(&AgentConfig{Transport: ft}, "echo ok")
-	core.RequireNoError(t, err)
+	r := SSHCommand(&AgentConfig{Transport: ft}, "echo ok")
+	requireResultOK(t, r)
+	out := r.Value.(string)
 	core.AssertEqual(t, "ok\n", out)
 }
 
 func TestAgentSsh_SSHCommand_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := SSHCommand(&AgentConfig{Transport: newFakeTransport()}, "missing")
-	core.AssertError(t, err)
+	r := SSHCommand(&AgentConfig{Transport: newFakeTransport()}, "missing")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SSHCommand_Ugly(t *core.T) {
 	ft := newFakeTransport()
 	ft.On("fail", "", core.AnError)
-	_, err := SSHCommand(&AgentConfig{Transport: ft}, "fail")
-	core.AssertError(t, err)
+	r := SSHCommand(&AgentConfig{Transport: ft}, "fail")
+	assertResultError(t, r)
 }
 
 func TestAgentSsh_SCPFrom_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	err := SCPFrom(&AgentConfig{Transport: newFakeTransport()}, "/remote", core.JoinPath(t.TempDir(), "local"))
-	core.AssertNoError(t, err)
+	r := SCPFrom(&AgentConfig{Transport: newFakeTransport()}, "/remote", core.JoinPath(t.TempDir(), "local"))
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_SCPFrom_Bad(t *core.T) {
 	ft := newFakeTransport()
-	err := SCPFrom(&AgentConfig{Transport: ft}, "", "")
-	core.AssertNoError(t, err)
+	r := SCPFrom(&AgentConfig{Transport: ft}, "", "")
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_SCPFrom_Ugly(t *core.T) {
 	cfg := &AgentConfig{Transport: newFakeTransport()}
-	err := SCPFrom(cfg, "/remote", core.JoinPath(t.TempDir(), "local"))
-	core.AssertNoError(t, err)
+	r := SCPFrom(cfg, "/remote", core.JoinPath(t.TempDir(), "local"))
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_SCPTo_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	err := SCPTo(&AgentConfig{Transport: newFakeTransport()}, core.JoinPath(t.TempDir(), "local"), "/remote")
-	core.AssertNoError(t, err)
+	r := SCPTo(&AgentConfig{Transport: newFakeTransport()}, core.JoinPath(t.TempDir(), "local"), "/remote")
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_SCPTo_Bad(t *core.T) {
 	ft := newFakeTransport()
-	err := SCPTo(&AgentConfig{Transport: ft}, "", "")
-	core.AssertNoError(t, err)
+	r := SCPTo(&AgentConfig{Transport: ft}, "", "")
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_SCPTo_Ugly(t *core.T) {
 	cfg := &AgentConfig{Transport: newFakeTransport()}
-	err := SCPTo(cfg, core.JoinPath(t.TempDir(), "local"), "/remote")
-	core.AssertNoError(t, err)
+	r := SCPTo(cfg, core.JoinPath(t.TempDir(), "local"), "/remote")
+	assertResultOK(t, r)
 }
 
 func TestAgentSsh_EnvOr_Good(t *core.T) {

@@ -29,14 +29,14 @@ func TestInflux_InfluxClient_WriteLp_Good(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	defer srv.Close()
 	client := NewInfluxClient(srv.URL, "db")
-	core.AssertNoError(t, client.WriteLp([]string{"m value=1i"}))
+	assertResultOK(t, client.WriteLp([]string{"m value=1i"}))
 }
 
 func TestInflux_InfluxClient_WriteLp_Bad(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusBadRequest) }))
 	defer srv.Close()
 	client := NewInfluxClient(srv.URL, "db")
-	core.AssertError(t, client.WriteLp([]string{"bad"}))
+	assertResultError(t, client.WriteLp([]string{"bad"}))
 }
 
 func TestInflux_InfluxClient_WriteLp_Ugly(t *core.T) {
@@ -50,8 +50,9 @@ func TestInflux_InfluxClient_QuerySQL_Good(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { core.WriteString(w, `[{"n":1}]`) }))
 	defer srv.Close()
 	client := NewInfluxClient(srv.URL, "db")
-	rows, err := client.QuerySQL("select 1")
-	core.RequireNoError(t, err)
+	rRows := client.QuerySQL("select 1")
+	requireResultOK(t, rRows)
+	rows := rRows.Value.([]map[string]any)
 	core.AssertLen(t, rows, 1)
 }
 
@@ -59,16 +60,16 @@ func TestInflux_InfluxClient_QuerySQL_Bad(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
 	defer srv.Close()
 	client := NewInfluxClient(srv.URL, "db")
-	_, err := client.QuerySQL("select 1")
-	core.AssertError(t, err)
+	rRows := client.QuerySQL("select 1")
+	assertResultError(t, rRows)
 }
 
 func TestInflux_InfluxClient_QuerySQL_Ugly(t *core.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { core.WriteString(w, `not rows`) }))
 	defer srv.Close()
 	client := NewInfluxClient(srv.URL, "db")
-	_, err := client.QuerySQL("")
-	core.AssertError(t, err)
+	rRows := client.QuerySQL("")
+	assertResultError(t, rRows)
 }
 
 func TestInflux_EscapeLp_Good(t *core.T) {

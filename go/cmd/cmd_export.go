@@ -29,23 +29,23 @@ func addExportCommand(c *core.Core) {
 			seed := int64(optInt(opts, "seed", 42))
 			parquet := opts.Bool("parquet")
 
-			if err := ml.ValidatePercentages(trainPct, validPct, testPct); err != nil {
-				return resultFromError(err)
+			if result := ml.ValidatePercentages(trainPct, validPct, testPct); !result.OK {
+				return resultFromError(result)
 			}
 
 			if dbPath == "" {
 				return resultFromError(coreerr.E("cmd.runExport", "--db or LEM_DB env is required", nil))
 			}
 
-			db, err := store.OpenDuckDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runExport", "open db", err))
+			db, result := store.OpenDuckDB(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runExport", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 
-			rows, err := db.QueryGoldenSet(minChars)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runExport", "query golden set", err))
+			rows, result := db.QueryGoldenSet(minChars)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runExport", "query golden set", errorFromResult(result)))
 			}
 			core.Print(nil, "Loaded %d golden set rows (min %d chars)", len(rows), minChars)
 
@@ -79,16 +79,16 @@ func addExportCommand(c *core.Core) {
 				{"test", test},
 			} {
 				path := core.JoinPath(outputDir, core.Concat(split.name, ".jsonl"))
-				if err := ml.WriteTrainingJSONL(path, split.data); err != nil {
-					return resultFromError(coreerr.E("cmd.runExport", core.Sprintf("write %s", split.name), err))
+				if result := ml.WriteTrainingJSONL(path, split.data); !result.OK {
+					return resultFromError(coreerr.E("cmd.runExport", core.Sprintf("write %s", split.name), errorFromResult(result)))
 				}
 				core.Print(nil, "  %s.jsonl: %d examples", split.name, len(split.data))
 			}
 
 			if parquet {
-				n, err := store.ExportParquet(outputDir, "")
-				if err != nil {
-					return resultFromError(coreerr.E("cmd.runExport", "export parquet", err))
+				n, result := store.ExportParquet(outputDir, "")
+				if !result.OK {
+					return resultFromError(coreerr.E("cmd.runExport", "export parquet", errorFromResult(result)))
 				}
 				core.Print(nil, "  Parquet: %d total rows", n)
 			}

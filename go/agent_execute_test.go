@@ -29,22 +29,23 @@ func TestAgentExecute_DiscoverCheckpoints_Good(t *core.T) {
 	ft.On("ls -d /base/adapters-*", "/base/adapters-27b\n", nil)
 	ft.On("ls -d /base/adapters-27b/gemma-3-*", "", core.AnError)
 	ft.On("ls /base/adapters-27b/*_adapters.safetensors", "/base/adapters-27b/0000010_adapters.safetensors\n", nil)
-	checkpoints, err := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: ft})
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: ft})
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertLen(t, checkpoints, 1)
 }
 
 func TestAgentExecute_DiscoverCheckpoints_Bad(t *core.T) {
-	checkpoints, err := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: newFakeTransport()})
-	core.AssertError(t, err)
-	core.AssertNil(t, checkpoints)
+	r := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: newFakeTransport()})
+	assertResultError(t, r)
 }
 
 func TestAgentExecute_DiscoverCheckpoints_Ugly(t *core.T) {
 	ft := newFakeTransport()
 	ft.On("ls -d /base/adapters-*", "", nil)
-	checkpoints, err := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: ft})
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: ft})
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertEmpty(t, checkpoints)
 }
 
@@ -83,22 +84,23 @@ func TestAgentExecute_DiscoverCheckpointsIter_Ugly(t *core.T) {
 
 func TestAgentExecute_GetScoredLabels_Good(t *core.T) {
 	influx, _ := newFakeInflux(t, map[string][]map[string]any{"SELECT DISTINCT": {{"run_id": "r", "label": "l"}}}, 0)
-	labels, err := GetScoredLabels(influx)
-	core.RequireNoError(t, err)
+	r := GetScoredLabels(influx)
+	requireResultOK(t, r)
+	labels := r.Value.(map[[2]string]bool)
 	core.AssertTrue(t, labels[[2]string{"r", "l"}])
 }
 
 func TestAgentExecute_GetScoredLabels_Bad(t *core.T) {
 	influx := &InfluxClient{url: "http://127.0.0.1:1", db: "test"}
-	labels, err := GetScoredLabels(influx)
-	core.AssertError(t, err)
-	core.AssertNil(t, labels)
+	r := GetScoredLabels(influx)
+	assertResultError(t, r)
 }
 
 func TestAgentExecute_GetScoredLabels_Ugly(t *core.T) {
 	influx, _ := newFakeInflux(t, map[string][]map[string]any{"SELECT DISTINCT": {{"run_id": "", "label": "l"}}}, 0)
-	labels, err := GetScoredLabels(influx)
-	core.RequireNoError(t, err)
+	r := GetScoredLabels(influx)
+	requireResultOK(t, r)
+	labels := r.Value.(map[[2]string]bool)
 	core.AssertEmpty(t, labels)
 }
 

@@ -12,21 +12,19 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestExportValidatePercentagesAcceptsValidSplitsScenario(t *core.T) {
-	core.AssertNoError(t, ValidatePercentages(80, 10, 10))
-	core.AssertNoError(t, ValidatePercentages(100, 0, 0))
-	core.AssertNoError(t, ValidatePercentages(0, 0, 100))
+	assertResultOK(t, ValidatePercentages(80, 10, 10))
+	assertResultOK(t, ValidatePercentages(100, 0, 0))
+	assertResultOK(t, ValidatePercentages(0, 0, 100))
 }
 
 func TestExportValidatePercentagesWrongSumBadScenario(t *core.T) {
 	err := ValidatePercentages(50, 20, 10)
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "sum to 100")
+	assertResultError(t, err, "sum to 100")
 }
 
 func TestExportValidatePercentagesNegativeBadScenario(t *core.T) {
 	err := ValidatePercentages(-10, 60, 50)
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "non-negative")
+	assertResultError(t, err, "non-negative")
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +97,7 @@ func TestExportWriteTrainingJSONLWritesChatRowsScenario(t *core.T) {
 		{Prompt: "Capital of France?", Response: "Paris"},
 	}
 
-	core.RequireNoError(t, WriteTrainingJSONL(path, responses))
+	requireResultOK(t, WriteTrainingJSONL(path, responses))
 
 	content, err := coreio.Local.Read(path)
 	core.RequireNoError(t, err)
@@ -121,7 +119,7 @@ func TestExportWriteTrainingJSONLEmptyGoodScenario(t *core.T) {
 	dir := t.TempDir()
 	path := core.JoinPath(dir, "empty.jsonl")
 
-	core.RequireNoError(t, WriteTrainingJSONL(path, nil))
+	requireResultOK(t, WriteTrainingJSONL(path, nil))
 
 	content, err := coreio.Local.Read(path)
 	core.RequireNoError(t, err)
@@ -155,19 +153,19 @@ func splitNonEmpty(s string) []string {
 func TestExport_ValidatePercentages_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	core.AssertNoError(t, ValidatePercentages(80, 10, 10))
+	assertResultOK(t, ValidatePercentages(80, 10, 10))
 }
 
 func TestExport_ValidatePercentages_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	core.AssertError(t, ValidatePercentages(80, 10, 20), "sum")
+	assertResultError(t, ValidatePercentages(80, 10, 20), "sum")
 }
 
 func TestExport_ValidatePercentages_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	core.AssertError(t, ValidatePercentages(-1, 50, 51), "non-negative")
+	assertResultError(t, ValidatePercentages(-1, 50, 51), "non-negative")
 }
 
 func TestExport_FilterResponses_Good(t *core.T) {
@@ -217,7 +215,7 @@ func TestExport_SplitData_Ugly(t *core.T) {
 func TestExport_WriteTrainingJSONL_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "train.jsonl")
 	err := WriteTrainingJSONL(file, []Response{{Prompt: "hello", Response: "world"}})
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	data, readErr := coreio.Local.Read(file)
 	core.RequireNoError(t, readErr)
 	core.AssertContains(t, data, "hello")
@@ -227,13 +225,13 @@ func TestExport_WriteTrainingJSONL_Bad(t *core.T) {
 	dir := core.JoinPath(t.TempDir(), "blocked")
 	core.RequireNoError(t, coreio.Local.EnsureDir(dir))
 	err := WriteTrainingJSONL(dir, []Response{{Prompt: "hello", Response: "world"}})
-	core.AssertError(t, err)
+	assertResultError(t, err)
 }
 
 func TestExport_WriteTrainingJSONL_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "empty.jsonl")
 	err := WriteTrainingJSONL(file, nil)
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	data, readErr := coreio.Local.Read(file)
 	core.RequireNoError(t, readErr)
 	core.AssertEqual(t, "", data)

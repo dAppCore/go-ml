@@ -21,9 +21,9 @@ func addExpandStatusCommand(c *core.Core) {
 				return resultFromError(coreerr.E("cmd.runExpandStatus", "--db or LEM_DB required", nil))
 			}
 
-			db, err := store.OpenDuckDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runExpandStatus", "open db", err))
+			db, result := store.OpenDuckDB(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runExpandStatus", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 
@@ -31,8 +31,8 @@ func addExpandStatusCommand(c *core.Core) {
 			core.Print(nil, "==================================================")
 
 			// Expansion prompts
-			total, pending, err := db.CountExpansionPrompts()
-			if err != nil {
+			total, pending, result := db.CountExpansionPrompts()
+			if !result.OK {
 				core.Print(nil, "  Expansion prompts:  not created (run: normalize)")
 				return core.Result{OK: true}
 			}
@@ -40,8 +40,8 @@ func addExpandStatusCommand(c *core.Core) {
 
 			// Generated responses — query raw counts via SQL
 			generated := 0
-			rows, err := db.QueryRows("SELECT count(*) AS n FROM expansion_raw")
-			if err != nil || len(rows) == 0 {
+			rows, result := db.QueryRows("SELECT count(*) AS n FROM expansion_raw")
+			if !result.OK || len(rows) == 0 {
 				core.Print(nil, "  Generated:          0 (run: core ml expand)")
 			} else {
 				if n, ok := rows[0]["n"]; ok {
@@ -51,8 +51,8 @@ func addExpandStatusCommand(c *core.Core) {
 			}
 
 			// Scored — query scoring counts via SQL
-			sRows, err := db.QueryRows("SELECT count(*) AS n FROM scoring_results WHERE suite = 'heuristic'")
-			if err != nil || len(sRows) == 0 {
+			sRows, result := db.QueryRows("SELECT count(*) AS n FROM scoring_results WHERE suite = 'heuristic'")
+			if !result.OK || len(sRows) == 0 {
 				core.Print(nil, "  Scored:             0 (run: score --tier 1)")
 			} else {
 				scored := toInt(sRows[0]["n"])
@@ -67,8 +67,8 @@ func addExpandStatusCommand(c *core.Core) {
 			}
 
 			// Golden set context
-			golden, err := db.CountGoldenSet()
-			if err == nil && golden > 0 {
+			golden, result := db.CountGoldenSet()
+			if result.OK && golden > 0 {
 				core.Print(nil, "")
 				core.Print(nil, "  Golden set:         %d / %d", golden, targetTotal)
 				if generated > 0 {

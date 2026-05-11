@@ -28,9 +28,9 @@ func addApproveCommand(c *core.Core) {
 			}
 			threshold := optFloat(opts, "threshold", 6.0)
 
-			db, err := store.OpenDuckDB(path)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runApprove", "open db", err))
+			db, result := store.OpenDuckDB(path)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runApprove", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 

@@ -118,8 +118,9 @@ func TestLlamaBackend_Generate_Good(t *core.T) {
 
 	lb := newLlamaBackendWithServer(srv)
 
-	result, err := lb.Generate(context.Background(), "test prompt", DefaultGenOpts())
-	core.RequireNoError(t, err)
+	r := lb.Generate(context.Background(), "test prompt", DefaultGenOpts())
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "generated response", result.Text)
 	core.AssertNil(t, result.Metrics)
 }
@@ -130,9 +131,9 @@ func TestLlamaBackend_Generate_NotAvailable_Bad(t *core.T) {
 		http:   NewHTTPBackend("http://127.0.0.1:19999", ""),
 	}
 
-	_, err := lb.Generate(context.Background(), "test", DefaultGenOpts())
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "not available")
+	r := lb.Generate(context.Background(), "test", DefaultGenOpts())
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "not available")
 }
 
 func TestLlamaBackend_Generate_ServerError_Bad(t *core.T) {
@@ -151,8 +152,8 @@ func TestLlamaBackend_Generate_ServerError_Bad(t *core.T) {
 
 	lb := newLlamaBackendWithServer(srv)
 
-	_, err := lb.Generate(context.Background(), "test", DefaultGenOpts())
-	core.AssertError(t, err)
+	r := lb.Generate(context.Background(), "test", DefaultGenOpts())
+	assertResultError(t, r)
 }
 
 // --- Chat ---
@@ -166,8 +167,9 @@ func TestLlamaBackend_Chat_Good(t *core.T) {
 		{Role: "user", Content: "hello"},
 	}
 
-	result, err := lb.Chat(context.Background(), messages, DefaultGenOpts())
-	core.RequireNoError(t, err)
+	r := lb.Chat(context.Background(), messages, DefaultGenOpts())
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "chat reply", result.Text)
 }
 
@@ -183,8 +185,9 @@ func TestLlamaBackend_Chat_MultiTurn_Good(t *core.T) {
 		{Role: "user", Content: "How are you?"},
 	}
 
-	result, err := lb.Chat(context.Background(), messages, DefaultGenOpts())
-	core.RequireNoError(t, err)
+	r := lb.Chat(context.Background(), messages, DefaultGenOpts())
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "multi-turn reply", result.Text)
 }
 
@@ -195,9 +198,9 @@ func TestLlamaBackend_Chat_NotAvailable_Bad(t *core.T) {
 	}
 
 	messages := []Message{{Role: "user", Content: "hello"}}
-	_, err := lb.Chat(context.Background(), messages, DefaultGenOpts())
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "not available")
+	r := lb.Chat(context.Background(), messages, DefaultGenOpts())
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "not available")
 }
 
 // --- Stop ---
@@ -205,7 +208,7 @@ func TestLlamaBackend_Chat_NotAvailable_Bad(t *core.T) {
 func TestLlamaBackend_Stop_NoProcID_Good(t *core.T) {
 	lb := &LlamaBackend{} // procID is ""
 	err := lb.Stop()
-	core.AssertNoError(t, err, "Stop with empty procID should be a no-op")
+	assertResultOK(t, err)
 }
 
 // --- NewLlamaBackend constructor ---
@@ -268,8 +271,8 @@ func TestLlamaBackend_Generate_ContextCancelled_Bad(t *core.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
-	_, err := lb.Generate(ctx, "test", DefaultGenOpts())
-	core.AssertError(t, err)
+	r := lb.Generate(ctx, "test", DefaultGenOpts())
+	assertResultError(t, r)
 }
 
 // --- Empty choices edge case ---
@@ -290,9 +293,9 @@ func TestLlamaBackend_Generate_EmptyChoices_Ugly(t *core.T) {
 
 	lb := newLlamaBackendWithServer(srv)
 
-	_, err := lb.Generate(context.Background(), "test", DefaultGenOpts())
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "no choices")
+	r := lb.Generate(context.Background(), "test", DefaultGenOpts())
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "no choices")
 }
 
 // --- GenOpts forwarding ---
@@ -322,8 +325,9 @@ func TestLlamaBackend_Generate_OptsForwarded_Good(t *core.T) {
 	lb := newLlamaBackendWithServer(srv)
 
 	opts := GenOpts{Temperature: 0.7, MaxTokens: 256}
-	result, err := lb.Generate(context.Background(), "test", opts)
-	core.RequireNoError(t, err)
+	r := lb.Generate(context.Background(), "test", opts)
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "ok", result.Text)
 }
 
@@ -474,56 +478,56 @@ func TestBackendLlama_LlamaBackend_Stop_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	b := NewLlamaBackend()
-	core.AssertNoError(t, b.Stop())
+	assertResultOK(t, b.Stop())
 }
 
 func TestBackendLlama_LlamaBackend_Stop_Bad(t *core.T) {
 	b := NewLlamaBackend()
 	b.procID = "proc"
-	core.AssertError(t, b.Stop(), "process service")
+	assertResultError(t, b.Stop(), "process service")
 }
 
 func TestBackendLlama_LlamaBackend_Stop_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	var b LlamaBackend
-	core.AssertNoError(t, b.Stop())
+	assertResultOK(t, b.Stop())
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Good(t *core.T) {
 	b := NewLlamaBackend()
-	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Bad(t *core.T) {
 	var b LlamaBackend
-	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Generate_Ugly(t *core.T) {
 	b := NewLlamaBackend(LlamaOpts{Port: 1})
 	b.procID = "proc"
-	_, err := b.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Good(t *core.T) {
 	b := NewLlamaBackend()
-	_, err := b.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Chat(context.Background(), []Message{{Role: "user", Content: "hi"}}, GenOpts{})
+	assertResultError(t, r, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Bad(t *core.T) {
 	var b LlamaBackend
-	_, err := b.Chat(context.Background(), nil, GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Chat(context.Background(), nil, GenOpts{})
+	assertResultError(t, r, "not available")
 }
 
 func TestBackendLlama_LlamaBackend_Chat_Ugly(t *core.T) {
 	b := NewLlamaBackend(LlamaOpts{Port: 1})
 	b.procID = "proc"
-	_, err := b.Chat(context.Background(), nil, GenOpts{})
-	core.AssertError(t, err, "not available")
+	r := b.Chat(context.Background(), nil, GenOpts{})
+	assertResultError(t, r, "not available")
 }

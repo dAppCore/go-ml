@@ -20,10 +20,11 @@ func addInventoryCommand(c *core.Core) {
 				return resultFromError(coreerr.E("cmd.runInventory", "--db or LEM_DB required", nil))
 			}
 
-			db, err := ml.OpenDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runInventory", "open db", err))
+			result := ml.OpenDB(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runInventory", "open db", errorFromResult(result)))
 			}
+			db := result.Value.(*ml.DB)
 			defer db.Close()
 
 			return resultFromError(ml.PrintInventory(db, nil))

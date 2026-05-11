@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	"dappco.re/go/log"
 	"dappco.re/go/process"
 )
 
@@ -117,7 +116,7 @@ func (b *LlamaBackend) SetMaxTokens(n int) {
 //	}
 func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
 	if b.http == nil {
-		return nil, log.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil)
+		return nil, core.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil)
 	}
 	return NewLlamaTextModel(b), nil
 }
@@ -143,7 +142,7 @@ func (b *LlamaBackend) Available() bool {
 //	if !r.OK { return r }
 func (b *LlamaBackend) Start(ctx context.Context) core.Result {
 	if b.processSvc == nil {
-		return core.Fail(log.E("ml.LlamaBackend.Start", "process service not configured", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Start", "process service not configured", nil))
 	}
 
 	args := []string{
@@ -155,12 +154,16 @@ func (b *LlamaBackend) Start(ctx context.Context) core.Result {
 		args = append(args, "--lora", b.loraPath)
 	}
 
-	proc, err := b.processSvc.StartWithOptions(ctx, process.RunOptions{
+	startResult := b.processSvc.StartWithOptions(ctx, process.RunOptions{
 		Command: b.llamaPath,
 		Args:    args,
 	})
-	if err != nil {
-		return core.Fail(log.E("ml.LlamaBackend.Start", "failed to start llama-server", err))
+	if !startResult.OK {
+		return core.Fail(core.E("ml.LlamaBackend.Start", "failed to start llama-server: "+startResult.Error(), nil))
+	}
+	proc, ok := startResult.Value.(*process.Process)
+	if !ok || proc == nil {
+		return core.Fail(core.E("ml.LlamaBackend.Start", "process service returned an invalid process handle", nil))
 	}
 	b.procID = proc.ID
 
@@ -173,7 +176,7 @@ func (b *LlamaBackend) Start(ctx context.Context) core.Result {
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	return core.Fail(log.E("ml.LlamaBackend.Start", "llama-server did not become healthy within 30s", nil))
+	return core.Fail(core.E("ml.LlamaBackend.Start", "llama-server did not become healthy within 30s", nil))
 }
 
 // Stop terminates the llama-server process.
@@ -185,7 +188,7 @@ func (b *LlamaBackend) Stop() core.Result {
 		return core.Ok(nil)
 	}
 	if b.processSvc == nil {
-		return core.Fail(log.E("ml.LlamaBackend.Stop", "process service not configured", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Stop", "process service not configured", nil))
 	}
 	return core.ResultOf(nil, b.processSvc.Kill(b.procID))
 }
@@ -197,10 +200,10 @@ func (b *LlamaBackend) Stop() core.Result {
 //	resp := r.Value.(ml.Result)
 func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts) core.Result {
 	if !b.Available() {
-		return core.Fail(log.E("ml.LlamaBackend.Generate", "llama-server not available", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Generate", "llama-server not available", nil))
 	}
 	if b.http == nil {
-		return core.Fail(log.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Generate", "HTTP shim not configured", nil))
 	}
 	return b.http.Generate(ctx, prompt, opts)
 }
@@ -212,10 +215,10 @@ func (b *LlamaBackend) Generate(ctx context.Context, prompt string, opts GenOpts
 //	resp := r.Value.(ml.Result)
 func (b *LlamaBackend) Chat(ctx context.Context, messages []Message, opts GenOpts) core.Result {
 	if !b.Available() {
-		return core.Fail(log.E("ml.LlamaBackend.Chat", "llama-server not available", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Chat", "llama-server not available", nil))
 	}
 	if b.http == nil {
-		return core.Fail(log.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil))
+		return core.Fail(core.E("ml.LlamaBackend.Chat", "HTTP shim not configured", nil))
 	}
 	return b.http.Chat(ctx, messages, opts)
 }

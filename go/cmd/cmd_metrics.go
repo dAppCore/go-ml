@@ -21,9 +21,9 @@ func addMetricsCommand(c *core.Core) {
 				return resultFromError(coreerr.E("cmd.runMetrics", "--db or LEM_DB required", nil))
 			}
 
-			db, err := store.OpenDuckDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runMetrics", "open db", err))
+			db, result := store.OpenDuckDB(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runMetrics", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 

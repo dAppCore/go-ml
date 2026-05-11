@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // WorkerConfig holds the worker's runtime configuration.
@@ -162,7 +161,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		"worker_id": cfg.WorkerID,
 	})
 	if err != nil {
-		return coreerr.E("ml.workerProcessTask", "claim", err)
+		return core.E("ml.workerProcessTask", "claim", err)
 	}
 
 	apiPatch(cfg, core.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
@@ -184,7 +183,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 			"worker_id": cfg.WorkerID,
 			"status":    "abandoned",
 		})
-		return coreerr.E("ml.workerProcessTask", "inference", err)
+		return core.E("ml.workerProcessTask", "inference", err)
 	}
 
 	modelUsed := task.ModelName
@@ -199,7 +198,7 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 		"gen_time_ms":   int(genTime.Milliseconds()),
 	})
 	if err != nil {
-		return coreerr.E("ml.workerProcessTask", "submit result", err)
+		return core.E("ml.workerProcessTask", "submit result", err)
 	}
 
 	core.Print(nil, "  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
@@ -240,17 +239,18 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", coreerr.E("ml.workerInfer", "inference request", err)
+		return "", core.E("ml.workerInfer", "inference request", err)
 	}
 	defer resp.Body.Close()
 
-	body, err := readAll(resp.Body)
-	if err != nil {
-		return "", coreerr.E("ml.workerInfer", "read response", err)
+	rBody := readAll(resp.Body)
+	if !rBody.OK {
+		return "", core.E("ml.workerInfer", "read response", rBody.Value.(error))
 	}
+	body := rBody.Value.([]byte)
 
 	if resp.StatusCode != 200 {
-		return "", coreerr.E("ml.workerInfer", core.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return "", core.E("ml.workerInfer", core.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	var chatResp struct {
@@ -261,16 +261,16 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 		} `json:"choices"`
 	}
 	if r := core.JSONUnmarshal(body, &chatResp); !r.OK {
-		return "", coreerr.E("ml.workerInfer", "parse response", r.Value.(error))
+		return "", core.E("ml.workerInfer", "parse response", r.Value.(error))
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", coreerr.E("ml.workerInfer", "no choices in response", nil)
+		return "", core.E("ml.workerInfer", "no choices in response", nil)
 	}
 
 	content := chatResp.Choices[0].Message.Content
 	if len(content) < 10 {
-		return "", coreerr.E("ml.workerInfer", core.Sprintf("response too short: %d chars", len(content)), nil)
+		return "", core.E("ml.workerInfer", core.Sprintf("response too short: %d chars", len(content)), nil)
 	}
 
 	return content, nil
@@ -292,13 +292,14 @@ func apiGet(cfg *WorkerConfig, path string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := readAll(resp.Body)
-	if err != nil {
-		return nil, err
+	rBody := readAll(resp.Body)
+	if !rBody.OK {
+		return nil, rBody.Value.(error)
 	}
+	body := rBody.Value.([]byte)
 
 	if resp.StatusCode >= 400 {
-		return nil, coreerr.E("ml.apiGet", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return nil, core.E("ml.apiGet", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -333,13 +334,14 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 	}
 	defer resp.Body.Close()
 
-	body, err := readAll(resp.Body)
-	if err != nil {
-		return nil, err
+	rBody := readAll(resp.Body)
+	if !rBody.OK {
+		return nil, rBody.Value.(error)
 	}
+	body := rBody.Value.([]byte)
 
 	if resp.StatusCode >= 400 {
-		return nil, coreerr.E("ml.apiRequest", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return nil, core.E("ml.apiRequest", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
 	}
 
 	return body, nil
@@ -353,19 +355,29 @@ func MachineID() string {
 			return id
 		}
 	}
-	h, _ := hostname()
-	return h
+	rHost := hostname()
+	if !rHost.OK {
+		return ""
+	}
+	return rHost.Value.(string)
 }
 
 // Hostname returns the system hostname.
 func Hostname() string {
-	h, _ := hostname()
-	return h
+	rHost := hostname()
+	if !rHost.OK {
+		return ""
+	}
+	return rHost.Value.(string)
 }
 
 // ReadKeyFile reads the LEM API key from ~/.config/lem/api_key.
 func ReadKeyFile() string {
-	home, _ := userHomeDir()
+	rHome := userHomeDir()
+	if !rHome.OK {
+		return ""
+	}
+	home := rHome.Value.(string)
 	path := core.Path(home, ".config", "lem", "api_key")
 	data, err := coreio.Local.Read(path)
 	if err != nil {

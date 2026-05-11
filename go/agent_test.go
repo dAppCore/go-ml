@@ -32,17 +32,17 @@ func (f *fakeTransport) On(pattern, stdout string, err error) {
 	f.commands = append(f.commands, fakeCmd{pattern: pattern, stdout: stdout, err: err})
 }
 
-func (f *fakeTransport) Run(_ context.Context, cmd string) (string, error) {
+func (f *fakeTransport) Run(_ context.Context, cmd string) core.Result {
 	for _, fc := range f.commands {
 		if contains(cmd, fc.pattern) {
-			return fc.stdout, fc.err
+			return core.ResultOf(fc.stdout, fc.err)
 		}
 	}
-	return "", core.NewError(core.Concat("fakeTransport: no match for command: ", cmd))
+	return core.Fail(core.NewError(core.Concat("fakeTransport: no match for command: ", cmd)))
 }
 
-func (f *fakeTransport) CopyFrom(_ context.Context, _, _ string) error { return nil }
-func (f *fakeTransport) CopyTo(_ context.Context, _, _ string) error   { return nil }
+func (f *fakeTransport) CopyFrom(_ context.Context, _, _ string) core.Result { return core.Ok(nil) }
+func (f *fakeTransport) CopyTo(_ context.Context, _, _ string) core.Result   { return core.Ok(nil) }
 
 // contains is a small helper to avoid importing strings just for this.
 func contains(s, substr string) bool {
@@ -371,8 +371,9 @@ func TestDiscoverCheckpointsHappyPathGoodScenario(t *core.T) {
 		Transport:     ft,
 	}
 
-	checkpoints, err := DiscoverCheckpoints(cfg)
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(cfg)
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertLen(t, checkpoints, 3)
 
 	// Verify parsed checkpoint details
@@ -425,8 +426,9 @@ func TestDiscoverCheckpointsWithSubDirsGoodScenario(t *core.T) {
 		Transport:     ft,
 	}
 
-	checkpoints, err := DiscoverCheckpoints(cfg)
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(cfg)
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertLen(t, checkpoints, 2)
 
 	// The dirname should include the subdirectory path relative to base
@@ -456,8 +458,9 @@ func TestDiscoverCheckpointsNoAdaptersGoodScenario(t *core.T) {
 		Transport:     ft,
 	}
 
-	checkpoints, err := DiscoverCheckpoints(cfg)
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(cfg)
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertEmpty(t, checkpoints)
 }
 
@@ -472,9 +475,9 @@ func TestDiscoverCheckpointsSSHErrorBadScenario(t *core.T) {
 		Transport:     ft,
 	}
 
-	_, err := DiscoverCheckpoints(cfg)
-	core.AssertError(t, err)
-	core.AssertContains(t, err.Error(), "list adapter dirs")
+	r := DiscoverCheckpoints(cfg)
+	assertResultError(t, r)
+	core.AssertContains(t, r.Error(), "list adapter dirs")
 }
 
 func TestDiscoverCheckpointsFilterPatternGoodScenario(t *core.T) {
@@ -497,8 +500,9 @@ func TestDiscoverCheckpointsFilterPatternGoodScenario(t *core.T) {
 		Filter:        "27b",
 	}
 
-	checkpoints, err := DiscoverCheckpoints(cfg)
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(cfg)
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertLen(t, checkpoints, 1)
 	core.AssertEqual(t, 1000, checkpoints[0].Iteration)
 }
@@ -519,8 +523,9 @@ func TestDiscoverCheckpointsNoSafetensorsGoodScenario(t *core.T) {
 		Transport:     ft,
 	}
 
-	checkpoints, err := DiscoverCheckpoints(cfg)
-	core.RequireNoError(t, err)
+	r := DiscoverCheckpoints(cfg)
+	requireResultOK(t, r)
+	checkpoints := r.Value.([]Checkpoint)
 	core.AssertEmpty(t, checkpoints, "no safetensors means no checkpoints")
 }
 
@@ -589,83 +594,85 @@ func TestAgent_Agent_Execute_Ugly(t *core.T) {
 func TestAgent_Agent_Evaluate_Good(t *core.T) {
 	agent := NewAgent(nil)
 	err := agent.Evaluate(context.Background(), Checkpoint{})
-	core.AssertError(t, err, "config")
+	assertResultError(t, err, "config")
 }
 
 func TestAgent_Agent_Evaluate_Bad(t *core.T) {
 	agent := NewAgent(&AgentConfig{})
 	err := agent.Evaluate(context.Background(), 42)
-	core.AssertError(t, err, "unsupported")
+	assertResultError(t, err, "unsupported")
 }
 
 func TestAgent_Agent_Evaluate_Ugly(t *core.T) {
 	agent := NewAgent(&AgentConfig{})
 	err := agent.Evaluate(context.Background(), (*Checkpoint)(nil))
-	core.AssertError(t, err, "nil checkpoint")
+	assertResultError(t, err, "nil checkpoint")
 }
 
 func TestAgent_Agent_ExecuteRemote_Good(t *core.T) {
 	transport := newFakeTransport()
 	transport.On("uptime", "ok", nil)
 	agent := NewAgent(&AgentConfig{Transport: transport})
-	out, err := agent.ExecuteRemote(context.Background(), "uptime")
-	core.RequireNoError(t, err)
+	r := agent.ExecuteRemote(context.Background(), "uptime")
+	requireResultOK(t, r)
+	out := r.Value.(string)
 	core.AssertEqual(t, "ok", out)
 }
 
 func TestAgent_Agent_ExecuteRemote_Bad(t *core.T) {
 	agent := NewAgent(&AgentConfig{})
-	_, err := agent.ExecuteRemote(context.Background())
-	core.AssertError(t, err, "no command")
+	r := agent.ExecuteRemote(context.Background())
+	assertResultError(t, r, "no command")
 }
 
 func TestAgent_Agent_ExecuteRemote_Ugly(t *core.T) {
 	agent := NewAgent(&AgentConfig{})
-	_, err := agent.ExecuteRemote(context.Background(), "a", "b")
-	core.AssertError(t, err, "expected")
+	r := agent.ExecuteRemote(context.Background(), "a", "b")
+	assertResultError(t, r, "expected")
 }
 
 func TestAgent_Agent_CollectMetrics_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	agent := NewAgent(&AgentConfig{WorkDir: t.TempDir(), InfluxURL: "http://127.0.0.1:1", InfluxDB: "test"})
-	core.AssertNoError(t, agent.CollectMetrics(context.Background()))
+	assertResultOK(t, agent.CollectMetrics(context.Background()))
 }
 
 func TestAgent_Agent_CollectMetrics_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	agent := NewAgent(&AgentConfig{WorkDir: core.JoinPath(t.TempDir(), "missing"), InfluxURL: "http://127.0.0.1:1"})
-	core.AssertNoError(t, agent.CollectMetrics(context.Background(), "http://127.0.0.1:1"))
+	assertResultOK(t, agent.CollectMetrics(context.Background(), "http://127.0.0.1:1"))
 }
 
 func TestAgent_Agent_CollectMetrics_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	agent := NewAgent(&AgentConfig{WorkDir: t.TempDir()})
-	core.AssertNoError(t, agent.CollectMetrics(context.Background(), ""))
+	assertResultOK(t, agent.CollectMetrics(context.Background(), ""))
 }
 
 func TestAgent_Agent_DiscoverCheckpoints_Good(t *core.T) {
 	transport := newFakeTransport()
 	cfg := &AgentConfig{Transport: transport}
 	agent := NewAgent(cfg)
-	_, err := agent.DiscoverCheckpoints(context.Background())
-	core.AssertError(t, err)
+	r := agent.DiscoverCheckpoints(context.Background())
+	assertResultError(t, r)
 }
 
 func TestAgent_Agent_DiscoverCheckpoints_Bad(t *core.T) {
 	agent := NewAgent(&AgentConfig{})
-	_, err := agent.DiscoverCheckpoints(context.Background())
-	core.AssertError(t, err)
+	r := agent.DiscoverCheckpoints(context.Background())
+	assertResultError(t, r)
 }
 
 func TestAgent_Agent_DiscoverCheckpoints_Ugly(t *core.T) {
 	transport := newFakeTransport()
 	transport.On("ls -d", "", nil)
 	agent := NewAgent(&AgentConfig{Transport: transport})
-	cps, err := agent.DiscoverCheckpoints(context.Background())
-	core.RequireNoError(t, err)
+	r := agent.DiscoverCheckpoints(context.Background())
+	requireResultOK(t, r)
+	cps := r.Value.([]Checkpoint)
 	core.AssertEmpty(t, cps)
 }
 

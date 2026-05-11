@@ -34,15 +34,15 @@ func addExpandCommand(c *core.Core) {
 			limit := opts.Int("limit")
 			dryRun := opts.Bool("dry-run")
 
-			db, err := store.OpenDuckDBReadWrite(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runExpand", "open db", err))
+			db, result := store.OpenDuckDBReadWrite(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runExpand", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 
-			rows, err := db.QueryExpansionPrompts("pending", limit)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runExpand", "query expansion_prompts", err))
+			rows, result := db.QueryExpansionPrompts("pending", limit)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runExpand", "query expansion_prompts", errorFromResult(result)))
 			}
 			core.Print(nil, "Loaded %d pending prompts from %s", len(rows), dbPath)
 

@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // PublishConfig holds options for the publish operation.
@@ -33,12 +32,12 @@ type uploadEntry struct {
 // or ~/.huggingface/token, in that order.
 func Publish(cfg PublishConfig, w io.Writer) error {
 	if cfg.InputDir == "" {
-		return coreerr.E("ml.Publish", "input directory is required", nil)
+		return core.E("ml.Publish", "input directory is required", nil)
 	}
 
 	token := resolveHFToken(cfg.Token)
 	if token == "" && !cfg.DryRun {
-		return coreerr.E("ml.Publish", "HuggingFace token required (--token, HF_TOKEN env, or ~/.huggingface/token)", nil)
+		return core.E("ml.Publish", "HuggingFace token required (--token, HF_TOKEN env, or ~/.huggingface/token)", nil)
 	}
 
 	files, err := collectUploadFiles(cfg.InputDir)
@@ -46,7 +45,7 @@ func Publish(cfg PublishConfig, w io.Writer) error {
 		return err
 	}
 	if len(files) == 0 {
-		return coreerr.E("ml.Publish", core.Sprintf("no Parquet files found in %s", cfg.InputDir), nil)
+		return core.E("ml.Publish", core.Sprintf("no Parquet files found in %s", cfg.InputDir), nil)
 	}
 
 	if cfg.DryRun {
@@ -59,7 +58,7 @@ func Publish(cfg PublishConfig, w io.Writer) error {
 		for _, f := range files {
 			info, err := coreio.Local.Stat(f.local)
 			if err != nil {
-				return coreerr.E("ml.Publish", core.Sprintf("stat %s", f.local), err)
+				return core.E("ml.Publish", core.Sprintf("stat %s", f.local), err)
 			}
 			sizeMB := float64(info.Size()) / 1024 / 1024
 			core.Print(w, "  %s -> %s (%.1f MB)", core.PathBase(f.local), f.remote, sizeMB)
@@ -71,7 +70,7 @@ func Publish(cfg PublishConfig, w io.Writer) error {
 
 	for _, f := range files {
 		if err := uploadFileToHF(token, cfg.Repo, f.local, f.remote); err != nil {
-			return coreerr.E("ml.Publish", core.Sprintf("upload %s", core.PathBase(f.local)), err)
+			return core.E("ml.Publish", core.Sprintf("upload %s", core.PathBase(f.local)), err)
 		}
 		core.Print(w, "  Uploaded %s -> %s", core.PathBase(f.local), f.remote)
 	}
@@ -127,14 +126,14 @@ func collectUploadFiles(inputDir string) ([]uploadEntry, error) {
 func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 	raw, err := coreio.Local.Read(localPath)
 	if err != nil {
-		return coreerr.E("ml.uploadFileToHF", core.Sprintf("read %s", localPath), err)
+		return core.E("ml.uploadFileToHF", core.Sprintf("read %s", localPath), err)
 	}
 
 	url := core.Sprintf("https://huggingface.co/api/datasets/%s/upload/main/%s", repoID, remotePath)
 
 	req, err := http.NewRequest(http.MethodPut, url, core.NewReader(raw))
 	if err != nil {
-		return coreerr.E("ml.uploadFileToHF", "create request", err)
+		return core.E("ml.uploadFileToHF", "create request", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/octet-stream")
@@ -142,13 +141,17 @@ func uploadFileToHF(token, repoID, localPath, remotePath string) error {
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return coreerr.E("ml.uploadFileToHF", "upload request", err)
+		return core.E("ml.uploadFileToHF", "upload request", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		body, _ := readAll(resp.Body)
-		return coreerr.E("ml.uploadFileToHF", core.Sprintf("upload failed: HTTP %d: %s", resp.StatusCode, string(body)), nil)
+		rBody := readAll(resp.Body)
+		body := []byte{}
+		if rBody.OK {
+			body = rBody.Value.([]byte)
+		}
+		return core.E("ml.uploadFileToHF", core.Sprintf("upload failed: HTTP %d: %s", resp.StatusCode, string(body)), nil)
 	}
 
 	return nil

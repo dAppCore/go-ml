@@ -8,7 +8,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
 )
 
 // Service manages ML inference backends and scoring with Core lifecycle.
@@ -179,7 +178,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 		b = s.DefaultBackend()
 	}
 	if b == nil {
-		return core.Fail(coreerr.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil))
+		return core.Fail(core.E("ml.Service.Generate", core.Sprintf("no backend available (requested: %q)", backendName), nil))
 	}
 	return b.Generate(ctx, prompt, opts)
 }
@@ -191,7 +190,7 @@ func (s *Service) Generate(ctx context.Context, backendName, prompt string, opts
 //	scores := r.Value.(map[string][]ml.PromptScore)
 func (s *Service) ScoreResponses(ctx context.Context, responses []Response) core.Result {
 	if s.engine == nil {
-		return core.Fail(coreerr.E("ml.Service.ScoreResponses", "scoring engine not configured (set JudgeURL and JudgeModel)", nil))
+		return core.Fail(core.E("ml.Service.ScoreResponses", "scoring engine not configured (set JudgeURL and JudgeModel)", nil))
 	}
 	return core.Ok(s.engine.ScoreAll(ctx, responses))
 }

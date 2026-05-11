@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
 
@@ -18,12 +17,12 @@ type regionRow struct {
 // PrintCoverage analyzes seed coverage by region and domain, printing
 // a report with bar chart visualization and gap recommendations.
 func PrintCoverage(db *store.DuckDB, w io.Writer) error {
-	rows, err := db.QueryRows("SELECT count(*) AS total FROM seeds")
-	if err != nil {
-		return coreerr.E("ml.PrintCoverage", "count seeds", err)
+	rows, result := db.QueryRows("SELECT count(*) AS total FROM seeds")
+	if !result.OK {
+		return core.E("ml.PrintCoverage", "count seeds: "+result.Error(), nil)
 	}
 	if len(rows) == 0 {
-		return coreerr.E("ml.PrintCoverage", "no seeds table found (run: core ml import-all first)", nil)
+		return core.E("ml.PrintCoverage", "no seeds table found (run: core ml import-all first)", nil)
 	}
 	total := toInt(rows[0]["total"])
 
@@ -35,7 +34,7 @@ func PrintCoverage(db *store.DuckDB, w io.Writer) error {
 	// Region distribution.
 	regionRows, err := queryRegionDistribution(db)
 	if err != nil {
-		return coreerr.E("ml.PrintCoverage", "query regions", err)
+		return core.E("ml.PrintCoverage", "query regions", err)
 	}
 
 	core.Print(w, "")
@@ -54,11 +53,11 @@ func PrintCoverage(db *store.DuckDB, w io.Writer) error {
 	// Top 10 domains.
 	core.Print(w, "")
 	core.Print(w, "Top 10 domains (most seeds):")
-	topRows, err := db.QueryRows(`
+	topRows, result := db.QueryRows(`
 		SELECT domain, count(*) AS n FROM seeds
 		WHERE domain != '' GROUP BY domain ORDER BY n DESC LIMIT 10
 	`)
-	if err == nil {
+	if result.OK {
 		for _, row := range topRows {
 			domain := strVal(row, "domain")
 			n := toInt(row["n"])
@@ -69,11 +68,11 @@ func PrintCoverage(db *store.DuckDB, w io.Writer) error {
 	// Bottom 10 domains.
 	core.Print(w, "")
 	core.Print(w, "Bottom 10 domains (fewest seeds, min 5):")
-	bottomRows, err := db.QueryRows(`
+	bottomRows, result := db.QueryRows(`
 		SELECT domain, count(*) AS n FROM seeds
 		WHERE domain != '' GROUP BY domain HAVING count(*) >= 5 ORDER BY n ASC LIMIT 10
 	`)
-	if err == nil {
+	if result.OK {
 		for _, row := range bottomRows {
 			domain := strVal(row, "domain")
 			n := toInt(row["n"])
@@ -105,7 +104,7 @@ func repeatString(part string, count int) string {
 // queryRegionDistribution returns seed counts grouped by normalized language
 // region, ordered ascending (underrepresented first).
 func queryRegionDistribution(db *store.DuckDB) ([]regionRow, error) {
-	rows, err := db.QueryRows(`
+	rows, result := db.QueryRows(`
 		SELECT
 			CASE
 				WHEN region LIKE '%cn%' THEN 'cn (Chinese)'
@@ -126,17 +125,17 @@ func queryRegionDistribution(db *store.DuckDB) ([]regionRow, error) {
 			count(DISTINCT domain) AS domains
 		FROM seeds GROUP BY lang_group ORDER BY n ASC
 	`)
-	if err != nil {
-		return nil, err
+	if !result.OK {
+		return nil, core.E("ml.queryRegionDistribution", result.Error(), nil)
 	}
 
-	result := make([]regionRow, 0, len(rows))
+	regions := make([]regionRow, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, regionRow{
+		regions = append(regions, regionRow{
 			group:   strVal(row, "lang_group"),
 			n:       toInt(row["n"]),
 			domains: toInt(row["domains"]),
 		})
 	}
-	return result, nil
+	return regions, nil
 }

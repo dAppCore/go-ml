@@ -5,7 +5,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // ReadResponses reads a JSONL file and returns a slice of Response structs.
@@ -18,7 +17,7 @@ import (
 func ReadResponses(path string) core.Result {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("open %s", path), err))
+		return core.Fail(core.E("ml.ReadResponses", core.Sprintf("open %s", path), err))
 	}
 	defer f.Close()
 
@@ -36,13 +35,13 @@ func ReadResponses(path string) core.Result {
 
 		var resp Response
 		if rj := core.JSONUnmarshalString(line, &resp); !rj.OK {
-			return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error)))
+			return core.Fail(core.E("ml.ReadResponses", core.Sprintf("line %d", lineNum), rj.Value.(error)))
 		}
 		responses = append(responses, resp)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return core.Fail(coreerr.E("ml.ReadResponses", core.Sprintf("scan %s", path), err))
+		return core.Fail(core.E("ml.ReadResponses", core.Sprintf("scan %s", path), err))
 	}
 
 	return core.Ok(responses)
@@ -55,11 +54,11 @@ func ReadResponses(path string) core.Result {
 func WriteScores(path string, output *ScorerOutput) core.Result {
 	r := core.JSONMarshalIndent(output, "", "  ")
 	if !r.OK {
-		return core.Fail(coreerr.E("ml.WriteScores", "marshal scores", r.Value.(error)))
+		return core.Fail(core.E("ml.WriteScores", "marshal scores", r.Value.(error)))
 	}
 
 	if err := coreio.Local.Write(path, string(r.Value.([]byte))); err != nil {
-		return core.Fail(coreerr.E("ml.WriteScores", core.Sprintf("write %s", path), err))
+		return core.Fail(core.E("ml.WriteScores", core.Sprintf("write %s", path), err))
 	}
 
 	return core.Ok(nil)
@@ -73,12 +72,12 @@ func WriteScores(path string, output *ScorerOutput) core.Result {
 func ReadScorerOutput(path string) core.Result {
 	data, err := coreio.Local.Read(path)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err))
+		return core.Fail(core.E("ml.ReadScorerOutput", core.Sprintf("read %s", path), err))
 	}
 
 	var output ScorerOutput
 	if r := core.JSONUnmarshalString(data, &output); !r.OK {
-		return core.Fail(coreerr.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error)))
+		return core.Fail(core.E("ml.ReadScorerOutput", core.Sprintf("unmarshal %s", path), r.Value.(error)))
 	}
 
 	return core.Ok(&output)

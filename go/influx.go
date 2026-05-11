@@ -6,7 +6,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // InfluxClient talks to an InfluxDB v3 instance.
@@ -57,7 +56,7 @@ func (c *InfluxClient) WriteLp(lines []string) core.Result {
 
 	req, err := http.NewRequest(http.MethodPost, url, core.NewReader(body))
 	if err != nil {
-		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", "create write request", err))
+		return core.Fail(core.E("ml.InfluxClient.WriteLp", "create write request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "text/plain")
@@ -65,7 +64,7 @@ func (c *InfluxClient) WriteLp(lines []string) core.Result {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", "write request", err))
+		return core.Fail(core.E("ml.InfluxClient.WriteLp", "write request", err))
 	}
 	defer resp.Body.Close()
 
@@ -75,7 +74,7 @@ func (c *InfluxClient) WriteLp(lines []string) core.Result {
 		if rBody.OK {
 			bodyStr = string(rBody.Value.([]byte))
 		}
-		return core.Fail(coreerr.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, bodyStr), nil))
+		return core.Fail(core.E("ml.InfluxClient.WriteLp", core.Sprintf("write failed %d: %s", resp.StatusCode, bodyStr), nil))
 	}
 
 	return core.Ok(nil)
@@ -98,7 +97,7 @@ func (c *InfluxClient) QuerySQL(sql string) core.Result {
 
 	req, err := http.NewRequest(http.MethodPost, url, core.NewBuffer(jsonBody))
 	if err != nil {
-		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "create query request", err))
+		return core.Fail(core.E("ml.InfluxClient.QuerySQL", "create query request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
@@ -106,23 +105,23 @@ func (c *InfluxClient) QuerySQL(sql string) core.Result {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "query request", err))
+		return core.Fail(core.E("ml.InfluxClient.QuerySQL", "query request", err))
 	}
 	defer resp.Body.Close()
 
 	rBody := readAll(resp.Body)
 	if !rBody.OK {
-		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "read query response", rBody.Value.(error)))
+		return core.Fail(core.E("ml.InfluxClient.QuerySQL", "read query response", rBody.Value.(error)))
 	}
 	respBody := rBody.Value.([]byte)
 
 	if resp.StatusCode != http.StatusOK {
-		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", core.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil))
+		return core.Fail(core.E("ml.InfluxClient.QuerySQL", core.Sprintf("query failed %d: %s", resp.StatusCode, string(respBody)), nil))
 	}
 
 	var rows []map[string]any
 	if r := core.JSONUnmarshal(respBody, &rows); !r.OK {
-		return core.Fail(coreerr.E("ml.InfluxClient.QuerySQL", "unmarshal query response", r.Value.(error)))
+		return core.Fail(core.E("ml.InfluxClient.QuerySQL", "unmarshal query response", r.Value.(error)))
 	}
 
 	return core.Ok(rows)

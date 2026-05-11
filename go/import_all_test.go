@@ -13,8 +13,9 @@ func TestImportAll_ImportAll_Good(t *core.T) {
 	core.RequireNoError(t, coreio.Local.Write(core.JoinPath(trainDir, "train.jsonl"), `{"messages":[{"role":"user","content":"p"},{"role":"assistant","content":"r"}]}`+"\n"))
 	err := ImportAll(db, ImportConfig{SkipM3: true, DataDir: dataDir}, core.NewBuffer(nil))
 	core.RequireNoError(t, err)
-	counts, countErr := db.TableCounts()
-	core.RequireNoError(t, countErr)
+	rCounts := db.TableCounts()
+	requireResultOK(t, rCounts)
+	counts := rCounts.Value.(map[string]int)
 	core.AssertContains(t, counts, "training_examples")
 }
 
@@ -22,8 +23,9 @@ func TestImportAll_ImportAll_Bad(t *core.T) {
 	db := newTestDB(t)
 	err := ImportAll(db, ImportConfig{SkipM3: true, DataDir: ""}, core.NewBuffer(nil))
 	core.RequireNoError(t, err)
-	counts, countErr := db.TableCounts()
-	core.RequireNoError(t, countErr)
+	rCounts := db.TableCounts()
+	requireResultOK(t, rCounts)
+	counts := rCounts.Value.(map[string]int)
 	core.AssertContains(t, counts, "training_examples")
 }
 

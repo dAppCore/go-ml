@@ -57,40 +57,40 @@ func TestAgentInflux_ScoreContentAndPush_Ugly(t *core.T) {
 func TestAgentInflux_PushCapabilitySummary_Good(t *core.T) {
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushCapabilitySummary(influx, sampleCheckpoint(), sampleProbeResult())
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 1, rec.writeCount())
 }
 
 func TestAgentInflux_PushCapabilitySummary_Bad(t *core.T) {
 	influx, _ := newFakeInflux(t, nil, http.StatusInternalServerError)
 	err := PushCapabilitySummary(influx, sampleCheckpoint(), sampleProbeResult())
-	core.AssertError(t, err)
+	assertResultError(t, err)
 }
 
 func TestAgentInflux_PushCapabilitySummary_Ugly(t *core.T) {
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushCapabilitySummary(influx, sampleCheckpoint(), ProbeResult{})
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 1, rec.writeCount())
 }
 
 func TestAgentInflux_PushCapabilityResults_Good(t *core.T) {
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushCapabilityResults(influx, sampleCheckpoint(), sampleProbeResult())
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 1, rec.writeCount())
 }
 
 func TestAgentInflux_PushCapabilityResults_Bad(t *core.T) {
 	influx, _ := newFakeInflux(t, nil, http.StatusInternalServerError)
 	err := PushCapabilityResults(influx, sampleCheckpoint(), sampleProbeResult())
-	core.AssertError(t, err)
+	assertResultError(t, err)
 }
 
 func TestAgentInflux_PushCapabilityResults_Ugly(t *core.T) {
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushCapabilityResults(influx, sampleCheckpoint(), ProbeResult{})
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 1, rec.writeCount())
 }
 

@@ -36,10 +36,9 @@ func TestAgent_ExecuteRemote_Good(t *core.T) {
 	cfg := &AgentConfig{Transport: ft}
 	a := NewAgent(cfg)
 
-	out, err := a.ExecuteRemote(context.Background(), "echo hello")
-	if err != nil {
-		t.Fatalf("ExecuteRemote err = %v", err)
-	}
+	r := a.ExecuteRemote(context.Background(), "echo hello")
+	requireResultOK(t, r)
+	out := r.Value.(string)
 	if out != "hello\n" {
 		t.Errorf("out = %q, want %q", out, "hello\n")
 	}
@@ -50,7 +49,7 @@ func TestAgent_ExecuteRemote_Bad(t *core.T) {
 	cfg := &AgentConfig{Transport: ft}
 	a := NewAgent(cfg)
 
-	if _, err := a.ExecuteRemote(context.Background(), "ls /"); err == nil {
+	if r := a.ExecuteRemote(context.Background(), "ls /"); r.OK {
 		t.Error("expected error from fakeTransport with no registered patterns")
 	}
 }
@@ -63,10 +62,9 @@ func TestAgent_DiscoverCheckpoints_Ugly(t *core.T) {
 	cfg := &AgentConfig{Transport: ft, M3AdapterBase: "/tmp/adapters"}
 	a := NewAgent(cfg)
 
-	cps, err := a.DiscoverCheckpoints(context.Background())
-	if err != nil {
-		t.Fatalf("DiscoverCheckpoints err = %v", err)
-	}
+	r := a.DiscoverCheckpoints(context.Background())
+	requireResultOK(t, r)
+	cps := r.Value.([]Checkpoint)
 	if len(cps) != 0 {
 		t.Errorf("expected 0 checkpoints, got %d", len(cps))
 	}
@@ -94,12 +92,12 @@ func TestAgent_ExecuteRemote_Ugly(t *core.T) {
 	a := NewAgent(cfg)
 
 	// Zero args — must error, not panic.
-	if _, err := a.ExecuteRemote(context.Background()); err == nil {
+	if r := a.ExecuteRemote(context.Background()); r.OK {
 		t.Error("expected error for 0-arg ExecuteRemote")
 	}
 
 	// Two args — neither 1-arg nor 3-arg form; must error.
-	if _, err := a.ExecuteRemote(context.Background(), "host", "port"); err == nil {
+	if r := a.ExecuteRemote(context.Background(), "host", "port"); r.OK {
 		t.Error("expected error for 2-arg ExecuteRemote")
 	}
 }
@@ -112,12 +110,12 @@ func TestAgent_Evaluate_Bad(t *core.T) {
 	a := NewAgent(cfg)
 
 	// Nil checkpoint pointer.
-	if err := a.Evaluate(context.Background(), (*Checkpoint)(nil)); err == nil {
+	if r := a.Evaluate(context.Background(), (*Checkpoint)(nil)); r.OK {
 		t.Error("expected error for nil *Checkpoint")
 	}
 
 	// Unsupported target type.
-	if err := a.Evaluate(context.Background(), 42); err == nil {
+	if r := a.Evaluate(context.Background(), 42); r.OK {
 		t.Error("expected error for int target")
 	}
 }
@@ -137,8 +135,9 @@ func TestAgentResolveCheckpointTargetStringGoodScenario(t *core.T) {
 		Transport:     ft,
 	})
 
-	cp, err := a.resolveCheckpointTarget(context.Background(), base+"/adapters-27b")
-	core.RequireNoError(t, err)
+	r := a.resolveCheckpointTarget(context.Background(), base+"/adapters-27b")
+	requireResultOK(t, r)
+	cp := r.Value.(Checkpoint)
 	core.AssertEqual(t, base+"/adapters-27b", cp.RemoteDir)
 	core.AssertEqual(t, "adapters-27b", cp.Dirname)
 	core.AssertEqual(t, "0001000_adapters.safetensors", cp.Filename)
@@ -157,13 +156,13 @@ func TestAgent_CollectMetrics_Good(t *core.T) {
 	a := NewAgent(cfg)
 
 	// Baseline — no override.
-	if err := a.CollectMetrics(context.Background()); err != nil {
-		t.Errorf("CollectMetrics baseline err = %v", err)
+	if r := a.CollectMetrics(context.Background()); !r.OK {
+		t.Errorf("CollectMetrics baseline err = %s", r.Error())
 	}
 
 	// Override URL.
-	if err := a.CollectMetrics(context.Background(), "http://override:8086"); err != nil {
-		t.Errorf("CollectMetrics override err = %v", err)
+	if r := a.CollectMetrics(context.Background(), "http://override:8086"); !r.OK {
+		t.Errorf("CollectMetrics override err = %s", r.Error())
 	}
 }
 
@@ -199,13 +198,13 @@ type contentProbeBackend struct {
 	prompts []string
 }
 
-func (b *contentProbeBackend) Generate(_ context.Context, prompt string, _ GenOpts) (Result, error) {
+func (b *contentProbeBackend) Generate(_ context.Context, prompt string, _ GenOpts) core.Result {
 	b.prompts = append(b.prompts, prompt)
-	return newResult("content", nil), nil
+	return core.Ok(newResult("content", nil))
 }
 
-func (b *contentProbeBackend) Chat(_ context.Context, _ []Message, _ GenOpts) (Result, error) {
-	return newResult("content", nil), nil
+func (b *contentProbeBackend) Chat(_ context.Context, _ []Message, _ GenOpts) core.Result {
+	return core.Ok(newResult("content", nil))
 }
 
 func (b *contentProbeBackend) Name() string    { return "content" }

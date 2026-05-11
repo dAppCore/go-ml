@@ -34,8 +34,9 @@ func TestMLXBackend_InferenceAdapter_Generate_Good(t *core.T) {
 	core.AssertEqual(t, "mlx", backend.Name())
 	core.AssertTrue(t, backend.Available())
 
-	result, err := backend.Generate(context.Background(), "prompt", GenOpts{Temperature: 0.5})
-	core.RequireNoError(t, err)
+	r := backend.Generate(context.Background(), "prompt", GenOpts{Temperature: 0.5})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "MLX output", result.Text)
 	core.AssertNotNil(t, result.Metrics)
 }
@@ -54,8 +55,9 @@ func TestMLXBackend_InferenceAdapter_Chat_Good(t *core.T) {
 	messages := []Message{
 		{Role: "user", Content: "hello"},
 	}
-	result, err := adapter.Chat(context.Background(), messages, GenOpts{})
-	core.RequireNoError(t, err)
+	r := adapter.Chat(context.Background(), messages, GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "chat reply", result.Text)
 	core.AssertNotNil(t, result.Metrics)
 }
@@ -76,11 +78,11 @@ func TestMLXBackendInferenceAdapterStreamGoodScenario(t *core.T) {
 	var streaming StreamingBackend = adapter
 
 	var collected []string
-	err := streaming.GenerateStream(context.Background(), "prompt", GenOpts{}, func(tok string) error {
+	rStream := streaming.GenerateStream(context.Background(), "prompt", GenOpts{}, func(tok string) error {
 		collected = append(collected, tok)
 		return nil
 	})
-	core.RequireNoError(t, err)
+	requireResultOK(t, rStream)
 	core.AssertEqual(t, []string{"tok1", "tok2", "tok3"}, collected)
 }
 
@@ -96,10 +98,8 @@ func TestMLXBackendInferenceAdapterModelErrorBadScenario(t *core.T) {
 	}
 	adapter := NewInferenceAdapter(mock, "mlx")
 
-	result, err := adapter.Generate(context.Background(), "prompt", GenOpts{})
-	core.AssertError(t, err)
-	core.AssertEqual(t, "partial", result.Text, "partial output should still be returned")
-	core.AssertNil(t, result.Metrics, "metrics should be nil on error")
+	r := adapter.Generate(context.Background(), "prompt", GenOpts{})
+	assertResultError(t, r)
 }
 
 // TestMLXBackend_InferenceAdapter_Close_Good verifies that Close delegates
@@ -108,8 +108,7 @@ func TestMLXBackend_InferenceAdapter_Close_Good(t *core.T) {
 	mock := &mockTextModel{}
 	adapter := NewInferenceAdapter(mock, "mlx")
 
-	err := adapter.Close()
-	core.RequireNoError(t, err)
+	requireResultOK(t, adapter.Close())
 	core.AssertTrue(t, mock.closed)
 }
 

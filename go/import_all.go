@@ -32,13 +32,13 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	if !cfg.SkipM3 {
 		core.Print(w, "  Pulling golden set from M3...")
 		scpCmd := goexec.Command(context.Background(), "scp", core.Sprintf("%s:/Volumes/Data/lem/responses/gold-15k.jsonl", m3Host), goldenPath)
-		if err := scpCmd.Run(); err != nil {
-			core.Print(w, "  WARNING: could not pull golden set from M3: %v", err)
+		if r := scpCmd.Run(); !r.OK {
+			core.Print(w, "  WARNING: could not pull golden set from M3: %s", r.Error())
 		}
 	}
 	if coreio.Local.IsFile(goldenPath) {
 		db.Exec("DROP TABLE IF EXISTS golden_set")
-		err := db.Exec(core.Sprintf(`
+		rCreate := db.Exec(core.Sprintf(`
 			CREATE TABLE golden_set AS
 			SELECT
 				idx::INT AS idx,
@@ -52,8 +52,8 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 				length(response) - length(replace(response, ' ', '')) + 1 AS word_count
 			FROM read_json_auto('%s', maximum_object_size=1048576)
 		`, escapeSQLPath(goldenPath)))
-		if err != nil {
-			core.Print(w, "  WARNING: golden set import failed: %v", err)
+		if !rCreate.OK {
+			core.Print(w, "  WARNING: golden set import failed: %s", rCreate.Error())
 		} else {
 			var n int
 			db.QueryRowScan("SELECT count(*) FROM golden_set", &n)

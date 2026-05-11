@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 )
 
 // TargetTotal is the golden set target size used for progress reporting.
@@ -26,10 +25,11 @@ type tableDetail struct {
 // PrintInventory queries all known DuckDB tables and prints a formatted
 // inventory with row counts, detail breakdowns, and a grand total.
 func PrintInventory(db *DB, w io.Writer) error {
-	counts, err := db.TableCounts()
-	if err != nil {
-		return coreerr.E("ml.PrintInventory", "table counts", err)
+	rCounts := db.TableCounts()
+	if !rCounts.OK {
+		return core.E("ml.PrintInventory", "table counts", rCounts.Value.(error))
 	}
+	counts := rCounts.Value.(map[string]int)
 
 	details := gatherDetails(db, counts)
 
@@ -73,11 +73,13 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 
 	// training_examples: distinct sources
 	if _, ok := counts["training_examples"]; ok {
-		rows, err := db.QueryRows("SELECT COUNT(DISTINCT source) AS n FROM training_examples")
-		if err == nil && len(rows) > 0 {
-			n := toInt(rows[0]["n"])
-			details["training_examples"] = &tableDetail{
-				notes: []string{core.Sprintf("%d sources", n)},
+		if rRows := db.QueryRows("SELECT COUNT(DISTINCT source) AS n FROM training_examples"); rRows.OK {
+			rows := rRows.Value.([]map[string]any)
+			if len(rows) > 0 {
+				n := toInt(rows[0]["n"])
+				details["training_examples"] = &tableDetail{
+					notes: []string{core.Sprintf("%d sources", n)},
+				}
 			}
 		}
 	}
@@ -85,13 +87,17 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 	// prompts: distinct domains and voices
 	if _, ok := counts["prompts"]; ok {
 		d := &tableDetail{}
-		rows, err := db.QueryRows("SELECT COUNT(DISTINCT domain) AS n FROM prompts")
-		if err == nil && len(rows) > 0 {
-			d.notes = append(d.notes, core.Sprintf("%d domains", toInt(rows[0]["n"])))
+		if rRows := db.QueryRows("SELECT COUNT(DISTINCT domain) AS n FROM prompts"); rRows.OK {
+			rows := rRows.Value.([]map[string]any)
+			if len(rows) > 0 {
+				d.notes = append(d.notes, core.Sprintf("%d domains", toInt(rows[0]["n"])))
+			}
 		}
-		rows, err = db.QueryRows("SELECT COUNT(DISTINCT voice) AS n FROM prompts")
-		if err == nil && len(rows) > 0 {
-			d.notes = append(d.notes, core.Sprintf("%d voices", toInt(rows[0]["n"])))
+		if rRows := db.QueryRows("SELECT COUNT(DISTINCT voice) AS n FROM prompts"); rRows.OK {
+			rows := rRows.Value.([]map[string]any)
+			if len(rows) > 0 {
+				d.notes = append(d.notes, core.Sprintf("%d voices", toInt(rows[0]["n"])))
+			}
 		}
 		if len(d.notes) > 0 {
 			details["prompts"] = d
@@ -100,31 +106,33 @@ func gatherDetails(db *DB, counts map[string]int) map[string]*tableDetail {
 
 	// gemini_responses: group by source_model
 	if _, ok := counts["gemini_responses"]; ok {
-		rows, err := db.QueryRows(
-			"SELECT source_model, COUNT(*) AS n FROM gemini_responses GROUP BY source_model ORDER BY n DESC",
-		)
-		if err == nil && len(rows) > 0 {
-			var parts []string
-			for _, row := range rows {
-				model := strVal(row, "source_model")
-				n := toInt(row["n"])
-				if model != "" {
-					parts = append(parts, core.Sprintf("%s:%d", model, n))
+		if rRows := db.QueryRows("SELECT source_model, COUNT(*) AS n FROM gemini_responses GROUP BY source_model ORDER BY n DESC"); rRows.OK {
+			rows := rRows.Value.([]map[string]any)
+			if len(rows) > 0 {
+				var parts []string
+				for _, row := range rows {
+					model := strVal(row, "source_model")
+					n := toInt(row["n"])
+					if model != "" {
+						parts = append(parts, core.Sprintf("%s:%d", model, n))
+					}
 				}
-			}
-			if len(parts) > 0 {
-				details["gemini_responses"] = &tableDetail{notes: parts}
+				if len(parts) > 0 {
+					details["gemini_responses"] = &tableDetail{notes: parts}
+				}
 			}
 		}
 	}
 
 	// benchmark_results: distinct source categories
 	if _, ok := counts["benchmark_results"]; ok {
-		rows, err := db.QueryRows("SELECT COUNT(DISTINCT source) AS n FROM benchmark_results")
-		if err == nil && len(rows) > 0 {
-			n := toInt(rows[0]["n"])
-			details["benchmark_results"] = &tableDetail{
-				notes: []string{core.Sprintf("%d categories", n)},
+		if rRows := db.QueryRows("SELECT COUNT(DISTINCT source) AS n FROM benchmark_results"); rRows.OK {
+			rows := rRows.Value.([]map[string]any)
+			if len(rows) > 0 {
+				n := toInt(rows[0]["n"])
+				details["benchmark_results"] = &tableDetail{
+					notes: []string{core.Sprintf("%d categories", n)},
+				}
 			}
 		}
 	}

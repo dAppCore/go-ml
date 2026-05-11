@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the
@@ -185,7 +184,7 @@ func (a *InferenceAdapter) Capabilities() inference.CapabilityReport {
 func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) core.Result {
 	inspector, ok := a.model.(inference.AttentionInspector)
 	if !ok {
-		return core.Fail(coreerr.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil))
+		return core.Fail(core.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil))
 	}
 	snap, err := inspector.InspectAttention(ctx, prompt, opts...)
 	return core.ResultOf(snap, err)

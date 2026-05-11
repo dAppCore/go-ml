@@ -9,7 +9,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	goexec "dappco.re/go/process/exec"
 )
 
@@ -32,16 +31,17 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) core.Result {
 		cfg.OutputDir = "responses"
 	}
 	if err := coreio.Local.EnsureDir(cfg.OutputDir); err != nil {
-		return core.Fail(coreerr.E("ml.Consolidate", "create output dir", err))
+		return core.Fail(core.E("ml.Consolidate", "create output dir", err))
 	}
 
 	// List remote files via SSH.
 	core.Print(w, "Pulling responses from remote...")
 	listCmd := goexec.Command(context.Background(), "ssh", cfg.M3Host, core.Sprintf("ls %s/%s", cfg.RemoteDir, cfg.Pattern))
-	listOutput, err := listCmd.Output()
-	if err != nil {
-		return core.Fail(coreerr.E("ml.Consolidate", "list remote files", err))
+	listResult := listCmd.Output()
+	if !listResult.OK {
+		return core.Fail(core.E("ml.Consolidate", "list remote files: "+listResult.Error(), nil))
 	}
+	listOutput, _ := listResult.Value.([]byte)
 
 	remoteFiles := core.Split(core.Trim(string(listOutput)), "\n")
 	var validFiles []string
@@ -57,8 +57,8 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) core.Result {
 	for _, rf := range validFiles {
 		local := core.JoinPath(cfg.OutputDir, core.PathBase(rf))
 		scpCmd := goexec.Command(context.Background(), "scp", core.Sprintf("%s:%s", cfg.M3Host, rf), local)
-		if err := scpCmd.Run(); err != nil {
-			core.Print(w, "  warning: failed to pull %s: %v", rf, err)
+		if result := scpCmd.Run(); !result.OK {
+			core.Print(w, "  warning: failed to pull %s: %v", rf, result.Error())
 			continue
 		}
 
@@ -116,7 +116,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) core.Result {
 
 	out, err := coreio.Local.Create(mergedPath)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.Consolidate", "create merged file", err))
+		return core.Fail(core.E("ml.Consolidate", "create merged file", err))
 	}
 	defer out.Close()
 
@@ -126,7 +126,7 @@ func Consolidate(cfg ConsolidateConfig, w io.Writer) core.Result {
 		bw.WriteString("\n")
 	}
 	if err := bw.Flush(); err != nil {
-		return core.Fail(coreerr.E("ml.Consolidate", "flush merged file", err))
+		return core.Fail(core.E("ml.Consolidate", "flush merged file", err))
 	}
 
 	core.Print(w, "")

@@ -30,32 +30,32 @@ type genRow struct {
 // PrintStatus queries InfluxDB for training and generation progress and writes
 // a formatted summary to w.
 func PrintStatus(influx *InfluxClient, w io.Writer) error {
-	statusRows, err := influx.QuerySQL(
+	var statusRows []map[string]any
+	if rRows := influx.QuerySQL(
 		"SELECT model, run_id, status, iteration, total_iters, pct FROM training_status ORDER BY time DESC LIMIT 10",
-	)
-	if err != nil {
-		statusRows = nil
+	); rRows.OK {
+		statusRows = rRows.Value.([]map[string]any)
 	}
 
-	lossRows, err := influx.QuerySQL(
+	var lossRows []map[string]any
+	if rRows := influx.QuerySQL(
 		"SELECT model, loss_type, loss, iteration, tokens_per_sec FROM training_loss WHERE loss_type = 'train' ORDER BY time DESC LIMIT 10",
-	)
-	if err != nil {
-		lossRows = nil
+	); rRows.OK {
+		lossRows = rRows.Value.([]map[string]any)
 	}
 
-	goldenRows, err := influx.QuerySQL(
+	var goldenRows []map[string]any
+	if rRows := influx.QuerySQL(
 		"SELECT worker, completed, target, pct FROM golden_gen_progress ORDER BY time DESC LIMIT 5",
-	)
-	if err != nil {
-		goldenRows = nil
+	); rRows.OK {
+		goldenRows = rRows.Value.([]map[string]any)
 	}
 
-	expansionRows, err := influx.QuerySQL(
+	var expansionRows []map[string]any
+	if rRows := influx.QuerySQL(
 		"SELECT worker, completed, target, pct FROM expansion_progress ORDER BY time DESC LIMIT 5",
-	)
-	if err != nil {
-		expansionRows = nil
+	); rRows.OK {
+		expansionRows = rRows.Value.([]map[string]any)
 	}
 
 	training := dedupeTraining(statusRows, lossRows)

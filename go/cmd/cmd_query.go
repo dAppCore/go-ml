@@ -31,9 +31,9 @@ func addQueryCommand(c *core.Core) {
 				return resultFromError(coreerr.E("cmd.runQuery", "SQL argument required", nil))
 			}
 
-			db, err := store.OpenDuckDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runQuery", "open db", err))
+			db, result := store.OpenDuckDB(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runQuery", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 
@@ -44,9 +44,9 @@ func addQueryCommand(c *core.Core) {
 				sql = "SELECT * FROM golden_set WHERE " + sql + " LIMIT 20"
 			}
 
-			rows, err := db.QueryRows(sql)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runQuery", "query", err))
+			rows, result := db.QueryRows(sql)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runQuery", "query", errorFromResult(result)))
 			}
 
 			jsonMode := opts.Bool("json")

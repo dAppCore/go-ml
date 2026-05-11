@@ -26,9 +26,9 @@ func addImportCommand(c *core.Core) {
 				dataDir = core.PathDir(dbPath)
 			}
 
-			db, err := store.OpenDuckDBReadWrite(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runImportAll", "open db", err))
+			db, result := store.OpenDuckDBReadWrite(dbPath)
+			if !result.OK {
+				return resultFromError(coreerr.E("cmd.runImportAll", "open db", errorFromResult(result)))
 			}
 			defer db.Close()
 

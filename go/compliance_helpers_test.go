@@ -22,7 +22,11 @@ func newFakeInflux(t testing.TB, queries map[string][]map[string]any, writeStatu
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v3/write_lp":
-			body, _ := readAll(r.Body)
+			rBody := readAll(r.Body)
+			body := []byte{}
+			if rBody.OK {
+				body = rBody.Value.([]byte)
+			}
 			rec.mu.Lock()
 			rec.writes = append(rec.writes, string(body))
 			rec.mu.Unlock()
@@ -32,7 +36,11 @@ func newFakeInflux(t testing.TB, queries map[string][]map[string]any, writeStatu
 			}
 			w.WriteHeader(writeStatus)
 		case "/api/v3/query_sql":
-			body, _ := readAll(r.Body)
+			rBody := readAll(r.Body)
+			body := []byte{}
+			if rBody.OK {
+				body = rBody.Value.([]byte)
+			}
 			sql := string(body)
 			rows := []map[string]any{}
 			for key, value := range queries {
@@ -59,8 +67,9 @@ func (r *fakeInfluxRecorder) writeCount() int {
 
 func newTestDB(t testing.TB) *DB {
 	t.Helper()
-	db, err := OpenDBReadWrite(core.JoinPath(t.TempDir(), "test.duckdb"))
-	core.RequireNoError(t, err)
+	rDB := OpenDBReadWrite(core.JoinPath(t.TempDir(), "test.duckdb"))
+	requireResultOK(t, rDB)
+	db := rDB.Value.(*DB)
 	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
@@ -68,7 +77,7 @@ func newTestDB(t testing.TB) *DB {
 func newStoreDuckDB(t testing.TB) *store.DuckDB {
 	t.Helper()
 	db, err := store.OpenDuckDBReadWrite(core.JoinPath(t.TempDir(), "store.duckdb"))
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	return db
 }

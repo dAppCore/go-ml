@@ -10,7 +10,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // RunAgentLoop is the main scoring agent loop.
@@ -125,7 +124,7 @@ func DiscoverCheckpointsIter(cfg *AgentConfig) iter.Seq2[Checkpoint, error] {
 		ctx := context.Background()
 		rOut := t.Run(ctx, core.Sprintf("ls -d %s/%s 2>/dev/null", cfg.M3AdapterBase, pattern))
 		if !rOut.OK {
-			yield(Checkpoint{}, coreerr.E("ml.DiscoverCheckpointsIter", "list adapter dirs", rOut.Value.(error)))
+			yield(Checkpoint{}, core.E("ml.DiscoverCheckpointsIter", "list adapter dirs", rOut.Value.(error)))
 			return
 		}
 		out := rOut.Value.(string)

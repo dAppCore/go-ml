@@ -5,21 +5,22 @@ import (
 	"slices"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 )
 
 // RunCompare reads two score files and prints a comparison table for each
 // model showing Old, New, and Delta values for every metric.
 func RunCompare(oldPath, newPath string) error {
-	oldOutput, err := ReadScorerOutput(oldPath)
-	if err != nil {
-		return coreerr.E("ml.RunCompare", "read old file", err)
+	oldResult := ReadScorerOutput(oldPath)
+	if !oldResult.OK {
+		return core.E("ml.RunCompare", "read old file", oldResult.Value.(error))
 	}
+	oldOutput := oldResult.Value.(*ScorerOutput)
 
-	newOutput, err := ReadScorerOutput(newPath)
-	if err != nil {
-		return coreerr.E("ml.RunCompare", "read new file", err)
+	newResult := ReadScorerOutput(newPath)
+	if !newResult.OK {
+		return core.E("ml.RunCompare", "read new file", newResult.Value.(error))
 	}
+	newOutput := newResult.Value.(*ScorerOutput)
 
 	// Collect all models present in both files.
 	models := make(map[string]bool)

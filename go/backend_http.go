@@ -8,7 +8,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/inference"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // Compile-time check: HTTPBackend satisfies inference.Backend (spec §2.1).
@@ -194,7 +193,7 @@ func (b *HTTPBackend) Chat(ctx context.Context, messages []Message, opts GenOpts
 		}
 	}
 
-	return core.Fail(coreerr.E("ml.HTTPBackend.Chat", core.Sprintf("exhausted %d retries", maxAttempts), lastErr))
+	return core.Fail(core.E("ml.HTTPBackend.Chat", core.Sprintf("exhausted %d retries", maxAttempts), lastErr))
 }
 
 // doRequest sends a single HTTP request and parses the response.
@@ -207,36 +206,36 @@ func (b *HTTPBackend) doRequest(ctx context.Context, body []byte) core.Result {
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, core.NewBuffer(body))
 	if err != nil {
-		return core.Fail(coreerr.E("ml.HTTPBackend.doRequest", "create request", err))
+		return core.Fail(core.E("ml.HTTPBackend.doRequest", "create request", err))
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := b.httpClient.Do(httpReq)
 	if err != nil {
-		return core.Fail(&retryableError{coreerr.E("ml.HTTPBackend.doRequest", "http request", err)})
+		return core.Fail(&retryableError{core.E("ml.HTTPBackend.doRequest", "http request", err)})
 	}
 	defer resp.Body.Close()
 
 	rBody := readAll(resp.Body)
 	if !rBody.OK {
-		return core.Fail(&retryableError{coreerr.E("ml.HTTPBackend.doRequest", "read response", rBody.Value.(error))})
+		return core.Fail(&retryableError{core.E("ml.HTTPBackend.doRequest", "read response", rBody.Value.(error))})
 	}
 	respBody := rBody.Value.([]byte)
 
 	if resp.StatusCode >= 500 {
-		return core.Fail(&retryableError{coreerr.E("ml.HTTPBackend.doRequest", core.Sprintf("server error %d: %s", resp.StatusCode, string(respBody)), nil)})
+		return core.Fail(&retryableError{core.E("ml.HTTPBackend.doRequest", core.Sprintf("server error %d: %s", resp.StatusCode, string(respBody)), nil)})
 	}
 	if resp.StatusCode != http.StatusOK {
-		return core.Fail(coreerr.E("ml.HTTPBackend.doRequest", core.Sprintf("unexpected status %d: %s", resp.StatusCode, string(respBody)), nil))
+		return core.Fail(core.E("ml.HTTPBackend.doRequest", core.Sprintf("unexpected status %d: %s", resp.StatusCode, string(respBody)), nil))
 	}
 
 	var chatResp chatResponse
 	if r := core.JSONUnmarshal(respBody, &chatResp); !r.OK {
-		return core.Fail(coreerr.E("ml.HTTPBackend.doRequest", "unmarshal response", r.Value.(error)))
+		return core.Fail(core.E("ml.HTTPBackend.doRequest", "unmarshal response", r.Value.(error)))
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return core.Fail(coreerr.E("ml.HTTPBackend.doRequest", "no choices in response", nil))
+		return core.Fail(core.E("ml.HTTPBackend.doRequest", "no choices in response", nil))
 	}
 
 	return core.Ok(chatResp.Choices[0].Message.Content)

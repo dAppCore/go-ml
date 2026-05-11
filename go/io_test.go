@@ -25,8 +25,9 @@ func TestIO_ReadResponses_Good(t *core.T) {
 	}
 	core.RequireNoError(t, coreio.Local.Write(path, content))
 
-	got, err := ReadResponses(path)
-	core.RequireNoError(t, err)
+	rResponses := ReadResponses(path)
+	requireResultOK(t, rResponses)
+	got := rResponses.Value.([]Response)
 	core.AssertLen(t, got, 2)
 	core.AssertEqual(t, "1", got[0].ID)
 	core.AssertEqual(t, "world", got[0].Response)
@@ -41,16 +42,17 @@ func TestIOReadResponsesEmptyLinesGoodScenario(t *core.T) {
 	content := "\n" + string(line) + "\n\n"
 	core.RequireNoError(t, coreio.Local.Write(path, content))
 
-	got, err := ReadResponses(path)
-	core.RequireNoError(t, err)
+	rResponses := ReadResponses(path)
+	requireResultOK(t, rResponses)
+	got := rResponses.Value.([]Response)
 	core.AssertLen(t, got, 1)
 	core.AssertEqual(t, "only", got[0].ID)
 }
 
 func TestIOReadResponsesNotExistBadScenario(t *core.T) {
 	path := "/nonexistent/path.jsonl"
-	_, err := ReadResponses(path)
-	core.AssertError(t, err)
+	rResponses := ReadResponses(path)
+	assertResultError(t, rResponses)
 }
 
 func TestIOReadResponsesInvalidJSONBadScenario(t *core.T) {
@@ -58,8 +60,8 @@ func TestIOReadResponsesInvalidJSONBadScenario(t *core.T) {
 	path := core.JoinPath(dir, "bad.jsonl")
 	core.RequireNoError(t, coreio.Local.Write(path, "not json\n"))
 
-	_, err := ReadResponses(path)
-	core.AssertError(t, err)
+	rResponses := ReadResponses(path)
+	assertResultError(t, rResponses)
 }
 
 // ---------------------------------------------------------------------------
@@ -80,10 +82,11 @@ func TestIOWriteScoresReadScorerOutputGoodScenario(t *core.T) {
 		},
 	}
 
-	core.RequireNoError(t, WriteScores(path, output))
+	requireResultOK(t, WriteScores(path, output))
 
-	got, err := ReadScorerOutput(path)
-	core.RequireNoError(t, err)
+	rOutput := ReadScorerOutput(path)
+	requireResultOK(t, rOutput)
+	got := rOutput.Value.(*ScorerOutput)
 	core.AssertEqual(t, "test-judge", got.Metadata.JudgeModel)
 	core.AssertInDelta(t, 0.85, got.ModelAverages["model-a"]["lek_score"], 0.001)
 	core.AssertLen(t, got.PerPrompt["p1"], 1)
@@ -140,8 +143,9 @@ func TestIOComputeAveragesEmptyGoodScenario(t *core.T) {
 func TestIo_ReadResponses_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "responses.jsonl")
 	core.RequireNoError(t, coreio.Local.Write(file, core.JSONMarshalString(Response{ID: "one", Response: "hello"})+"\n"))
-	responses, err := ReadResponses(file)
-	core.RequireNoError(t, err)
+	rResponses := ReadResponses(file)
+	requireResultOK(t, rResponses)
+	responses := rResponses.Value.([]Response)
 	core.AssertLen(t, responses, 1)
 	core.AssertEqual(t, "one", responses[0].ID)
 }
@@ -149,22 +153,23 @@ func TestIo_ReadResponses_Good(t *core.T) {
 func TestIo_ReadResponses_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ReadResponses(core.JoinPath(t.TempDir(), "missing.jsonl"))
-	core.AssertError(t, err)
+	rResponses := ReadResponses(core.JoinPath(t.TempDir(), "missing.jsonl"))
+	assertResultError(t, rResponses)
 }
 
 func TestIo_ReadResponses_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "responses.jsonl")
 	core.RequireNoError(t, coreio.Local.Write(file, "\n"+core.JSONMarshalString(Response{ID: "two"})+"\n"))
-	responses, err := ReadResponses(file)
-	core.RequireNoError(t, err)
+	rResponses := ReadResponses(file)
+	requireResultOK(t, rResponses)
+	responses := rResponses.Value.([]Response)
 	core.AssertLen(t, responses, 1)
 }
 
 func TestIo_WriteScores_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "scores.out")
 	err := WriteScores(file, &ScorerOutput{ModelAverages: map[string]map[string]float64{"m": {"score": 1}}})
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	data, readErr := coreio.Local.Read(file)
 	core.RequireNoError(t, readErr)
 	core.AssertContains(t, data, "model_averages")
@@ -174,13 +179,13 @@ func TestIo_WriteScores_Bad(t *core.T) {
 	dir := core.JoinPath(t.TempDir(), "blocked")
 	core.RequireNoError(t, coreio.Local.EnsureDir(dir))
 	err := WriteScores(dir, &ScorerOutput{})
-	core.AssertError(t, err)
+	assertResultError(t, err)
 }
 
 func TestIo_WriteScores_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "nil.out")
 	err := WriteScores(file, nil)
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	data, readErr := coreio.Local.Read(file)
 	core.RequireNoError(t, readErr)
 	core.AssertContains(t, data, "null")
@@ -189,23 +194,24 @@ func TestIo_WriteScores_Ugly(t *core.T) {
 func TestIo_ReadScorerOutput_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "scores.out")
 	core.RequireNoError(t, coreio.Local.Write(file, core.JSONMarshalString(ScorerOutput{ModelAverages: map[string]map[string]float64{}})))
-	out, err := ReadScorerOutput(file)
-	core.RequireNoError(t, err)
+	rOutput := ReadScorerOutput(file)
+	requireResultOK(t, rOutput)
+	out := rOutput.Value.(*ScorerOutput)
 	core.AssertNotNil(t, out)
 }
 
 func TestIo_ReadScorerOutput_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ReadScorerOutput(core.JoinPath(t.TempDir(), "missing.out"))
-	core.AssertError(t, err)
+	rOutput := ReadScorerOutput(core.JoinPath(t.TempDir(), "missing.out"))
+	assertResultError(t, rOutput)
 }
 
 func TestIo_ReadScorerOutput_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "bad.out")
 	core.RequireNoError(t, coreio.Local.Write(file, "{"))
-	_, err := ReadScorerOutput(file)
-	core.AssertError(t, err)
+	rOutput := ReadScorerOutput(file)
+	assertResultError(t, rOutput)
 }
 
 func TestIo_ComputeAverages_Good(t *core.T) {

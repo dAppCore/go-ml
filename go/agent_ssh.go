@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	goexec "dappco.re/go/process/exec"
 )
 
@@ -121,11 +120,12 @@ func (t *SSHTransport) Run(ctx context.Context, cmd string) core.Result {
 	args = append(args, core.Sprintf("%s@%s", t.User, t.Host), cmd)
 
 	c := goexec.Command(ctx, "ssh", args...)
-	result, err := c.CombinedOutput()
-	if err != nil {
-		return core.Fail(coreerr.E("ml.SSHTransport.Run", core.Sprintf("ssh %q: %s", cmd, core.Trim(string(result))), err))
+	result := c.CombinedOutput()
+	if !result.OK {
+		return core.Fail(core.E("ml.SSHTransport.Run", core.Sprintf("ssh %q: %s", cmd, result.Error()), nil))
 	}
-	return core.Ok(string(result))
+	out, _ := result.Value.([]byte)
+	return core.Ok(string(out))
 }
 
 // CopyFrom copies a file from the remote host to a local path via scp.
@@ -138,9 +138,9 @@ func (t *SSHTransport) CopyFrom(ctx context.Context, remote, local string) core.
 	args = append(args, core.Sprintf("%s@%s:%s", t.User, t.Host, remote), local)
 
 	c := goexec.Command(ctx, "scp", args...)
-	result, err := c.CombinedOutput()
-	if err != nil {
-		return core.Fail(coreerr.E("ml.SSHTransport.CopyFrom", core.Sprintf("scp %s: %s", remote, core.Trim(string(result))), err))
+	result := c.CombinedOutput()
+	if !result.OK {
+		return core.Fail(core.E("ml.SSHTransport.CopyFrom", core.Sprintf("scp %s: %s", remote, result.Error()), nil))
 	}
 	return core.Ok(nil)
 }
@@ -154,9 +154,9 @@ func (t *SSHTransport) CopyTo(ctx context.Context, local, remote string) core.Re
 	args = append(args, local, core.Sprintf("%s@%s:%s", t.User, t.Host, remote))
 
 	c := goexec.Command(ctx, "scp", args...)
-	result, err := c.CombinedOutput()
-	if err != nil {
-		return core.Fail(coreerr.E("ml.SSHTransport.CopyTo", core.Sprintf("scp to %s: %s", remote, core.Trim(string(result))), err))
+	result := c.CombinedOutput()
+	if !result.OK {
+		return core.Fail(core.E("ml.SSHTransport.CopyTo", core.Sprintf("scp to %s: %s", remote, result.Error()), nil))
 	}
 	return core.Ok(nil)
 }

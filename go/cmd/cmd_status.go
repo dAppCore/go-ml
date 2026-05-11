@@ -24,15 +24,15 @@ func addStatusCommand(c *core.Core) {
 			}
 
 			if dbPath != "" {
-				db, err := store.OpenDuckDB(dbPath)
-				if err != nil {
-					return resultFromError(coreerr.E("cmd.runStatus", "open db", err))
+				db, result := store.OpenDuckDB(dbPath)
+				if !result.OK {
+					return resultFromError(coreerr.E("cmd.runStatus", "open db", errorFromResult(result)))
 				}
 				defer db.Close()
 
-				counts, err := db.TableCounts()
-				if err != nil {
-					return resultFromError(coreerr.E("cmd.runStatus", "table counts", err))
+				counts, result := db.TableCounts()
+				if !result.OK {
+					return resultFromError(coreerr.E("cmd.runStatus", "table counts", errorFromResult(result)))
 				}
 
 				core.Print(nil, "")

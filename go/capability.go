@@ -12,11 +12,18 @@ func CapabilityReportForBackend(name string, backend Backend) inference.Capabili
 	}
 	if reporter, ok := backend.(inference.CapabilityReporter); ok {
 		report := reporter.Capabilities()
+		if report.Runtime.Backend == "" && !report.Available && len(report.Capabilities) == 0 {
+			return fallbackCapabilityReport(name, backend)
+		}
 		if report.Runtime.Backend == "" {
 			report.Runtime.Backend = firstNonEmptyString(name, backend.Name())
 		}
 		return report
 	}
+	return fallbackCapabilityReport(name, backend)
+}
+
+func fallbackCapabilityReport(name string, backend Backend) inference.CapabilityReport {
 	backendName := firstNonEmptyString(name, backend.Name())
 	return inference.CapabilityReport{
 		Runtime:   inference.RuntimeIdentity{Backend: backendName},

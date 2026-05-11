@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"dappco.re/go"
-	corelog "dappco.re/go/log"
 )
 
 // Agent orchestrates model evaluation and fleet training. It wraps the
@@ -65,7 +64,7 @@ func (a *Agent) Execute(ctx context.Context, override ...*AgentConfig) {
 //	if !r.OK { return r }
 func (a *Agent) Evaluate(ctx context.Context, target any) core.Result {
 	if a == nil || a.cfg == nil {
-		return core.Fail(corelog.E("ml.Agent.Evaluate", "agent config not set", nil))
+		return core.Fail(core.E("ml.Agent.Evaluate", "agent config not set", nil))
 	}
 
 	r := a.resolveCheckpointTarget(ctx, target)
@@ -87,13 +86,13 @@ func (a *Agent) resolveCheckpointTarget(ctx context.Context, target any) core.Re
 		return core.Ok(v)
 	case *Checkpoint:
 		if v == nil {
-			return core.Fail(corelog.E("ml.Agent.Evaluate", "nil checkpoint", nil))
+			return core.Fail(core.E("ml.Agent.Evaluate", "nil checkpoint", nil))
 		}
 		return core.Ok(*v)
 	case string:
 		return a.resolveCheckpointPath(ctx, v)
 	default:
-		return core.Fail(corelog.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil))
+		return core.Fail(core.E("ml.Agent.Evaluate", core.Sprintf("unsupported target type %T", target), nil))
 	}
 }
 
@@ -102,7 +101,7 @@ func (a *Agent) resolveCheckpointTarget(ctx context.Context, target any) core.Re
 func (a *Agent) resolveCheckpointPath(ctx context.Context, target string) core.Result {
 	target = core.Trim(target)
 	if target == "" {
-		return core.Fail(corelog.E("ml.Agent.Evaluate", "empty checkpoint path", nil))
+		return core.Fail(core.E("ml.Agent.Evaluate", "empty checkpoint path", nil))
 	}
 
 	if a != nil && a.cfg != nil {
@@ -203,7 +202,7 @@ func matchCheckpointTarget(checkpoints []Checkpoint, target string) (Checkpoint,
 func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) core.Result {
 	switch len(args) {
 	case 0:
-		return core.Fail(corelog.E("ml.Agent.ExecuteRemote", "no command supplied", nil))
+		return core.Fail(core.E("ml.Agent.ExecuteRemote", "no command supplied", nil))
 	case 1:
 		return a.cfg.transport().Run(ctx, args[0])
 	case 3:
@@ -217,7 +216,7 @@ func (a *Agent) ExecuteRemote(ctx context.Context, args ...string) core.Result {
 		transport := NewSSHTransport(host, user, keyPath, WithPort(port))
 		return transport.Run(ctx, command)
 	default:
-		return core.Fail(corelog.E("ml.Agent.ExecuteRemote",
+		return core.Fail(core.E("ml.Agent.ExecuteRemote",
 			core.Sprintf("expected 1 arg (command) or 3 args (host,port,command); got %d", len(args)), nil))
 	}
 }

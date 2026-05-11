@@ -6,7 +6,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // ExpandOutput is the JSONL output structure for expansion generation.
@@ -23,10 +22,11 @@ type ExpandOutput struct {
 // GetCompletedIDs queries InfluxDB for prompt IDs that have already been
 // processed in the expansion_gen measurement.
 func GetCompletedIDs(influx *InfluxClient) (map[string]bool, error) {
-	rows, err := influx.QuerySQL("SELECT DISTINCT seed_id FROM expansion_gen")
-	if err != nil {
-		return nil, coreerr.E("ml.GetCompletedIDs", "query expansion_gen", err)
+	rRows := influx.QuerySQL("SELECT DISTINCT seed_id FROM expansion_gen")
+	if !rRows.OK {
+		return nil, core.E("ml.GetCompletedIDs", "query expansion_gen", rRows.Value.(error))
 	}
+	rows := rRows.Value.([]map[string]any)
 
 	ids := make(map[string]bool, len(rows))
 	for _, row := range rows {
@@ -90,7 +90,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 	outputPath := core.JoinPath(outputDir, core.Sprintf("expand-%s.jsonl", worker))
 	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
-		return coreerr.E("ml.ExpandPrompts", "open output file", err)
+		return core.E("ml.ExpandPrompts", "open output file", err)
 	}
 	defer f.Close()
 
@@ -99,13 +99,14 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 	for idx, p := range remaining {
 		start := time.Now()
-		res, err := backend.Generate(ctx, p.Prompt, GenOpts{Temperature: 0.7, MaxTokens: 2048})
+		rGen := backend.Generate(ctx, p.Prompt, GenOpts{Temperature: 0.7, MaxTokens: 2048})
 		elapsed := time.Since(start).Seconds()
 
-		if err != nil {
-			core.Print(nil, "[%d/%d] id=%s ERROR: %v", idx+1, total, p.ID, err)
+		if !rGen.OK {
+			core.Print(nil, "[%d/%d] id=%s ERROR: %s", idx+1, total, p.ID, rGen.Error())
 			continue
 		}
+		res := rGen.Value.(Result)
 
 		response := res.Text
 		chars := len(response)
@@ -135,8 +136,8 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 		progressLine := core.Sprintf("expansion_progress,worker=%s completed=%di,target=%di,pct=%f",
 			EscapeLp(worker), completedCount, total, pct)
 
-		if writeErr := influx.WriteLp([]string{genLine, progressLine}); writeErr != nil {
-			core.Print(nil, "[%d/%d] id=%s influx write error: %v", idx+1, total, p.ID, writeErr)
+		if rWrite := influx.WriteLp([]string{genLine, progressLine}); !rWrite.OK {
+			core.Print(nil, "[%d/%d] id=%s influx write error: %s", idx+1, total, p.ID, rWrite.Error())
 		}
 
 		core.Print(nil, "[%d/%d] id=%s chars=%d time=%.1fs", idx+1, total, p.ID, chars, elapsed)

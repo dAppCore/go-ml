@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	_ "github.com/marcboeker/go-duckdb"
 )
 
@@ -23,11 +22,11 @@ type DB struct {
 func OpenDB(path string) core.Result {
 	conn, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
 	if err != nil {
-		return core.Fail(coreerr.E("ml.OpenDB", core.Sprintf("open duckdb %s", path), err))
+		return core.Fail(core.E("ml.OpenDB", core.Sprintf("open duckdb %s", path), err))
 	}
 	if err := conn.Ping(); err != nil {
 		conn.Close()
-		return core.Fail(coreerr.E("ml.OpenDB", core.Sprintf("ping duckdb %s", path), err))
+		return core.Fail(core.E("ml.OpenDB", core.Sprintf("ping duckdb %s", path), err))
 	}
 	return core.Ok(&DB{conn: conn, path: path})
 }
@@ -40,11 +39,11 @@ func OpenDB(path string) core.Result {
 func OpenDBReadWrite(path string) core.Result {
 	conn, err := sql.Open("duckdb", path)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.OpenDBReadWrite", core.Sprintf("open duckdb %s", path), err))
+		return core.Fail(core.E("ml.OpenDBReadWrite", core.Sprintf("open duckdb %s", path), err))
 	}
 	if err := conn.Ping(); err != nil {
 		conn.Close()
-		return core.Fail(coreerr.E("ml.OpenDBReadWrite", core.Sprintf("ping duckdb %s", path), err))
+		return core.Fail(core.E("ml.OpenDBReadWrite", core.Sprintf("ping duckdb %s", path), err))
 	}
 	return core.Ok(&DB{conn: conn, path: path})
 }
@@ -117,7 +116,7 @@ func (db *DB) QueryGoldenSet(minChars int) core.Result {
 		minChars,
 	)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.QueryGoldenSet", "query golden_set", err))
+		return core.Fail(core.E("ml.DB.QueryGoldenSet", "query golden_set", err))
 	}
 	defer rows.Close()
 
@@ -126,7 +125,7 @@ func (db *DB) QueryGoldenSet(minChars int) core.Result {
 		var r GoldenSetRow
 		if err := rows.Scan(&r.Idx, &r.SeedID, &r.Domain, &r.Voice,
 			&r.Prompt, &r.Response, &r.GenTime, &r.CharCount); err != nil {
-			return core.Fail(coreerr.E("ml.DB.QueryGoldenSet", "scan golden_set row", err))
+			return core.Fail(core.E("ml.DB.QueryGoldenSet", "scan golden_set row", err))
 		}
 		result = append(result, r)
 	}
@@ -142,7 +141,7 @@ func (db *DB) CountGoldenSet() core.Result {
 	var count int
 	err := db.conn.QueryRow("SELECT COUNT(*) FROM golden_set").Scan(&count)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.CountGoldenSet", "count golden_set", err))
+		return core.Fail(core.E("ml.DB.CountGoldenSet", "count golden_set", err))
 	}
 	return core.Ok(count)
 }
@@ -169,7 +168,7 @@ func (db *DB) QueryExpansionPrompts(status string, limit int) core.Result {
 
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.QueryExpansionPrompts", "query expansion_prompts", err))
+		return core.Fail(core.E("ml.DB.QueryExpansionPrompts", "query expansion_prompts", err))
 	}
 	defer rows.Close()
 
@@ -178,7 +177,7 @@ func (db *DB) QueryExpansionPrompts(status string, limit int) core.Result {
 		var r ExpansionPromptRow
 		if err := rows.Scan(&r.Idx, &r.SeedID, &r.Region, &r.Domain,
 			&r.Language, &r.Prompt, &r.PromptEn, &r.Priority, &r.Status); err != nil {
-			return core.Fail(coreerr.E("ml.DB.QueryExpansionPrompts", "scan expansion_prompt row", err))
+			return core.Fail(core.E("ml.DB.QueryExpansionPrompts", "scan expansion_prompt row", err))
 		}
 		result = append(result, r)
 	}
@@ -193,10 +192,10 @@ func (db *DB) QueryExpansionPrompts(status string, limit int) core.Result {
 func (db *DB) CountExpansionPrompts() core.Result {
 	var total, pending int
 	if err := db.conn.QueryRow("SELECT COUNT(*) FROM expansion_prompts").Scan(&total); err != nil {
-		return core.Fail(coreerr.E("ml.DB.CountExpansionPrompts", "count expansion_prompts", err))
+		return core.Fail(core.E("ml.DB.CountExpansionPrompts", "count expansion_prompts", err))
 	}
 	if err := db.conn.QueryRow("SELECT COUNT(*) FROM expansion_prompts WHERE status = 'pending'").Scan(&pending); err != nil {
-		return core.Fail(coreerr.E("ml.DB.CountExpansionPrompts", "count pending expansion_prompts", err))
+		return core.Fail(core.E("ml.DB.CountExpansionPrompts", "count pending expansion_prompts", err))
 	}
 	return core.Ok([2]int{total, pending})
 }
@@ -208,7 +207,7 @@ func (db *DB) CountExpansionPrompts() core.Result {
 func (db *DB) UpdateExpansionStatus(idx int64, status string) core.Result {
 	_, err := db.conn.Exec("UPDATE expansion_prompts SET status = ? WHERE idx = ?", status, idx)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.UpdateExpansionStatus", core.Sprintf("update expansion_prompt %d", idx), err))
+		return core.Fail(core.E("ml.DB.UpdateExpansionStatus", core.Sprintf("update expansion_prompt %d", idx), err))
 	}
 	return core.Ok(nil)
 }
@@ -221,13 +220,13 @@ func (db *DB) UpdateExpansionStatus(idx int64, status string) core.Result {
 func (db *DB) QueryRows(query string, args ...any) core.Result {
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.QueryRows", "query", err))
+		return core.Fail(core.E("ml.DB.QueryRows", "query", err))
 	}
 	defer rows.Close()
 
 	cols, err := rows.Columns()
 	if err != nil {
-		return core.Fail(coreerr.E("ml.DB.QueryRows", "columns", err))
+		return core.Fail(core.E("ml.DB.QueryRows", "columns", err))
 	}
 
 	var result []map[string]any
@@ -238,7 +237,7 @@ func (db *DB) QueryRows(query string, args ...any) core.Result {
 			ptrs[i] = &values[i]
 		}
 		if err := rows.Scan(ptrs...); err != nil {
-			return core.Fail(coreerr.E("ml.DB.QueryRows", "scan", err))
+			return core.Fail(core.E("ml.DB.QueryRows", "scan", err))
 		}
 		row := make(map[string]any, len(cols))
 		for i, col := range cols {

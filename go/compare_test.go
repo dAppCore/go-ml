@@ -7,7 +7,7 @@ import (
 func writeScoreFile(t *core.T, file string, value float64) {
 	t.Helper()
 	out := &ScorerOutput{ModelAverages: map[string]map[string]float64{"m": {"score": value}}}
-	core.RequireNoError(t, WriteScores(file, out))
+	requireResultOK(t, WriteScores(file, out))
 }
 
 func TestCompare_RunCompare_Good(t *core.T) {

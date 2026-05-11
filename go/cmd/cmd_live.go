@@ -22,30 +22,34 @@ func addLiveCommand(c *core.Core) {
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
 			// Total completed generations
-			totalRows, err := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query total", err))
+			totalResult := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
+			if !totalResult.OK {
+				return resultFromError(coreerr.E("cmd.runLive", "live: query total", errorFromResult(totalResult)))
 			}
+			totalRows := totalResult.Value.([]map[string]any)
 			total := sqlScalar(totalRows)
 
 			// Distinct domains and voices
-			domainRows, err := influx.QuerySQL("SELECT count(DISTINCT d) AS n FROM gold_gen")
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query domains", err))
+			domainResult := influx.QuerySQL("SELECT count(DISTINCT d) AS n FROM gold_gen")
+			if !domainResult.OK {
+				return resultFromError(coreerr.E("cmd.runLive", "live: query domains", errorFromResult(domainResult)))
 			}
+			domainRows := domainResult.Value.([]map[string]any)
 			domains := sqlScalar(domainRows)
 
-			voiceRows, err := influx.QuerySQL("SELECT count(DISTINCT v) AS n FROM gold_gen")
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query voices", err))
+			voiceResult := influx.QuerySQL("SELECT count(DISTINCT v) AS n FROM gold_gen")
+			if !voiceResult.OK {
+				return resultFromError(coreerr.E("cmd.runLive", "live: query voices", errorFromResult(voiceResult)))
 			}
+			voiceRows := voiceResult.Value.([]map[string]any)
 			voices := sqlScalar(voiceRows)
 
 			// Per-worker breakdown
-			workers, err := influx.QuerySQL("SELECT w, count(DISTINCT i) AS n FROM gold_gen GROUP BY w ORDER BY n DESC")
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query workers", err))
+			workerResult := influx.QuerySQL("SELECT w, count(DISTINCT i) AS n FROM gold_gen GROUP BY w ORDER BY n DESC")
+			if !workerResult.OK {
+				return resultFromError(coreerr.E("cmd.runLive", "live: query workers", errorFromResult(workerResult)))
 			}
+			workers := workerResult.Value.([]map[string]any)
 
 			pct := float64(total) / float64(targetTotal) * 100
 			remaining := targetTotal - total

@@ -8,7 +8,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 // ProbeResult holds the result of running all probes against a checkpoint.
@@ -62,7 +61,7 @@ type probeRunnerResponse struct {
 func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) core.Result {
 	ollamaBase, ok := OllamaBaseModelMap[cp.ModelTag]
 	if !ok {
-		return core.Fail(coreerr.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil))
+		return core.Fail(core.E("ml.processMLXNative", core.Sprintf("unknown Ollama model for tag %s", cp.ModelTag), nil))
 	}
 	hfBase := HFBaseModelMap[cp.ModelTag]
 	if hfBase == "" {
@@ -90,20 +89,20 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) cor
 	ctx := context.Background()
 	t := cfg.transport()
 	if r := t.CopyFrom(ctx, remoteSF, localSF); !r.OK {
-		return core.Fail(coreerr.E("ml.processMLXNative", "scp safetensors", r.Value.(error)))
+		return core.Fail(core.E("ml.processMLXNative", "scp safetensors", r.Value.(error)))
 	}
 	if r := t.CopyFrom(ctx, remoteCfg, localCfg); !r.OK {
-		return core.Fail(coreerr.E("ml.processMLXNative", "scp config", r.Value.(error)))
+		return core.Fail(core.E("ml.processMLXNative", "scp config", r.Value.(error)))
 	}
 
 	core.Print(nil, "Converting MLX → PEFT format...")
-	if r := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); !r.OK {
-		return core.Fail(coreerr.E("ml.processMLXNative", "convert adapter", r.Value.(error)))
+	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
+		return core.Fail(core.E("ml.processMLXNative", "convert adapter", err))
 	}
 
 	core.Print(nil, "Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
-	if r := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); !r.OK {
-		return core.Fail(coreerr.E("ml.processMLXNative", "ollama create", r.Value.(error)))
+	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
+		return core.Fail(core.E("ml.processMLXNative", "ollama create", err))
 	}
 	core.Print(nil, "Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
@@ -171,16 +170,16 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 	ctx := context.Background()
 	t := cfg.transport()
 	if r := t.CopyFrom(ctx, remoteSF, localSF); !r.OK {
-		return core.Fail(coreerr.E("ml.processWithConversion", "scp safetensors", r.Value.(error)))
+		return core.Fail(core.E("ml.processWithConversion", "scp safetensors", r.Value.(error)))
 	}
 	if r := t.CopyFrom(ctx, remoteCfg, localCfg); !r.OK {
-		return core.Fail(coreerr.E("ml.processWithConversion", "scp config", r.Value.(error)))
+		return core.Fail(core.E("ml.processWithConversion", "scp config", r.Value.(error)))
 	}
 
 	core.Print(nil, "Converting MLX to PEFT format...")
 	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
-	if r := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); !r.OK {
-		return core.Fail(coreerr.E("ml.processWithConversion", "convert adapter", r.Value.(error)))
+	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
+		return core.Fail(core.E("ml.processWithConversion", "convert adapter", err))
 	}
 
 	core.Print(nil, "Running %d capability probes...", len(CapabilityProbes))

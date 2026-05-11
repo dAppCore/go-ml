@@ -10,7 +10,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 )
 
 var (
@@ -46,17 +45,17 @@ type SafetensorsTensorInfo struct {
 func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, error) {
 	raw, err := coreio.Local.Read(path)
 	if err != nil {
-		return nil, nil, coreerr.E("ml.ReadSafetensors", "read file", err)
+		return nil, nil, core.E("ml.ReadSafetensors", "read file", err)
 	}
 	data := []byte(raw)
 
 	if len(data) < 8 {
-		return nil, nil, coreerr.E("ml.ReadSafetensors", "file too small", nil)
+		return nil, nil, core.E("ml.ReadSafetensors", "file too small", nil)
 	}
 
 	headerSize := int(binary.LittleEndian.Uint64(data[:8]))
 	if 8+headerSize > len(data) {
-		return nil, nil, coreerr.E("ml.ReadSafetensors", core.Sprintf("invalid header size %d", headerSize), nil)
+		return nil, nil, core.E("ml.ReadSafetensors", core.Sprintf("invalid header size %d", headerSize), nil)
 	}
 
 	headerJSON := data[8 : 8+headerSize]
@@ -64,7 +63,7 @@ func ReadSafetensors(path string) (map[string]SafetensorsTensorInfo, []byte, err
 
 	var rawHeader map[string]SafetensorsTensorInfo
 	if r := core.JSONUnmarshalString(string(headerJSON), &rawHeader); !r.OK {
-		return nil, nil, coreerr.E("ml.ReadSafetensors", "parse header", r.Value.(error))
+		return nil, nil, core.E("ml.ReadSafetensors", "parse header", r.Value.(error))
 	}
 	delete(rawHeader, "__metadata__")
 
@@ -141,7 +140,7 @@ func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, ten
 
 	f, err := coreio.Local.Create(path)
 	if err != nil {
-		return coreerr.E("ml.WriteSafetensors", core.Sprintf("create %s", path), err)
+		return core.E("ml.WriteSafetensors", core.Sprintf("create %s", path), err)
 	}
 	defer f.Close()
 
@@ -167,12 +166,12 @@ func WriteSafetensors(path string, tensors map[string]SafetensorsTensorInfo, ten
 // ConvertMLXtoPEFT converts an MLX LoRA adapter to HuggingFace PEFT format.
 func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName string) error {
 	if err := coreio.Local.EnsureDir(outputDir); err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "create output dir", err)
+		return core.E("ml.ConvertMLXtoPEFT", "create output dir", err)
 	}
 
 	tensors, tensorData, err := ReadSafetensors(safetensorsPath)
 	if err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "read safetensors", err)
+		return core.E("ml.ConvertMLXtoPEFT", "read safetensors", err)
 	}
 	core.Print(nil, "loaded %d tensors from %s", len(tensors), safetensorsPath)
 
@@ -202,12 +201,12 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 
 	outSafetensors := core.JoinPath(outputDir, "adapter_model.safetensors")
 	if err := WriteSafetensors(outSafetensors, peftTensors, peftData); err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "write safetensors", err)
+		return core.E("ml.ConvertMLXtoPEFT", "write safetensors", err)
 	}
 
 	cfgData, err := coreio.Local.Read(configPath)
 	if err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "read config", err)
+		return core.E("ml.ConvertMLXtoPEFT", "read config", err)
 	}
 
 	var mlxConfig struct {
@@ -218,7 +217,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 		} `json:"lora_parameters"`
 	}
 	if r := core.JSONUnmarshalString(cfgData, &mlxConfig); !r.OK {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "parse config", r.Value.(error))
+		return core.E("ml.ConvertMLXtoPEFT", "parse config", r.Value.(error))
 	}
 
 	rank := mlxConfig.LoraParameters.Rank
@@ -266,7 +265,7 @@ func ConvertMLXtoPEFT(safetensorsPath, configPath, outputDir, baseModelName stri
 	}
 
 	if err := coreio.Local.Write(core.JoinPath(outputDir, "adapter_config.json"), core.JSONMarshalString(peftConfig)); err != nil {
-		return coreerr.E("ml.ConvertMLXtoPEFT", "write adapter_config.json", err)
+		return core.E("ml.ConvertMLXtoPEFT", "write adapter_config.json", err)
 	}
 
 	core.Print(nil, "converted %d tensors, %d layers, target modules: %v",

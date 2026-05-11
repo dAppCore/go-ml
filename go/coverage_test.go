@@ -8,7 +8,7 @@ import (
 func seedCoverageDB(t *core.T) *store.DuckDB {
 	t.Helper()
 	db := newStoreDuckDB(t)
-	core.RequireNoError(t, db.Exec(`CREATE TABLE seeds (
+	requireResultOK(t, db.Exec(`CREATE TABLE seeds (
 		source_file VARCHAR, region VARCHAR, seed_id VARCHAR, domain VARCHAR, prompt VARCHAR
 	)`))
 	return db
@@ -16,7 +16,7 @@ func seedCoverageDB(t *core.T) *store.DuckDB {
 
 func TestCoverage_PrintCoverage_Good(t *core.T) {
 	db := seedCoverageDB(t)
-	core.RequireNoError(t, db.Exec("INSERT INTO seeds VALUES ('f','en-us','s1','ethics','prompt')"))
+	requireResultOK(t, db.Exec("INSERT INTO seeds VALUES ('f','en-us','s1','ethics','prompt')"))
 	buf := core.NewBuffer(nil)
 	err := PrintCoverage(db, buf)
 	core.RequireNoError(t, err)

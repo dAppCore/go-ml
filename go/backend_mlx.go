@@ -7,8 +7,8 @@ package ml
 import (
 	"log/slog"
 
+	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
 )
 
 // SetMLXMemoryLimits applies Metal cache and memory hard limits before the
@@ -52,13 +52,13 @@ func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*Inferen
 	result := inference.LoadModel(modelPath, opts...)
 	if !result.OK {
 		if err, ok := result.Value.(error); ok {
-			return nil, coreerr.E("ml.NewMLXBackend", "metal backend", err)
+			return nil, core.E("ml.NewMLXBackend", "metal backend", err)
 		}
-		return nil, coreerr.E("ml.NewMLXBackend", "metal backend failed to load model", nil)
+		return nil, core.E("ml.NewMLXBackend", "metal backend failed to load model", nil)
 	}
 	m, ok := result.Value.(inference.TextModel)
 	if !ok || m == nil {
-		return nil, coreerr.E("ml.NewMLXBackend", "metal backend returned non-TextModel value", nil)
+		return nil, core.E("ml.NewMLXBackend", "metal backend returned non-TextModel value", nil)
 	}
 
 	info := m.Info()

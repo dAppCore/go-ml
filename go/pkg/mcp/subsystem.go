@@ -7,7 +7,7 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	"dappco.re/go/log"
+	log "dappco.re/go/log"
 	ml "dappco.re/go/ml"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -150,7 +150,7 @@ func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, in
 	m.logger.Info("MCP tool execution", "tool", "ml_generate", "backend", input.Backend, "user", log.Username())
 
 	if input.Prompt == "" {
-		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "prompt cannot be empty", nil)
+		return nil, MLGenerateOutput{}, mcpError("mcp.MLSubsystem.mlGenerate", "prompt cannot be empty", nil)
 	}
 
 	opts := ml.GenOpts{
@@ -159,10 +159,11 @@ func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, in
 		Model:       input.Model,
 	}
 
-	result, err := m.service.Generate(ctx, input.Backend, input.Prompt, opts)
-	if err != nil {
-		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "generate", err)
+	generateResult := m.service.Generate(ctx, input.Backend, input.Prompt, opts)
+	if !generateResult.OK {
+		return nil, MLGenerateOutput{}, mcpError("mcp.MLSubsystem.mlGenerate", "generate", core.NewError(generateResult.Error()))
 	}
+	result := generateResult.Value.(ml.Result)
 
 	return nil, MLGenerateOutput{
 		Response: result.Text,
@@ -175,7 +176,7 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 	m.logger.Info("MCP tool execution", "tool", "ml_score", "suites", input.Suites, "user", log.Username())
 
 	if input.Prompt == "" || input.Response == "" {
-		return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "prompt and response cannot be empty", nil)
+		return nil, MLScoreOutput{}, mcpError("mcp.MLSubsystem.mlScore", "prompt and response cannot be empty", nil)
 	}
 
 	suites := input.Suites
@@ -193,15 +194,15 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 		case "semantic":
 			judge := m.service.Judge()
 			if judge == nil {
-				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic scoring requires a judge backend", nil)
+				return nil, MLScoreOutput{}, mcpError("mcp.MLSubsystem.mlScore", "semantic scoring requires a judge backend", nil)
 			}
-			s, err := judge.ScoreSemantic(ctx, input.Prompt, input.Response)
-			if err != nil {
-				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic score", err)
+			scoreResult := judge.ScoreSemantic(ctx, input.Prompt, input.Response)
+			if !scoreResult.OK {
+				return nil, MLScoreOutput{}, mcpError("mcp.MLSubsystem.mlScore", "semantic score", core.NewError(scoreResult.Error()))
 			}
-			output.Semantic = s
+			output.Semantic = scoreResult.Value.(*ml.SemanticScores)
 		case "content":
-			return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "content scoring requires a ContentProbe — use ml_probe instead", nil)
+			return nil, MLScoreOutput{}, mcpError("mcp.MLSubsystem.mlScore", "content scoring requires a ContentProbe — use ml_probe instead", nil)
 		}
 	}
 
@@ -229,10 +230,12 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	var results []MLProbeResultItem
 	for _, probe := range probes {
-		result, err := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
-		respText := result.Text
-		if err != nil {
-			respText = core.Sprintf("error: %v", err)
+		result := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
+		respText := ""
+		if result.OK {
+			respText = result.Value.(ml.Result).Text
+		} else {
+			respText = core.Sprintf("error: %s", result.Error())
 		}
 		results = append(results, MLProbeResultItem{
 			ID:       probe.ID,
@@ -262,7 +265,7 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	influx := ml.NewInfluxClient(url, db)
 	buf := core.NewBuilder()
 	if err := ml.PrintStatus(influx, buf); err != nil {
-		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
+		return nil, MLStatusOutput{}, mcpError("mcp.MLSubsystem.mlStatus", "status", err)
 	}
 
 	return nil, MLStatusOutput{Status: buf.String()}, nil
@@ -304,4 +307,14 @@ func capabilityIDStrings(ids []inference.CapabilityID) []string {
 		out[i] = string(id)
 	}
 	return out
+}
+
+func mcpError(op, msg string, err error) error {
+	result := log.E(op, msg, err)
+	if result.OK {
+		if wrapped, ok := result.Value.(error); ok {
+			return wrapped
+		}
+	}
+	return core.NewError(result.Error())
 }
