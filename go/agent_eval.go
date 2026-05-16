@@ -96,13 +96,13 @@ func processMLXNative(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint) cor
 	}
 
 	core.Print(nil, "Converting MLX → PEFT format...")
-	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); err != nil {
-		return core.Fail(core.E("ml.processMLXNative", "convert adapter", err))
+	if result := ConvertMLXtoPEFT(localSF, localCfg, peftDir, hfBase); !result.OK {
+		return core.Fail(core.E("ml.processMLXNative", "convert adapter", result.Value.(error)))
 	}
 
 	core.Print(nil, "Creating Ollama model %s (base: %s)...", tempModel, ollamaBase)
-	if err := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); err != nil {
-		return core.Fail(core.E("ml.processMLXNative", "ollama create", err))
+	if result := OllamaCreateModel(cfg.JudgeURL, tempModel, ollamaBase, peftDir); !result.OK {
+		return core.Fail(core.E("ml.processMLXNative", "ollama create", result.Value.(error)))
 	}
 	core.Print(nil, "Ollama model %s ready", tempModel)
 	probeBackend := NewHTTPBackend(cfg.JudgeURL, tempModel)
@@ -178,8 +178,8 @@ func processWithConversion(cfg *AgentConfig, influx *InfluxClient, cp Checkpoint
 
 	core.Print(nil, "Converting MLX to PEFT format...")
 	peftDir := core.JoinPath(cfg.WorkDir, core.Sprintf("peft_%07d", cp.Iteration))
-	if err := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); err != nil {
-		return core.Fail(core.E("ml.processWithConversion", "convert adapter", err))
+	if result := ConvertMLXtoPEFT(localSF, localCfg, peftDir, cfg.BaseModel); !result.OK {
+		return core.Fail(core.E("ml.processWithConversion", "convert adapter", result.Value.(error)))
 	}
 
 	core.Print(nil, "Running %d capability probes...", len(CapabilityProbes))

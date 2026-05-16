@@ -57,8 +57,9 @@ func RunWorkerLoop(cfg *WorkerConfig) {
 	core.Print(nil, "  Batch:    %d", cfg.BatchSize)
 	core.Print(nil, "  Dry-run:  %v", cfg.DryRun)
 
-	if err := workerRegister(cfg); err != nil {
-		core.Print(nil, "Registration failed: %v", err)
+	registerResult := workerRegister(cfg)
+	if !registerResult.OK {
+		core.Print(nil, "Registration failed: %v", registerResult.Value.(error))
 	}
 	core.Print(nil, "Registered with LEM API")
 
@@ -79,7 +80,7 @@ func RunWorkerLoop(cfg *WorkerConfig) {
 	}
 }
 
-func workerRegister(cfg *WorkerConfig) error {
+func workerRegister(cfg *WorkerConfig) core.Result {
 	body := map[string]any{
 		"worker_id":   cfg.WorkerID,
 		"name":        cfg.Name,
@@ -100,8 +101,11 @@ func workerRegister(cfg *WorkerConfig) error {
 		body["supported_models"] = cfg.Models
 	}
 
-	_, err := apiPost(cfg, "/api/lem/workers/register", body)
-	return err
+	postResult := apiPost(cfg, "/api/lem/workers/register", body)
+	if !postResult.OK {
+		return postResult
+	}
+	return core.Ok(nil)
 }
 
 func workerHeartbeat(cfg *WorkerConfig) {
@@ -117,11 +121,12 @@ func workerPoll(cfg *WorkerConfig) int {
 		url += "&type=" + cfg.TaskType
 	}
 
-	resp, err := apiGet(cfg, url)
-	if err != nil {
-		core.Print(nil, "Error fetching tasks: %v", err)
+	respResult := apiGet(cfg, url)
+	if !respResult.OK {
+		core.Print(nil, "Error fetching tasks: %v", respResult.Value.(error))
 		return 0
 	}
+	resp := respResult.Value.([]byte)
 
 	var result struct {
 		Tasks []APITask `json:"tasks"`
@@ -140,8 +145,9 @@ func workerPoll(cfg *WorkerConfig) int {
 	processed := 0
 
 	for _, task := range result.Tasks {
-		if err := workerProcessTask(cfg, task); err != nil {
-			core.Print(nil, "Task %d failed: %v", task.ID, err)
+		taskResult := workerProcessTask(cfg, task)
+		if !taskResult.OK {
+			core.Print(nil, "Task %d failed: %v", task.ID, taskResult.Value.(error))
 			apiDelete(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 				"worker_id": cfg.WorkerID,
 			})
@@ -153,15 +159,15 @@ func workerPoll(cfg *WorkerConfig) int {
 	return processed
 }
 
-func workerProcessTask(cfg *WorkerConfig, task APITask) error {
+func workerProcessTask(cfg *WorkerConfig, task APITask) core.Result {
 	core.Print(nil, "Processing task %d: %s [%s/%s] %d chars prompt",
 		task.ID, task.TaskType, task.Language, task.Domain, len(task.PromptText))
 
-	_, err := apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
+	claimResult := apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/claim", task.ID), map[string]any{
 		"worker_id": cfg.WorkerID,
 	})
-	if err != nil {
-		return core.E("ml.workerProcessTask", "claim", err)
+	if !claimResult.OK {
+		return core.Fail(core.E("ml.workerProcessTask", "claim", claimResult.Value.(error)))
 	}
 
 	apiPatch(cfg, core.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
@@ -171,41 +177,42 @@ func workerProcessTask(cfg *WorkerConfig, task APITask) error {
 
 	if cfg.DryRun {
 		core.Print(nil, "  [DRY-RUN] Would generate response for: %.80s...", task.PromptText)
-		return nil
+		return core.Ok(nil)
 	}
 
 	start := time.Now()
-	response, err := workerInfer(cfg, task)
+	inferResult := workerInfer(cfg, task)
 	genTime := time.Since(start)
 
-	if err != nil {
+	if !inferResult.OK {
 		apiPatch(cfg, core.Sprintf("/api/lem/tasks/%d/status", task.ID), map[string]any{
 			"worker_id": cfg.WorkerID,
 			"status":    "abandoned",
 		})
-		return core.E("ml.workerProcessTask", "inference", err)
+		return core.Fail(core.E("ml.workerProcessTask", "inference", inferResult.Value.(error)))
 	}
+	response := inferResult.Value.(string)
 
 	modelUsed := task.ModelName
 	if modelUsed == "" {
 		modelUsed = "default"
 	}
 
-	_, err = apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]any{
+	postResult := apiPost(cfg, core.Sprintf("/api/lem/tasks/%d/result", task.ID), map[string]any{
 		"worker_id":     cfg.WorkerID,
 		"response_text": response,
 		"model_used":    modelUsed,
 		"gen_time_ms":   int(genTime.Milliseconds()),
 	})
-	if err != nil {
-		return core.E("ml.workerProcessTask", "submit result", err)
+	if !postResult.OK {
+		return core.Fail(core.E("ml.workerProcessTask", "submit result", postResult.Value.(error)))
 	}
 
 	core.Print(nil, "  Completed: %d chars in %v", len(response), genTime.Round(time.Millisecond))
-	return nil
+	return core.Ok(nil)
 }
 
-func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
+func workerInfer(cfg *WorkerConfig, task APITask) core.Result {
 	messages := []map[string]string{
 		{"role": "user", "content": task.PromptText},
 	}
@@ -232,25 +239,25 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 
 	req, err := http.NewRequest("POST", cfg.InferURL+"/v1/chat/completions", core.NewBuffer(data))
 	if err != nil {
-		return "", err
+		return core.Fail(core.E("ml.workerInfer", "create inference request", err))
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", core.E("ml.workerInfer", "inference request", err)
+		return core.Fail(core.E("ml.workerInfer", "inference request", err))
 	}
 	defer resp.Body.Close()
 
 	rBody := readAll(resp.Body)
 	if !rBody.OK {
-		return "", core.E("ml.workerInfer", "read response", rBody.Value.(error))
+		return core.Fail(core.E("ml.workerInfer", "read response", rBody.Value.(error)))
 	}
 	body := rBody.Value.([]byte)
 
 	if resp.StatusCode != 200 {
-		return "", core.E("ml.workerInfer", core.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return core.Fail(core.E("ml.workerInfer", core.Sprintf("inference HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil))
 	}
 
 	var chatResp struct {
@@ -261,68 +268,68 @@ func workerInfer(cfg *WorkerConfig, task APITask) (string, error) {
 		} `json:"choices"`
 	}
 	if r := core.JSONUnmarshal(body, &chatResp); !r.OK {
-		return "", core.E("ml.workerInfer", "parse response", r.Value.(error))
+		return core.Fail(core.E("ml.workerInfer", "parse response", r.Value.(error)))
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return "", core.E("ml.workerInfer", "no choices in response", nil)
+		return core.Fail(core.E("ml.workerInfer", "no choices in response", nil))
 	}
 
 	content := chatResp.Choices[0].Message.Content
 	if len(content) < 10 {
-		return "", core.E("ml.workerInfer", core.Sprintf("response too short: %d chars", len(content)), nil)
+		return core.Fail(core.E("ml.workerInfer", core.Sprintf("response too short: %d chars", len(content)), nil))
 	}
 
-	return content, nil
+	return core.Ok(content)
 }
 
 // HTTP helpers for the LEM API.
 
-func apiGet(cfg *WorkerConfig, path string) ([]byte, error) {
+func apiGet(cfg *WorkerConfig, path string) core.Result {
 	req, err := http.NewRequest("GET", cfg.APIBase+path, nil)
 	if err != nil {
-		return nil, err
+		return core.Fail(core.E("ml.apiGet", "create request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return core.Fail(core.E("ml.apiGet", "send request", err))
 	}
 	defer resp.Body.Close()
 
 	rBody := readAll(resp.Body)
 	if !rBody.OK {
-		return nil, rBody.Value.(error)
+		return core.Fail(rBody.Value.(error))
 	}
 	body := rBody.Value.([]byte)
 
 	if resp.StatusCode >= 400 {
-		return nil, core.E("ml.apiGet", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return core.Fail(core.E("ml.apiGet", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil))
 	}
 
-	return body, nil
+	return core.Ok(body)
 }
 
-func apiPost(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
+func apiPost(cfg *WorkerConfig, path string, data map[string]any) core.Result {
 	return apiRequest(cfg, "POST", path, data)
 }
 
-func apiPatch(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
+func apiPatch(cfg *WorkerConfig, path string, data map[string]any) core.Result {
 	return apiRequest(cfg, "PATCH", path, data)
 }
 
-func apiDelete(cfg *WorkerConfig, path string, data map[string]any) ([]byte, error) {
+func apiDelete(cfg *WorkerConfig, path string, data map[string]any) core.Result {
 	return apiRequest(cfg, "DELETE", path, data)
 }
 
-func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]byte, error) {
+func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) core.Result {
 	jsonData := []byte(core.JSONMarshalString(data))
 
 	req, err := http.NewRequest(method, cfg.APIBase+path, core.NewBuffer(jsonData))
 	if err != nil {
-		return nil, err
+		return core.Fail(core.E("ml.apiRequest", "create request", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -330,21 +337,21 @@ func apiRequest(cfg *WorkerConfig, method, path string, data map[string]any) ([]
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return core.Fail(core.E("ml.apiRequest", "send request", err))
 	}
 	defer resp.Body.Close()
 
 	rBody := readAll(resp.Body)
 	if !rBody.OK {
-		return nil, rBody.Value.(error)
+		return core.Fail(rBody.Value.(error))
 	}
 	body := rBody.Value.([]byte)
 
 	if resp.StatusCode >= 400 {
-		return nil, core.E("ml.apiRequest", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil)
+		return core.Fail(core.E("ml.apiRequest", core.Sprintf("HTTP %d: %s", resp.StatusCode, truncStr(string(body), 200)), nil))
 	}
 
-	return body, nil
+	return core.Ok(body)
 }
 
 // MachineID returns the machine ID from /etc/machine-id or hostname fallback.

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -19,12 +18,12 @@ func addNormalizeCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runNormalize", "--db or LEM_DB env is required", nil))
+				return core.Fail(core.E("cmd.runNormalize", "--db or LEM_DB env is required", nil))
 			}
 
 			db, result := store.OpenDuckDBReadWrite(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runNormalize", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runNormalize", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
@@ -32,7 +31,7 @@ func addNormalizeCommand(c *core.Core) {
 				MinLength: optInt(opts, "min-length", 50),
 			}
 
-			return resultFromError(ml.NormalizeSeeds(db, cfg, nil))
+			return ml.NormalizeSeeds(db, cfg, nil)
 		},
 	})
 }

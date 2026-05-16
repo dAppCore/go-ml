@@ -3,7 +3,6 @@ package cmd
 import (
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -20,7 +19,7 @@ func addExportCommand(c *core.Core) {
 
 			outputDir := opts.String("output-dir")
 			if outputDir == "" {
-				return resultFromError(coreerr.E("cmd.runExport", "--output-dir is required", nil))
+				return core.Fail(core.E("cmd.runExport", "--output-dir is required", nil))
 			}
 			minChars := optInt(opts, "min-chars", 50)
 			trainPct := optInt(opts, "train", 80)
@@ -30,22 +29,22 @@ func addExportCommand(c *core.Core) {
 			parquet := opts.Bool("parquet")
 
 			if result := ml.ValidatePercentages(trainPct, validPct, testPct); !result.OK {
-				return resultFromError(result)
+				return result
 			}
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runExport", "--db or LEM_DB env is required", nil))
+				return core.Fail(core.E("cmd.runExport", "--db or LEM_DB env is required", nil))
 			}
 
 			db, result := store.OpenDuckDB(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runExport", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runExport", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
 			rows, result := db.QueryGoldenSet(minChars)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runExport", "query golden set", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runExport", "query golden set", result.Value.(error)))
 			}
 			core.Print(nil, "Loaded %d golden set rows (min %d chars)", len(rows), minChars)
 
@@ -67,7 +66,7 @@ func addExportCommand(c *core.Core) {
 			core.Print(nil, "Split: train=%d, valid=%d, test=%d", len(train), len(valid), len(test))
 
 			if err := coreio.Local.EnsureDir(outputDir); err != nil {
-				return resultFromError(coreerr.E("cmd.runExport", "create output dir", err))
+				return core.Fail(core.E("cmd.runExport", "create output dir", err))
 			}
 
 			for _, split := range []struct {
@@ -80,7 +79,7 @@ func addExportCommand(c *core.Core) {
 			} {
 				path := core.JoinPath(outputDir, core.Concat(split.name, ".jsonl"))
 				if result := ml.WriteTrainingJSONL(path, split.data); !result.OK {
-					return resultFromError(coreerr.E("cmd.runExport", core.Sprintf("write %s", split.name), errorFromResult(result)))
+					return core.Fail(core.E("cmd.runExport", core.Sprintf("write %s", split.name), result.Value.(error)))
 				}
 				core.Print(nil, "  %s.jsonl: %d examples", split.name, len(split.data))
 			}
@@ -88,12 +87,12 @@ func addExportCommand(c *core.Core) {
 			if parquet {
 				n, result := store.ExportParquet(outputDir, "")
 				if !result.OK {
-					return resultFromError(coreerr.E("cmd.runExport", "export parquet", errorFromResult(result)))
+					return core.Fail(core.E("cmd.runExport", "export parquet", result.Value.(error)))
 				}
 				core.Print(nil, "  Parquet: %d total rows", n)
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

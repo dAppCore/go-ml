@@ -42,23 +42,23 @@ func SetMLXMemoryLimits(cacheLimit, memoryLimit uint64) {
 // runtime.GC() to release unmanaged caches.
 //
 //	ml.SetMLXMemoryLimits(4<<30, 32<<30)
-//	adapter, err := ml.NewMLXBackend("/models/gemma3-1b",
+//	r := ml.NewMLXBackend("/models/gemma3-1b",
 //	    inference.WithContextLen(8192),
 //	)
-func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*InferenceAdapter, error) {
+func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) core.Result {
 	slog.Info("mlx: loading model via go-inference", "model_path", modelPath)
 
 	opts := append(append([]inference.LoadOption(nil), loadOpts...), inference.WithBackend("metal"))
 	result := inference.LoadModel(modelPath, opts...)
 	if !result.OK {
 		if err, ok := result.Value.(error); ok {
-			return nil, core.E("ml.NewMLXBackend", "metal backend", err)
+			return core.Fail(core.E("ml.NewMLXBackend", "metal backend", err))
 		}
-		return nil, core.E("ml.NewMLXBackend", "metal backend failed to load model", nil)
+		return core.Fail(core.E("ml.NewMLXBackend", "metal backend failed to load model", nil))
 	}
 	m, ok := result.Value.(inference.TextModel)
 	if !ok || m == nil {
-		return nil, core.E("ml.NewMLXBackend", "metal backend returned non-TextModel value", nil)
+		return core.Fail(core.E("ml.NewMLXBackend", "metal backend returned non-TextModel value", nil))
 	}
 
 	info := m.Info()
@@ -68,5 +68,5 @@ func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*Inferen
 		"quant", info.QuantBits,
 	)
 
-	return NewInferenceAdapter(m, "mlx"), nil
+	return core.Ok(NewInferenceAdapter(m, "mlx"))
 }

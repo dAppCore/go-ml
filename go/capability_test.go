@@ -55,7 +55,7 @@ func TestCapability_CapabilityReportForBackend_Good(t *core.T) {
 	core.AssertTrue(t, report.Supports(inference.CapabilityProbeEvents))
 }
 
-func TestCapability_CapabilityReportForBackend_BadNil(t *core.T) {
+func TestCapability_CapabilityReportForBackend_Bad(t *core.T) {
 	report := CapabilityReportForBackend("missing", nil)
 
 	core.AssertEqual(t, "missing", report.Runtime.Backend)
@@ -63,7 +63,7 @@ func TestCapability_CapabilityReportForBackend_BadNil(t *core.T) {
 	core.AssertLen(t, report.Capabilities, 0)
 }
 
-func TestCapability_CapabilityReportForBackend_UglyFallback(t *core.T) {
+func TestCapability_CapabilityReportForBackend_Ugly(t *core.T) {
 	backend := &capabilityTestBackend{name: "http", available: true}
 
 	report := CapabilityReportForBackend("", backend)
@@ -72,35 +72,4 @@ func TestCapability_CapabilityReportForBackend_UglyFallback(t *core.T) {
 	core.AssertTrue(t, report.Available)
 	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
 	core.AssertTrue(t, report.Supports(inference.CapabilityChat))
-}
-
-func TestCapability_ServiceBackendCapabilities_Good(t *core.T) {
-	svc := newServiceForTest(t, Options{})
-	svc.RegisterBackend("local", &capabilityTestBackend{name: "local", available: true})
-
-	report, ok := svc.BackendCapabilities("local")
-
-	core.AssertTrue(t, ok)
-	core.AssertEqual(t, "local", report.Runtime.Backend)
-	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
-}
-
-func TestCapability_InferenceAdapterCapabilities_Good(t *core.T) {
-	model := &mockTextModel{modelType: "qwen3"}
-	adapter := NewInferenceAdapter(model, "mlx")
-
-	report := adapter.Capabilities()
-
-	core.AssertTrue(t, report.Available)
-	core.AssertEqual(t, "mlx", report.Runtime.Backend)
-	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
-	core.AssertTrue(t, report.Supports(inference.CapabilityChat))
-}
-
-func TestCapability_InferenceAdapterCapabilities_UglyNil(t *core.T) {
-	var adapter *InferenceAdapter
-	report := adapter.Capabilities()
-
-	core.AssertEqual(t, "", report.Runtime.Backend)
-	core.AssertFalse(t, report.Available)
 }

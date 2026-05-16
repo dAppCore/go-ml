@@ -12,7 +12,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -75,29 +74,29 @@ type sandwichRecord struct {
 	Messages []ml.Message `json:"messages"`
 }
 
-func runSandwich(cmd *cli.Command, args []string) error {
+func runSandwich(cmd *cli.Command, args []string) core.Result {
 	start := time.Now()
 
 	// Load KB document
 	kbText, err := coreio.Local.Read(sandwichKB)
 	if err != nil {
-		return coreerr.E("cmd.runSandwich", "read KB", err)
+		return core.Fail(core.E("cmd.runSandwich", "read KB", err))
 	}
 
 	// Load LEK-1 kernel
 	kernelText, err := coreio.Local.Read(sandwichKernel)
 	if err != nil {
-		return coreerr.E("cmd.runSandwich", "read kernel", err)
+		return core.Fail(core.E("cmd.runSandwich", "read kernel", err))
 	}
 
 	// Load seed prompts
 	seedBytes, err := coreio.Local.Read(sandwichSeeds)
 	if err != nil {
-		return coreerr.E("cmd.runSandwich", "read seeds", err)
+		return core.Fail(core.E("cmd.runSandwich", "read seeds", err))
 	}
 	var seeds []seedPrompt
 	if r := core.JSONUnmarshalString(seedBytes, &seeds); !r.OK {
-		return coreerr.E("cmd.runSandwich", "parse seeds", r.Value.(error))
+		return core.Fail(core.E("cmd.runSandwich", "parse seeds", r.Value.(error)))
 	}
 
 	slog.Info("sandwich: loaded inputs",
@@ -107,13 +106,13 @@ func runSandwich(cmd *cli.Command, args []string) error {
 	)
 
 	if len(seeds) == 0 {
-		return coreerr.E("cmd.runSandwich", "no seed prompts found", nil)
+		return core.Fail(core.E("cmd.runSandwich", "no seed prompts found", nil))
 	}
 
 	// Open output file
 	outFile, err := coreio.Local.Create(sandwichOutput)
 	if err != nil {
-		return coreerr.E("cmd.runSandwich", "create output", err)
+		return core.Fail(core.E("cmd.runSandwich", "create output", err))
 	}
 	defer outFile.Close()
 
@@ -127,22 +126,23 @@ func runSandwich(cmd *cli.Command, args []string) error {
 				},
 			}
 			if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
-				return coreerr.E("cmd.runSandwich", "write record", err)
+				return core.Fail(core.E("cmd.runSandwich", "write record", err))
 			}
 		}
 		slog.Info("sandwich: dry-run complete",
 			"output", sandwichOutput,
 			"prompts", len(seeds),
 		)
-		return nil
+		return core.Ok(nil)
 	}
 
 	// Load MLX model
 	slog.Info("sandwich: loading model", "model_path", sandwichModelPath)
-	backend, err := ml.NewMLXBackend(sandwichModelPath)
-	if err != nil {
-		return coreerr.E("cmd.runSandwich", "load model", err)
+	backendResult := ml.NewMLXBackend(sandwichModelPath)
+	if !backendResult.OK {
+		return core.Fail(core.E("cmd.runSandwich", "load model", backendResult.Value.(error)))
 	}
+	backend := backendResult.Value.(*ml.InferenceAdapter)
 
 	opts := ml.GenOpts{
 		Temperature: sandwichTemp,
@@ -191,7 +191,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 			},
 		}
 		if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
-			return coreerr.E("cmd.runSandwich", "write record", err)
+			return core.Fail(core.E("cmd.runSandwich", "write record", err))
 		}
 
 		generated++
@@ -216,7 +216,7 @@ func runSandwich(cmd *cli.Command, args []string) error {
 		"avg_per_seed", (totalTokenTime / time.Duration(max(generated, 1))).Round(time.Second),
 	)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // buildSandwich constructs the signed prompt: KB preamble + seed prompt + LEK-1 kernel.

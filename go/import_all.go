@@ -19,7 +19,7 @@ type ImportConfig struct {
 }
 
 // ImportAll imports all LEM data into DuckDB from M3 and local files.
-func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
+func ImportAll(db *DB, cfg ImportConfig, w io.Writer) core.Result {
 	m3Host := cfg.M3Host
 	if m3Host == "" {
 		m3Host = "m3"
@@ -246,7 +246,7 @@ func ImportAll(db *DB, cfg ImportConfig, w io.Writer) error {
 	core.Print(w, "")
 	core.Print(w, "Database: %s", db.Path())
 
-	return nil
+	return core.Ok(nil)
 }
 
 func importTrainingFile(db *DB, path, source, split string) int {

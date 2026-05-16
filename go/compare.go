@@ -9,16 +9,16 @@ import (
 
 // RunCompare reads two score files and prints a comparison table for each
 // model showing Old, New, and Delta values for every metric.
-func RunCompare(oldPath, newPath string) error {
+func RunCompare(oldPath, newPath string) core.Result {
 	oldResult := ReadScorerOutput(oldPath)
 	if !oldResult.OK {
-		return core.E("ml.RunCompare", "read old file", oldResult.Value.(error))
+		return core.Fail(core.E("ml.RunCompare", "read old file", oldResult.Value.(error)))
 	}
 	oldOutput := oldResult.Value.(*ScorerOutput)
 
 	newResult := ReadScorerOutput(newPath)
 	if !newResult.OK {
-		return core.E("ml.RunCompare", "read new file", newResult.Value.(error))
+		return core.Fail(core.E("ml.RunCompare", "read new file", newResult.Value.(error)))
 	}
 	newOutput := newResult.Value.(*ScorerOutput)
 
@@ -64,5 +64,5 @@ func RunCompare(oldPath, newPath string) error {
 		}
 	}
 
-	return nil
+	return core.Ok(nil)
 }

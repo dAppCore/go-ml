@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"dappco.re/go"
+	"dappco.re/go/inference"
 )
 
 func newServiceForTest(t *core.T, opts Options) *Service {
@@ -45,6 +46,27 @@ func TestService_NewService_Ugly(t *core.T) {
 	svc := raw.(*Service)
 	core.AssertNotNil(t, svc)
 	core.AssertEqual(t, "heuristic", svc.Options().Suites)
+}
+
+func TestService_RegisterCore_Good(t *core.T) {
+	r := RegisterCore(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEqual(t, 4, svc.Options().Concurrency)
+}
+
+func TestService_RegisterCore_Bad(t *core.T) {
+	r := RegisterCore(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEqual(t, "all", svc.Options().Suites)
+}
+
+func TestService_RegisterCore_Ugly(t *core.T) {
+	r := RegisterCore(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEmpty(t, svc.Backends())
 }
 
 func TestService_Service_OnStartup_Good(t *core.T) {
@@ -194,6 +216,30 @@ func TestService_Service_BackendsIter_Ugly(t *core.T) {
 		break
 	}
 	core.AssertEqual(t, 1, count)
+}
+
+func TestService_Service_BackendCapabilities_Good(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	svc.RegisterBackend("local", &testBackend{name: "local", available: true})
+	report, ok := svc.BackendCapabilities("local")
+	core.AssertTrue(t, ok)
+	core.AssertEqual(t, "local", report.Runtime.Backend)
+	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
+}
+
+func TestService_Service_BackendCapabilities_Bad(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	report, ok := svc.BackendCapabilities("missing")
+	core.AssertFalse(t, ok)
+	core.AssertEqual(t, inference.CapabilityReport{}, report)
+}
+
+func TestService_Service_BackendCapabilities_Ugly(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	svc.RegisterBackend("nil", nil)
+	report, ok := svc.BackendCapabilities("nil")
+	core.AssertFalse(t, ok)
+	core.AssertEqual(t, inference.CapabilityReport{}, report)
 }
 
 func TestService_Service_Judge_Good(t *core.T) {

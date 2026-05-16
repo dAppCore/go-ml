@@ -56,6 +56,14 @@ func ExampleInferenceAdapter_Model() {
 	// ok
 }
 
+func ExampleInferenceAdapter_Capabilities() {
+	adapter := NewInferenceAdapter(&mockTextModel{modelType: "qwen3"}, "mlx")
+	report := adapter.Capabilities()
+	core.Println(report.Available, report.Runtime.Backend)
+	// Output:
+	// true mlx
+}
+
 func ExampleInferenceAdapter_InspectAttention() {
 	core.Println("ok")
 	// Output:

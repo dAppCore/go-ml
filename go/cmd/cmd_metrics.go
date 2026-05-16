@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -18,18 +17,18 @@ func addMetricsCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runMetrics", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runMetrics", "--db or LEM_DB required", nil))
 			}
 
 			db, result := store.OpenDuckDB(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runMetrics", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runMetrics", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-			return resultFromError(ml.PushMetrics(db, influx, nil))
+			return ml.PushMetrics(db, influx, nil)
 		},
 	})
 }

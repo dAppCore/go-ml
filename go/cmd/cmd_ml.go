@@ -119,38 +119,3 @@ func optFloat(opts core.Options, key string, fallback float64) float64 {
 	}
 	return v
 }
-
-// resultFromError packages Go errors and Core Results into a core.Result.
-//
-//	return resultFromError(run(ctx))
-func resultFromError(value any) core.Result {
-	switch typed := value.(type) {
-	case nil:
-		return core.Result{OK: true}
-	case core.Result:
-		if !typed.OK {
-			return typed
-		}
-		if err, ok := typed.Value.(error); ok && err != nil {
-			return core.Result{Value: err, OK: false}
-		}
-		return core.Result{OK: true, Value: typed.Value}
-	case error:
-		if typed != nil {
-			return core.Result{Value: typed, OK: false}
-		}
-		return core.Result{OK: true}
-	default:
-		return core.Result{Value: core.E("cmd.resultFromError", core.Sprintf("unsupported result type %T", value), nil), OK: false}
-	}
-}
-
-func errorFromResult(result core.Result) error {
-	if result.OK {
-		return nil
-	}
-	if err, ok := result.Value.(error); ok && err != nil {
-		return err
-	}
-	return core.NewError(result.Error())
-}

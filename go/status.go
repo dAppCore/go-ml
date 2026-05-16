@@ -29,7 +29,7 @@ type genRow struct {
 
 // PrintStatus queries InfluxDB for training and generation progress and writes
 // a formatted summary to w.
-func PrintStatus(influx *InfluxClient, w io.Writer) error {
+func PrintStatus(influx *InfluxClient, w io.Writer) core.Result {
 	var statusRows []map[string]any
 	if rRows := influx.QuerySQL(
 		"SELECT model, run_id, status, iteration, total_iters, pct FROM training_status ORDER BY time DESC LIMIT 10",
@@ -106,7 +106,7 @@ func PrintStatus(influx *InfluxClient, w io.Writer) error {
 		fprintf(w, "%s\n", "  (no data)")
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // dedupeTraining merges training status and loss rows, keeping only the first

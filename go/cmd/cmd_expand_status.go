@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
 
@@ -18,12 +17,12 @@ func addExpandStatusCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runExpandStatus", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runExpandStatus", "--db or LEM_DB required", nil))
 			}
 
 			db, result := store.OpenDuckDB(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runExpandStatus", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runExpandStatus", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
@@ -34,7 +33,7 @@ func addExpandStatusCommand(c *core.Core) {
 			total, pending, result := db.CountExpansionPrompts()
 			if !result.OK {
 				core.Print(nil, "  Expansion prompts:  not created (run: normalize)")
-				return core.Result{OK: true}
+				return core.Ok(nil)
 			}
 			core.Print(nil, "  Expansion prompts:  %d total, %d pending", total, pending)
 
@@ -76,7 +75,7 @@ func addExpandStatusCommand(c *core.Core) {
 				}
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

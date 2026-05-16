@@ -37,7 +37,7 @@ func addAgentCommand(c *core.Core) {
 			}
 
 			ml.RunAgentLoop(cfg)
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

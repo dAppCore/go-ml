@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -18,21 +17,21 @@ func addSeedInfluxCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runSeedInflux", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runSeedInflux", "--db or LEM_DB required", nil))
 			}
 
 			db, result := store.OpenDuckDB(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runSeedInflux", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runSeedInflux", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-			return resultFromError(ml.SeedInflux(db, influx, ml.SeedInfluxConfig{
+			return ml.SeedInflux(db, influx, ml.SeedInfluxConfig{
 				Force:     opts.Bool("force"),
 				BatchSize: optInt(opts, "batch-size", 500),
-			}, nil))
+			}, nil)
 		},
 	})
 }

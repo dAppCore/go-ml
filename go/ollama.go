@@ -29,10 +29,10 @@ var HFBaseModelMap = map[string]string{
 
 // ollamaUploadBlob uploads a local file to Ollama's blob store.
 // Returns the sha256 digest string (e.g. "sha256:abc123...").
-func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
+func ollamaUploadBlob(ollamaURL, filePath string) core.Result {
 	raw, err := coreio.Local.Read(filePath)
 	if err != nil {
-		return "", core.E("ml.ollamaUploadBlob", core.Sprintf("read %s", filePath), err)
+		return core.Fail(core.E("ml.ollamaUploadBlob", core.Sprintf("read %s", filePath), err))
 	}
 	data := []byte(raw)
 
@@ -44,7 +44,7 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 	headResp, err := client.Do(headReq)
 	if err == nil && headResp.StatusCode == http.StatusOK {
 		headResp.Body.Close()
-		return digest, nil
+		return core.Ok(digest)
 	}
 	if headResp != nil {
 		headResp.Body.Close()
@@ -52,13 +52,13 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 
 	req, err := http.NewRequest(http.MethodPost, ollamaURL+"/api/blobs/"+digest, core.NewBuffer(data))
 	if err != nil {
-		return "", core.E("ml.ollamaUploadBlob", "blob request", err)
+		return core.Fail(core.E("ml.ollamaUploadBlob", "blob request", err))
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", core.E("ml.ollamaUploadBlob", "blob upload", err)
+		return core.Fail(core.E("ml.ollamaUploadBlob", "blob upload", err))
 	}
 	defer resp.Body.Close()
 
@@ -68,26 +68,28 @@ func ollamaUploadBlob(ollamaURL, filePath string) (string, error) {
 		if rBody.OK {
 			body = rBody.Value.([]byte)
 		}
-		return "", core.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil)
+		return core.Fail(core.E("ml.ollamaUploadBlob", core.Sprintf("blob upload HTTP %d: %s", resp.StatusCode, string(body)), nil))
 	}
-	return digest, nil
+	return core.Ok(digest)
 }
 
 // OllamaCreateModel creates a temporary Ollama model with a LoRA adapter.
 // peftDir is a local directory containing adapter_model.safetensors and adapter_config.json.
-func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
+func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) core.Result {
 	sfPath := peftDir + "/adapter_model.safetensors"
 	cfgPath := peftDir + "/adapter_config.json"
 
-	sfDigest, err := ollamaUploadBlob(ollamaURL, sfPath)
-	if err != nil {
-		return core.E("ml.OllamaCreateModel", "upload adapter safetensors", err)
+	sfDigestResult := ollamaUploadBlob(ollamaURL, sfPath)
+	if !sfDigestResult.OK {
+		return core.Fail(core.E("ml.OllamaCreateModel", "upload adapter safetensors", sfDigestResult.Value.(error)))
 	}
+	sfDigest := sfDigestResult.Value.(string)
 
-	cfgDigest, err := ollamaUploadBlob(ollamaURL, cfgPath)
-	if err != nil {
-		return core.E("ml.OllamaCreateModel", "upload adapter config", err)
+	cfgDigestResult := ollamaUploadBlob(ollamaURL, cfgPath)
+	if !cfgDigestResult.OK {
+		return core.Fail(core.E("ml.OllamaCreateModel", "upload adapter config", cfgDigestResult.Value.(error)))
 	}
+	cfgDigest := cfgDigestResult.Value.(string)
 
 	reqBody := core.JSONMarshalString(map[string]any{
 		"model": modelName,
@@ -101,7 +103,7 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 	client := &http.Client{Timeout: 10 * time.Minute}
 	resp, err := client.Post(ollamaURL+"/api/create", "application/json", core.NewReader(reqBody))
 	if err != nil {
-		return core.E("ml.OllamaCreateModel", "ollama create", err)
+		return core.Fail(core.E("ml.OllamaCreateModel", "ollama create", err))
 	}
 	defer resp.Body.Close()
 
@@ -113,39 +115,39 @@ func OllamaCreateModel(ollamaURL, modelName, baseModel, peftDir string) error {
 			Error  string `json:"error"`
 		}
 		if r := core.JSONUnmarshalString(scanner.Text(), &status); !r.OK {
-			return core.E("ml.OllamaCreateModel", "ollama create decode", r.Value.(error))
+			return core.Fail(core.E("ml.OllamaCreateModel", "ollama create decode", r.Value.(error)))
 		}
 		if status.Error != "" {
-			return core.E("ml.OllamaCreateModel", core.Sprintf("ollama create: %s", status.Error), nil)
+			return core.Fail(core.E("ml.OllamaCreateModel", core.Sprintf("ollama create: %s", status.Error), nil))
 		}
 		if status.Status == "success" {
-			return nil
+			return core.Ok(nil)
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return core.E("ml.OllamaCreateModel", "ollama create decode", err)
+		return core.Fail(core.E("ml.OllamaCreateModel", "ollama create decode", err))
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return core.E("ml.OllamaCreateModel", core.Sprintf("ollama create: HTTP %d", resp.StatusCode), nil)
+		return core.Fail(core.E("ml.OllamaCreateModel", core.Sprintf("ollama create: HTTP %d", resp.StatusCode), nil))
 	}
-	return nil
+	return core.Ok(nil)
 }
 
 // OllamaDeleteModel removes a temporary Ollama model.
-func OllamaDeleteModel(ollamaURL, modelName string) error {
+func OllamaDeleteModel(ollamaURL, modelName string) core.Result {
 	body := core.JSONMarshalString(map[string]string{"model": modelName})
 
 	req, err := http.NewRequest(http.MethodDelete, ollamaURL+"/api/delete", core.NewReader(body))
 	if err != nil {
-		return core.E("ml.OllamaDeleteModel", "ollama delete request", err)
+		return core.Fail(core.E("ml.OllamaDeleteModel", "ollama delete request", err))
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return core.E("ml.OllamaDeleteModel", "ollama delete", err)
+		return core.Fail(core.E("ml.OllamaDeleteModel", "ollama delete", err))
 	}
 	defer resp.Body.Close()
 
@@ -155,7 +157,7 @@ func OllamaDeleteModel(ollamaURL, modelName string) error {
 		if rBody.OK {
 			respBody = rBody.Value.([]byte)
 		}
-		return core.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil)
+		return core.Fail(core.E("ml.OllamaDeleteModel", core.Sprintf("ollama delete %d: %s", resp.StatusCode, string(respBody)), nil))
 	}
-	return nil
+	return core.Ok(nil)
 }

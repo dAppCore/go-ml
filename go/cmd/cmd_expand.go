@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -20,10 +19,10 @@ func addExpandCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if modelName == "" {
-				return resultFromError(coreerr.E("cmd.runExpand", "--model is required", nil))
+				return core.Fail(core.E("cmd.runExpand", "--model is required", nil))
 			}
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runExpand", "--db or LEM_DB env is required", nil))
+				return core.Fail(core.E("cmd.runExpand", "--db or LEM_DB env is required", nil))
 			}
 
 			worker := opts.String("worker")
@@ -36,13 +35,13 @@ func addExpandCommand(c *core.Core) {
 
 			db, result := store.OpenDuckDBReadWrite(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runExpand", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runExpand", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
 			rows, result := db.QueryExpansionPrompts("pending", limit)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runExpand", "query expansion_prompts", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runExpand", "query expansion_prompts", result.Value.(error)))
 			}
 			core.Print(nil, "Loaded %d pending prompts from %s", len(rows), dbPath)
 
@@ -63,7 +62,7 @@ func addExpandCommand(c *core.Core) {
 			backend := ml.NewHTTPBackend(apiURL, modelName)
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-			return resultFromError(ml.ExpandPrompts(ctx, backend, influx, prompts, modelName, worker, output, dryRun, limit))
+			return ml.ExpandPrompts(ctx, backend, influx, prompts, modelName, worker, output, dryRun, limit)
 		},
 	})
 }

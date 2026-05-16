@@ -5,7 +5,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -20,7 +19,7 @@ func addProbeCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if apiURL == "" {
-				return resultFromError(coreerr.E("cmd.runProbe", "--api-url is required", nil))
+				return core.Fail(core.E("cmd.runProbe", "--api-url is required", nil))
 			}
 
 			model := modelName
@@ -48,13 +47,13 @@ func addProbeCommand(c *core.Core) {
 
 			if output != "" {
 				if err := coreio.Local.Write(output, core.JSONMarshalString(results)); err != nil {
-					return resultFromError(coreerr.E("cmd.runProbe", "write output", err))
+					return core.Fail(core.E("cmd.runProbe", "write output", err))
 				}
 				core.Print(nil, "")
 				core.Print(nil, "Results written to %s", output)
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

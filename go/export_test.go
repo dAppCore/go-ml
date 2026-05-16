@@ -20,11 +20,15 @@ func TestExportValidatePercentagesAcceptsValidSplitsScenario(t *core.T) {
 func TestExportValidatePercentagesWrongSumBadScenario(t *core.T) {
 	err := ValidatePercentages(50, 20, 10)
 	assertResultError(t, err, "sum to 100")
+	core.AssertFalse(t, err.OK)
+	core.AssertError(t, err.Value.(error))
 }
 
 func TestExportValidatePercentagesNegativeBadScenario(t *core.T) {
 	err := ValidatePercentages(-10, 60, 50)
 	assertResultError(t, err, "non-negative")
+	core.AssertFalse(t, err.OK)
+	core.AssertError(t, err.Value.(error))
 }
 
 // ---------------------------------------------------------------------------

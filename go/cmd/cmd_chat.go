@@ -12,7 +12,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -57,20 +56,20 @@ func init() {
 	chatCmd.MarkFlagRequired("model-path")
 }
 
-func runChat(cmd *cli.Command, args []string) error {
+func runChat(cmd *cli.Command, args []string) core.Result {
 	// Load optional KB and kernel for sandwich signing
 	var kbText, kernelText string
 	if chatKB != "" {
 		data, err := coreio.Local.Read(chatKB)
 		if err != nil {
-			return coreerr.E("cmd.runChat", "read KB", err)
+			return core.Fail(core.E("cmd.runChat", "read KB", err))
 		}
 		kbText = data
 	}
 	if chatKernel != "" {
 		data, err := coreio.Local.Read(chatKernel)
 		if err != nil {
-			return coreerr.E("cmd.runChat", "read kernel", err)
+			return core.Fail(core.E("cmd.runChat", "read kernel", err))
 		}
 		kernelText = data
 	}
@@ -78,10 +77,11 @@ func runChat(cmd *cli.Command, args []string) error {
 
 	// Load model
 	slog.Info("chat: loading model", "model_path", chatModelPath)
-	backend, err := ml.NewMLXBackend(chatModelPath)
-	if err != nil {
-		return coreerr.E("cmd.runChat", "load model", err)
+	backendResult := ml.NewMLXBackend(chatModelPath)
+	if !backendResult.OK {
+		return core.Fail(core.E("cmd.runChat", "load model", backendResult.Value.(error)))
 	}
+	backend := backendResult.Value.(*ml.InferenceAdapter)
 
 	opts := ml.GenOpts{
 		Temperature: chatTemp,
@@ -111,8 +111,8 @@ func runChat(cmd *cli.Command, args []string) error {
 	scanner.Buffer(make([]byte, 1<<20), 1<<20) // 1MB input buffer
 
 	for {
-		if err := writeChatText(out, "you> "); err != nil {
-			return coreerr.E("cmd.runChat", "write prompt", err)
+		if result := writeChatText(out, "you> "); !result.OK {
+			return core.Fail(core.E("cmd.runChat", "write prompt", result.Value.(error)))
 		}
 		if !scanner.Scan() {
 			// EOF (Ctrl+D)
@@ -210,14 +210,14 @@ func runChat(cmd *cli.Command, args []string) error {
 
 		// Generate response
 		genStart := time.Now()
-		if err := writeChatText(out, "\nassistant> "); err != nil {
-			return coreerr.E("cmd.runChat", "write assistant prompt", err)
+		if result := writeChatText(out, "\nassistant> "); !result.OK {
+			return core.Fail(core.E("cmd.runChat", "write assistant prompt", result.Value.(error)))
 		}
 
 		response := core.NewBuilder()
 		err := backend.ChatStream(cmd.Context(), history, opts, func(token string) error {
-			if err := writeChatText(out, token); err != nil {
-				return err
+			if result := writeChatText(out, token); !result.OK {
+				return result.Value.(error)
 			}
 			_, _ = response.WriteString(token)
 			return nil
@@ -256,20 +256,20 @@ done:
 		// Include current conversation if not already saved
 		savedConversations = append(savedConversations, history)
 
-		if err := writeChatJSONL(chatOutput, savedConversations, sandwich, kbText, kernelText); err != nil {
-			return coreerr.E("cmd.runChat", "save conversation", err)
+		if result := writeChatJSONL(chatOutput, savedConversations, sandwich, kbText, kernelText); !result.OK {
+			return core.Fail(core.E("cmd.runChat", "save conversation", result.Value.(error)))
 		}
 	}
 
-	return nil
+	return core.Ok(nil)
 }
 
 // writeChatJSONL writes conversations to JSONL file.
 // If sandwich is true, wraps user messages with KB + kernel signing.
-func writeChatJSONL(path string, conversations [][]ml.Message, sandwich bool, kb, kernel string) error {
+func writeChatJSONL(path string, conversations [][]ml.Message, sandwich bool, kb, kernel string) core.Result {
 	f, err := coreio.Local.Append(path)
 	if err != nil {
-		return err
+		return core.Fail(err)
 	}
 	defer f.Close()
 	written := 0
@@ -298,7 +298,7 @@ func writeChatJSONL(path string, conversations [][]ml.Message, sandwich bool, kb
 		}{Messages: messages}
 
 		if _, err := io.WriteString(f, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
-			return err
+			return core.Fail(err)
 		}
 		written++
 	}
@@ -308,7 +308,7 @@ func writeChatJSONL(path string, conversations [][]ml.Message, sandwich bool, kb
 		"conversations", written,
 		"sandwich", sandwich,
 	)
-	return nil
+	return core.Ok(nil)
 }
 
 // applySandwichSigning wraps user messages with KB preamble and kernel postfix.
@@ -335,7 +335,7 @@ func chatFields(input string) []string {
 	return fieldsStr(input)
 }
 
-func writeChatText(w io.Writer, text string) error {
+func writeChatText(w io.Writer, text string) core.Result {
 	_, err := io.WriteString(w, text)
-	return err
+	return core.ResultOf(nil, err)
 }

@@ -30,6 +30,8 @@ func TestDb_OpenDB_Good(t *core.T) {
 func TestDb_OpenDB_Bad(t *core.T) {
 	r := OpenDB(core.JoinPath(t.TempDir(), "missing.duckdb"))
 	assertResultError(t, r)
+	core.AssertFalse(t, r.OK)
+	core.AssertError(t, r.Value.(error))
 }
 
 func TestDb_OpenDB_Ugly(t *core.T) {
@@ -52,6 +54,8 @@ func TestDb_OpenDBReadWrite_Good(t *core.T) {
 func TestDb_OpenDBReadWrite_Bad(t *core.T) {
 	r := OpenDBReadWrite(core.JoinPath(t.TempDir(), "missing", "rw.duckdb"))
 	assertResultError(t, r)
+	core.AssertFalse(t, r.OK)
+	core.AssertError(t, r.Value.(error))
 }
 
 func TestDb_OpenDBReadWrite_Ugly(t *core.T) {

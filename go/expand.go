@@ -21,10 +21,10 @@ type ExpandOutput struct {
 
 // GetCompletedIDs queries InfluxDB for prompt IDs that have already been
 // processed in the expansion_gen measurement.
-func GetCompletedIDs(influx *InfluxClient) (map[string]bool, error) {
+func GetCompletedIDs(influx *InfluxClient) core.Result {
 	rRows := influx.QuerySQL("SELECT DISTINCT seed_id FROM expansion_gen")
 	if !rRows.OK {
-		return nil, core.E("ml.GetCompletedIDs", "query expansion_gen", rRows.Value.(error))
+		return core.Fail(core.E("ml.GetCompletedIDs", "query expansion_gen", rRows.Value.(error)))
 	}
 	rows := rRows.Value.([]map[string]any)
 
@@ -36,7 +36,7 @@ func GetCompletedIDs(influx *InfluxClient) (map[string]bool, error) {
 		}
 	}
 
-	return ids, nil
+	return core.Ok(ids)
 }
 
 // ExpandPrompts generates responses for expansion prompts using the given
@@ -44,15 +44,16 @@ func GetCompletedIDs(influx *InfluxClient) (map[string]bool, error) {
 // InfluxDB) are skipped. API errors for individual prompts are logged and
 // skipped. InfluxDB reporting is best-effort.
 func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, prompts []Response,
-	modelName, worker, outputDir string, dryRun bool, limit int) error {
+	modelName, worker, outputDir string, dryRun bool, limit int) core.Result {
 
 	remaining := prompts
 
 	// Check InfluxDB for already-completed IDs.
-	completed, err := GetCompletedIDs(influx)
-	if err != nil {
-		core.Print(nil, "warning: could not check completed IDs: %v", err)
+	completedResult := GetCompletedIDs(influx)
+	if !completedResult.OK {
+		core.Print(nil, "warning: could not check completed IDs: %v", completedResult.Value)
 	} else {
+		completed := completedResult.Value.(map[string]bool)
 		remaining = nil
 		for _, p := range prompts {
 			if !completed[p.ID] {
@@ -72,7 +73,7 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 	if len(remaining) == 0 {
 		core.Print(nil, "all prompts already completed, nothing to do")
-		return nil
+		return core.Ok(nil)
 	}
 
 	if dryRun {
@@ -84,13 +85,13 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 			}
 			core.Print(nil, "  %s (domain: %s)", p.ID, p.Domain)
 		}
-		return nil
+		return core.Ok(nil)
 	}
 
 	outputPath := core.JoinPath(outputDir, core.Sprintf("expand-%s.jsonl", worker))
 	f, err := coreio.Local.Append(outputPath)
 	if err != nil {
-		return core.E("ml.ExpandPrompts", "open output file", err)
+		return core.Fail(core.E("ml.ExpandPrompts", "open output file", err))
 	}
 	defer f.Close()
 
@@ -145,5 +146,5 @@ func ExpandPrompts(ctx context.Context, backend Backend, influx *InfluxClient, p
 
 	core.Print(nil, "expand complete: %d/%d prompts generated, output: %s", completedCount, total, outputPath)
 
-	return nil
+	return core.Ok(nil)
 }

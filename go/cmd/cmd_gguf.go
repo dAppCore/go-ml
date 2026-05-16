@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -20,14 +19,14 @@ func addGGUFCommand(c *core.Core) {
 			arch := optStringOr(opts, "arch", "gemma3")
 
 			if input == "" || cfgPath == "" || output == "" {
-				return resultFromError(coreerr.E("cmd.runGGUF", "--input, --config, and --output are required", nil))
+				return core.Fail(core.E("cmd.runGGUF", "--input, --config, and --output are required", nil))
 			}
 
-			if err := ml.ConvertMLXtoGGUFLoRA(input, cfgPath, output, arch); err != nil {
-				return resultFromError(coreerr.E("cmd.runGGUF", "convert to GGUF", err))
+			if result := ml.ConvertMLXtoGGUFLoRA(input, cfgPath, output, arch); !result.OK {
+				return core.Fail(core.E("cmd.runGGUF", "convert to GGUF", result.Value.(error)))
 			}
 			core.Print(nil, "GGUF LoRA adapter written to %s", output)
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

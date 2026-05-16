@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -28,7 +27,7 @@ func addEvaluateCommand(c *core.Core) {
 
 			input := opts.String("input")
 			if input == "" {
-				return resultFromError(coreerr.E("cmd.runEvaluate", "--input is required", nil))
+				return core.Fail(core.E("cmd.runEvaluate", "--input is required", nil))
 			}
 			output := opts.String("output")
 			suites := opts.String("suites")
@@ -39,13 +38,14 @@ func addEvaluateCommand(c *core.Core) {
 
 			raw, err := coreio.Local.Read(input)
 			if err != nil {
-				return resultFromError(coreerr.E("cmd.runEvaluate", "read input", err))
+				return core.Fail(core.E("cmd.runEvaluate", "read input", err))
 			}
 
-			responses, err := decodeResponsesJSONL(string(raw))
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runEvaluate", "decode jsonl", err))
+			responsesResult := decodeResponsesJSONL(string(raw))
+			if !responsesResult.OK {
+				return core.Fail(core.E("cmd.runEvaluate", "decode jsonl", responsesResult.Value.(error)))
 			}
+			responses := responsesResult.Value.([]ml.Response)
 
 			// Judge is optional — heuristic/exact suites need no judge.
 			var judge *ml.Judge
@@ -70,22 +70,22 @@ func addEvaluateCommand(c *core.Core) {
 
 			if output != "" {
 				if err := coreio.Local.Write(output, core.JSONMarshalString(results)); err != nil {
-					return resultFromError(coreerr.E("cmd.runEvaluate", "write output", err))
+					return core.Fail(core.E("cmd.runEvaluate", "write output", err))
 				}
 				core.Print(nil, "Results written to %s", output)
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }
 
 // decodeResponsesJSONL parses one ml.Response per non-empty line.
 // Blank lines and lines beginning with '#' are skipped so the file can
-// contain comments. Returns a slice plus any fatal parse error.
+// contain comments. Returns a CoreGO result with []ml.Response on success.
 //
-//	responses, err := decodeResponsesJSONL(string(fileBytes))
-func decodeResponsesJSONL(text string) ([]ml.Response, error) {
+//	result := decodeResponsesJSONL(string(fileBytes))
+func decodeResponsesJSONL(text string) core.Result {
 	var out []ml.Response
 	for _, line := range core.Split(text, "\n") {
 		trim := core.Trim(line)
@@ -94,12 +94,12 @@ func decodeResponsesJSONL(text string) ([]ml.Response, error) {
 		}
 		var r ml.Response
 		if res := core.JSONUnmarshalString(trim, &r); !res.OK {
-			return nil, coreerr.E("cmd.decodeResponsesJSONL",
-				core.Sprintf("parse line %q", truncateLine(trim, 120)), res.Value.(error))
+			return core.Fail(core.E("cmd.decodeResponsesJSONL",
+				core.Sprintf("parse line %q", truncateLine(trim, 120)), res.Value.(error)))
 		}
 		out = append(out, r)
 	}
-	return out, nil
+	return core.Ok(out)
 }
 
 // truncateLine keeps error messages tidy when the offending JSONL row is huge.

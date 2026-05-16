@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -20,14 +19,14 @@ func addConvertCommand(c *core.Core) {
 			baseModel := opts.String("base-model")
 
 			if input == "" || cfgPath == "" || outputDir == "" {
-				return resultFromError(coreerr.E("cmd.runConvert", "--input, --config, and --output-dir are required", nil))
+				return core.Fail(core.E("cmd.runConvert", "--input, --config, and --output-dir are required", nil))
 			}
 
-			if err := ml.ConvertMLXtoPEFT(input, cfgPath, outputDir, baseModel); err != nil {
-				return resultFromError(coreerr.E("cmd.runConvert", "convert to PEFT", err))
+			if result := ml.ConvertMLXtoPEFT(input, cfgPath, outputDir, baseModel); !result.OK {
+				return core.Fail(core.E("cmd.runConvert", "convert to PEFT", result.Value.(error)))
 			}
 			core.Print(nil, "PEFT adapter written to %s", outputDir)
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

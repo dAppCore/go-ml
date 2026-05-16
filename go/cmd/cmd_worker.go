@@ -47,7 +47,7 @@ func addWorkerCommand(c *core.Core) {
 			}
 
 			ml.RunWorkerLoop(cfg)
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

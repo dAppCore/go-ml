@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -18,14 +17,14 @@ func addIngestCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if modelName == "" {
-				return resultFromError(coreerr.E("cmd.runIngest", "--model is required", nil))
+				return core.Fail(core.E("cmd.runIngest", "--model is required", nil))
 			}
 
 			content := opts.String("content")
 			capability := opts.String("capability")
 			trainingLog := opts.String("training-log")
 			if content == "" && capability == "" && trainingLog == "" {
-				return resultFromError(coreerr.E("cmd.runIngest", "at least one of --content, --capability, or --training-log is required", nil))
+				return core.Fail(core.E("cmd.runIngest", "at least one of --content, --capability, or --training-log is required", nil))
 			}
 
 			influx := ml.NewInfluxClient(influxURL, influxDB)
@@ -39,7 +38,7 @@ func addIngestCommand(c *core.Core) {
 				BatchSize:      optInt(opts, "batch-size", 100),
 			}
 
-			return resultFromError(ml.Ingest(influx, cfg, nil))
+			return ml.Ingest(influx, cfg, nil)
 		},
 	})
 }

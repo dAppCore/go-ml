@@ -10,7 +10,7 @@ import (
 	"dappco.re/go/inference"
 )
 
-// HTTPTextModel wraps an HTTPBackend to satisfy the inference.TextModel interface.
+// HTTPTextModel wraps an HTTPBackend with CoreGo Result-returning helpers.
 // This enables cross-platform consistency — HTTP backends can be used anywhere
 // that expects a go-inference TextModel (e.g. go-ai, go-i18n).
 //
@@ -20,9 +20,6 @@ type HTTPTextModel struct {
 	http    *HTTPBackend
 	lastErr error
 }
-
-// Compile-time check: HTTPTextModel implements inference.TextModel.
-var _ inference.TextModel = (*HTTPTextModel)(nil)
 
 // NewHTTPTextModel wraps an HTTPBackend as an inference.TextModel.
 func NewHTTPTextModel(backend *HTTPBackend) *HTTPTextModel {
@@ -72,12 +69,12 @@ func (m *HTTPTextModel) Chat(ctx context.Context, messages []inference.Message, 
 }
 
 // Classify is not supported by HTTP backends. Returns an error.
-func (m *HTTPTextModel) Classify(_ context.Context, _ []string, _ ...inference.GenerateOption) ([]inference.ClassifyResult, error) {
-	return nil, core.E("ml.HTTPTextModel.Classify", "classify not supported by HTTP backend", nil)
+func (m *HTTPTextModel) Classify(_ context.Context, _ []string, _ ...inference.GenerateOption) core.Result {
+	return core.Fail(core.E("ml.HTTPTextModel.Classify", "classify not supported by HTTP backend", nil))
 }
 
 // BatchGenerate processes multiple prompts sequentially via Generate.
-func (m *HTTPTextModel) BatchGenerate(ctx context.Context, prompts []string, opts ...inference.GenerateOption) ([]inference.BatchResult, error) {
+func (m *HTTPTextModel) BatchGenerate(ctx context.Context, prompts []string, opts ...inference.GenerateOption) core.Result {
 	results := make([]inference.BatchResult, len(prompts))
 	for i, prompt := range prompts {
 		var tokens []inference.Token
@@ -89,7 +86,7 @@ func (m *HTTPTextModel) BatchGenerate(ctx context.Context, prompts []string, opt
 			Err:    m.lastErr,
 		}
 	}
-	return results, nil
+	return core.Ok(results)
 }
 
 // ModelType returns the configured model name from the underlying HTTPBackend.
@@ -112,13 +109,13 @@ func (m *HTTPTextModel) Metrics() inference.GenerateMetrics {
 }
 
 // Err returns the error from the last Generate or Chat call, if any.
-func (m *HTTPTextModel) Err() error {
-	return m.lastErr
+func (m *HTTPTextModel) Err() core.Result {
+	return core.ResultOf(nil, m.lastErr)
 }
 
 // Close is a no-op for HTTP backends — there are no resources to release.
-func (m *HTTPTextModel) Close() error {
-	return nil
+func (m *HTTPTextModel) Close() core.Result {
+	return core.Ok(nil)
 }
 
 // LlamaTextModel wraps a LlamaBackend as an inference.TextModel. It embeds
@@ -128,9 +125,6 @@ type LlamaTextModel struct {
 	*HTTPTextModel
 	llama *LlamaBackend
 }
-
-// Compile-time check: LlamaTextModel implements inference.TextModel.
-var _ inference.TextModel = (*LlamaTextModel)(nil)
 
 // NewLlamaTextModel wraps a LlamaBackend as an inference.TextModel.
 func NewLlamaTextModel(backend *LlamaBackend) *LlamaTextModel {
@@ -146,10 +140,6 @@ func (m *LlamaTextModel) ModelType() string {
 }
 
 // Close stops the managed llama-server process.
-func (m *LlamaTextModel) Close() error {
-	r := m.llama.Stop()
-	if !r.OK {
-		return r.Value.(error)
-	}
-	return nil
+func (m *LlamaTextModel) Close() core.Result {
+	return m.llama.Stop()
 }

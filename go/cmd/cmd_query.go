@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
 
@@ -23,17 +22,17 @@ func addQueryCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runQuery", "--db or LEM_DB env is required", nil))
+				return core.Fail(core.E("cmd.runQuery", "--db or LEM_DB env is required", nil))
 			}
 
 			sql := opts.String("_arg")
 			if sql == "" {
-				return resultFromError(coreerr.E("cmd.runQuery", "SQL argument required", nil))
+				return core.Fail(core.E("cmd.runQuery", "SQL argument required", nil))
 			}
 
 			db, result := store.OpenDuckDB(dbPath)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runQuery", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runQuery", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
@@ -46,19 +45,19 @@ func addQueryCommand(c *core.Core) {
 
 			rows, result := db.QueryRows(sql)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runQuery", "query", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runQuery", "query", result.Value.(error)))
 			}
 
 			jsonMode := opts.Bool("json")
 			if jsonMode {
 				core.Print(nil, "%s", core.JSONMarshalString(rows))
 				core.Print(nil, "(%d rows)", len(rows))
-				return core.Result{OK: true}
+				return core.Ok(nil)
 			}
 
 			if len(rows) == 0 {
 				core.Print(nil, "(0 rows)")
-				return core.Result{OK: true}
+				return core.Ok(nil)
 			}
 
 			// Collect column names in stable order from first row.
@@ -118,7 +117,7 @@ func addQueryCommand(c *core.Core) {
 
 			core.Print(nil, "")
 			core.Print(nil, "(%d rows)", len(rows))
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

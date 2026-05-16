@@ -24,10 +24,10 @@ type tableDetail struct {
 
 // PrintInventory queries all known DuckDB tables and prints a formatted
 // inventory with row counts, detail breakdowns, and a grand total.
-func PrintInventory(db *DB, w io.Writer) error {
+func PrintInventory(db *DB, w io.Writer) core.Result {
 	rCounts := db.TableCounts()
 	if !rCounts.OK {
-		return core.E("ml.PrintInventory", "table counts", rCounts.Value.(error))
+		return core.Fail(core.E("ml.PrintInventory", "table counts", rCounts.Value.(error)))
 	}
 	counts := rCounts.Value.(map[string]int)
 
@@ -54,7 +54,7 @@ func PrintInventory(db *DB, w io.Writer) error {
 	core.Print(w, "%s", repeatString("-", 52))
 	core.Print(w, "  %-24s %8d rows", "TOTAL", grand)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // gatherDetails runs per-table detail queries and returns annotations keyed

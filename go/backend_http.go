@@ -10,9 +10,6 @@ import (
 	coreio "dappco.re/go/io"
 )
 
-// Compile-time check: HTTPBackend satisfies inference.Backend (spec §2.1).
-var _ inference.Backend = (*HTTPBackend)(nil)
-
 // HTTPBackend talks to an OpenAI-compatible chat completions API.
 type HTTPBackend struct {
 	baseURL    string
@@ -127,12 +124,12 @@ func (b *HTTPBackend) SetMaxTokens(n int) { b.maxTokens = n }
 // a remote server which already has the model loaded. Spec §2.3.
 //
 //	backend := ml.NewHTTPBackend("http://localhost:11434", "llama2")
-//	model, _ := backend.LoadModel("dummy")
+//	result := backend.LoadModel("dummy")
 //	for tok := range model.Generate(ctx, "hello") {
 //	    fmt.Print(tok.Text)
 //	}
-func (b *HTTPBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
-	return NewHTTPTextModel(b), nil
+func (b *HTTPBackend) LoadModel(_ string, _ ...inference.LoadOption) core.Result {
+	return core.Ok(NewHTTPTextModel(b))
 }
 
 // Generate sends a single prompt and returns the response.

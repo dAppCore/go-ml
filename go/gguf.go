@@ -23,10 +23,11 @@ type DiscoveredModel = inference.DiscoveredModel
 
 // ReadGGUFInfo reads GGUF header metadata from a model file or directory.
 //
-//	info, err := ml.ReadGGUFInfo("/models/gemma-3-1b.gguf")
-//	// info.Architecture == "gemma3", info.NumLayers, info.QuantBits
-func ReadGGUFInfo(modelPath string) (GGUFInfo, error) {
-	return inference.ReadGGUFInfo(modelPath)
+//	r := ml.ReadGGUFInfo("/models/gemma-3-1b.gguf")
+//	if !r.OK { return r }
+//	info := r.Value.(ml.GGUFInfo)
+func ReadGGUFInfo(modelPath string) core.Result {
+	return core.ResultOf(inference.ReadGGUFInfo(modelPath))
 }
 
 // DiscoverModels walks a directory and returns all loadable models found
@@ -90,10 +91,10 @@ var mlxLoraKeyRe = regexp.MustCompile(`^model\.layers\.(\d+)\.(.*?)\.(lora_[ab])
 // MLXTensorToGGUF converts an MLX LoRA tensor name to GGUF LoRA tensor name.
 // Input:  "model.layers.0.self_attn.q_proj.lora_a"
 // Output: "blk.0.attn_q.weight.lora_a"
-func MLXTensorToGGUF(mlxName string) (string, error) {
+func MLXTensorToGGUF(mlxName string) core.Result {
 	m := mlxLoraKeyRe.FindStringSubmatch(mlxName)
 	if m == nil {
-		return "", core.E("ml.MLXTensorToGGUF", core.Sprintf("unrecognised MLX LoRA key: %s", mlxName), nil)
+		return core.Fail(core.E("ml.MLXTensorToGGUF", core.Sprintf("unrecognised MLX LoRA key: %s", mlxName), nil))
 	}
 
 	layerNum := m[1]
@@ -102,31 +103,31 @@ func MLXTensorToGGUF(mlxName string) (string, error) {
 
 	ggufModule, ok := gemma3ModuleMap[module]
 	if !ok {
-		return "", core.E("ml.MLXTensorToGGUF", core.Sprintf("unknown module %q in %s", module, mlxName), nil)
+		return core.Fail(core.E("ml.MLXTensorToGGUF", core.Sprintf("unknown module %q in %s", module, mlxName), nil))
 	}
 
-	return core.Sprintf("blk.%s.%s.weight.%s", layerNum, ggufModule, loraSuffix), nil
+	return core.Ok(core.Sprintf("blk.%s.%s.weight.%s", layerNum, ggufModule, loraSuffix))
 }
 
 // SafetensorsDtypeToGGML maps safetensors dtype strings to GGML types.
-func SafetensorsDtypeToGGML(dtype string) (uint32, error) {
+func SafetensorsDtypeToGGML(dtype string) core.Result {
 	switch dtype {
 	case "F32":
-		return ggmlTypeF32, nil
+		return core.Ok(uint32(ggmlTypeF32))
 	case "F16":
-		return ggmlTypeF16, nil
+		return core.Ok(uint32(ggmlTypeF16))
 	case "BF16":
-		return ggmlTypeBF16, nil
+		return core.Ok(uint32(ggmlTypeBF16))
 	default:
-		return 0, core.E("ml.SafetensorsDtypeToGGML", core.Sprintf("unsupported dtype %q for GGUF", dtype), nil)
+		return core.Fail(core.E("ml.SafetensorsDtypeToGGML", core.Sprintf("unsupported dtype %q for GGUF", dtype), nil))
 	}
 }
 
 // ConvertMLXtoGGUFLoRA converts an MLX LoRA adapter to GGUF LoRA format.
-func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture string) error {
+func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture string) core.Result {
 	cfgData, err := coreio.Local.Read(configPath)
 	if err != nil {
-		return core.E("ml.ConvertMLXtoGGUFLoRA", "read config", err)
+		return core.Fail(core.E("ml.ConvertMLXtoGGUFLoRA", "read config", err))
 	}
 
 	var mlxConfig struct {
@@ -136,7 +137,7 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 		} `json:"lora_parameters"`
 	}
 	if r := core.JSONUnmarshalString(cfgData, &mlxConfig); !r.OK {
-		return core.E("ml.ConvertMLXtoGGUFLoRA", "parse config", r.Value.(error))
+		return core.Fail(core.E("ml.ConvertMLXtoGGUFLoRA", "parse config", r.Value.(error)))
 	}
 
 	rank := mlxConfig.LoraParameters.Rank
@@ -149,23 +150,28 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 	}
 	loraAlpha := float32(math.Round(scale * float64(rank)))
 
-	tensors, tensorData, err := ReadSafetensors(safetensorsPath)
-	if err != nil {
-		return core.E("ml.ConvertMLXtoGGUFLoRA", "read safetensors", err)
+	safetensorsResult := ReadSafetensors(safetensorsPath)
+	if !safetensorsResult.OK {
+		return core.Fail(core.E("ml.ConvertMLXtoGGUFLoRA", "read safetensors", safetensorsResult.Value.(error)))
 	}
+	loaded := safetensorsResult.Value.(SafetensorsData)
+	tensors := loaded.Tensors
+	tensorData := loaded.Data
 	core.Print(nil, "loaded %d tensors from %s", len(tensors), safetensorsPath)
 
 	var ggufTensors []ggufTensor
 	for mlxKey, info := range tensors {
-		ggufName, err := MLXTensorToGGUF(mlxKey)
-		if err != nil {
-			return err
+		ggufNameResult := MLXTensorToGGUF(mlxKey)
+		if !ggufNameResult.OK {
+			return ggufNameResult
 		}
+		ggufName := ggufNameResult.Value.(string)
 
-		ggmlType, err := SafetensorsDtypeToGGML(info.Dtype)
-		if err != nil {
-			return core.E("ml.ConvertMLXtoGGUFLoRA", core.Sprintf("tensor %s", mlxKey), err)
+		ggmlTypeResult := SafetensorsDtypeToGGML(info.Dtype)
+		if !ggmlTypeResult.OK {
+			return core.Fail(core.E("ml.ConvertMLXtoGGUFLoRA", core.Sprintf("tensor %s", mlxKey), ggmlTypeResult.Value.(error)))
 		}
+		ggmlType := ggmlTypeResult.Value.(uint32)
 
 		data := GetTensorData(info, tensorData)
 
@@ -210,19 +216,19 @@ func ConvertMLXtoGGUFLoRA(safetensorsPath, configPath, outputPath, architecture 
 		{key: "adapter.lora.alpha", valueType: ggufTypeFloat32, value: loraAlpha},
 	}
 
-	if err := writeGGUF(outputPath, metadata, ggufTensors); err != nil {
-		return core.E("ml.ConvertMLXtoGGUFLoRA", "write GGUF", err)
+	if result := writeGGUF(outputPath, metadata, ggufTensors); !result.OK {
+		return core.Fail(core.E("ml.ConvertMLXtoGGUFLoRA", "write GGUF", result.Value.(error)))
 	}
 
 	core.Print(nil, "wrote GGUF LoRA: %s (%d tensors, alpha=%.0f)", outputPath, len(ggufTensors), loraAlpha)
-	return nil
+	return core.Ok(nil)
 }
 
 // writeGGUF writes a GGUF v3 file.
-func writeGGUF(path string, metadata []ggufMetadata, tensors []ggufTensor) error {
+func writeGGUF(path string, metadata []ggufMetadata, tensors []ggufTensor) core.Result {
 	f, err := coreio.Local.Create(path)
 	if err != nil {
-		return err
+		return core.Fail(err)
 	}
 	defer f.Close()
 
@@ -275,7 +281,7 @@ func writeGGUF(path string, metadata []ggufMetadata, tensors []ggufTensor) error
 		}
 	}
 
-	return w.err
+	return core.ResultOf(nil, w.err)
 }
 
 // ggufWriter tracks position and accumulates errors.
@@ -349,7 +355,7 @@ func ModelTagToGGUFArch(modelTag string) string {
 }
 
 // GGUFModelBlobPath returns the path to the GGUF model blob in Ollama's store.
-func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
+func GGUFModelBlobPath(ollamaModelsDir, modelName string) core.Result {
 	parts := core.SplitN(modelName, ":", 2)
 	family := parts[0]
 	tag := "latest"
@@ -360,7 +366,7 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 	manifestPath := core.Sprintf("%s/manifests/registry.ollama.ai/library/%s/%s", ollamaModelsDir, family, tag)
 	data, err := coreio.Local.Read(manifestPath)
 	if err != nil {
-		return "", core.E("ml.GGUFModelBlobPath", core.Sprintf("read manifest %s", manifestPath), err)
+		return core.Fail(core.E("ml.GGUFModelBlobPath", core.Sprintf("read manifest %s", manifestPath), err))
 	}
 
 	var manifest struct {
@@ -370,25 +376,25 @@ func GGUFModelBlobPath(ollamaModelsDir, modelName string) (string, error) {
 		} `json:"layers"`
 	}
 	if r := core.JSONUnmarshalString(data, &manifest); !r.OK {
-		return "", core.E("ml.GGUFModelBlobPath", "parse manifest", r.Value.(error))
+		return core.Fail(core.E("ml.GGUFModelBlobPath", "parse manifest", r.Value.(error)))
 	}
 
 	for _, layer := range manifest.Layers {
 		if layer.MediaType == "application/vnd.ollama.image.model" {
 			blobName := core.Replace(layer.Digest, ":", "-")
-			return core.Sprintf("%s/blobs/%s", ollamaModelsDir, blobName), nil
+			return core.Ok(core.Sprintf("%s/blobs/%s", ollamaModelsDir, blobName))
 		}
 	}
 
-	return "", core.E("ml.GGUFModelBlobPath", core.Sprintf("no model layer found in manifest for %s", modelName), nil)
+	return core.Fail(core.E("ml.GGUFModelBlobPath", core.Sprintf("no model layer found in manifest for %s", modelName), nil))
 }
 
 // ParseLayerFromTensorName extracts the layer number from a GGUF tensor name.
-func ParseLayerFromTensorName(name string) (int, error) {
+func ParseLayerFromTensorName(name string) core.Result {
 	re := regexp.MustCompile(`blk\.(\d+)\.`)
 	m := re.FindStringSubmatch(name)
 	if m == nil {
-		return 0, core.E("ml.ParseLayerFromTensorName", core.Sprintf("no layer number in %s", name), nil)
+		return core.Fail(core.E("ml.ParseLayerFromTensorName", core.Sprintf("no layer number in %s", name), nil))
 	}
-	return strconv.Atoi(m[1])
+	return core.ResultOf(strconv.Atoi(m[1]))
 }

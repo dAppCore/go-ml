@@ -10,9 +10,6 @@ import (
 	"dappco.re/go/process"
 )
 
-// Compile-time check: LlamaBackend satisfies inference.Backend (spec §2.1).
-var _ inference.Backend = (*LlamaBackend)(nil)
-
 // LlamaBackend manages a llama-server process and delegates HTTP calls to it.
 type LlamaBackend struct {
 	processSvc *process.Service
@@ -110,15 +107,15 @@ func (b *LlamaBackend) SetMaxTokens(n int) {
 // supplied at construction time via LlamaOpts.ModelPath. Spec §2.4.
 //
 //	backend := ml.NewLlamaBackend(svc, ml.LlamaOpts{ModelPath: "model.gguf"})
-//	model, _ := backend.LoadModel("dummy")
+//	result := backend.LoadModel("dummy")
 //	for tok := range model.Generate(ctx, "hello") {
 //	    fmt.Print(tok.Text)
 //	}
-func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) (inference.TextModel, error) {
+func (b *LlamaBackend) LoadModel(_ string, _ ...inference.LoadOption) core.Result {
 	if b.http == nil {
-		return nil, core.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil)
+		return core.Fail(core.E("ml.LlamaBackend.LoadModel", "HTTP shim not configured", nil))
 	}
-	return NewLlamaTextModel(b), nil
+	return core.Ok(NewLlamaTextModel(b))
 }
 
 // Available checks if the llama-server is responding to health checks.

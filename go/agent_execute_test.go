@@ -38,6 +38,8 @@ func TestAgentExecute_DiscoverCheckpoints_Good(t *core.T) {
 func TestAgentExecute_DiscoverCheckpoints_Bad(t *core.T) {
 	r := DiscoverCheckpoints(&AgentConfig{M3AdapterBase: "/base", Transport: newFakeTransport()})
 	assertResultError(t, r)
+	core.AssertFalse(t, r.OK)
+	core.AssertError(t, r.Value.(error))
 }
 
 func TestAgentExecute_DiscoverCheckpoints_Ugly(t *core.T) {

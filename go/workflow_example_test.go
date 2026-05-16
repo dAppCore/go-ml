@@ -31,6 +31,23 @@ func ExampleModelWorkflow_Run() {
 	// 1
 }
 
+func ExampleModelWorkflow_Model() {
+	result := NewModelWorkflow(&workflowTextOnlyModel{modelType: "plain"})
+	workflow := result.Value.(*ModelWorkflow)
+	core.Println(workflow.Model().ModelType())
+	// Output:
+	// plain
+}
+
+func ExampleModelWorkflow_Capabilities() {
+	result := NewModelWorkflow(&workflowTextOnlyModel{modelType: "plain"})
+	workflow := result.Value.(*ModelWorkflow)
+	report := workflow.Capabilities()
+	core.Println(report.Supports(inference.CapabilityGenerate))
+	// Output:
+	// true
+}
+
 func mustExampleWorkflow() *ModelWorkflow {
 	result := NewModelWorkflow(&workflowModel{
 		evalReport: &inference.EvalReport{Metrics: inference.EvalMetrics{Samples: 1}},

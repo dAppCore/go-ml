@@ -13,7 +13,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"gopkg.in/yaml.v3"
 )
@@ -101,18 +100,18 @@ type lessonResult struct {
 	CompletedAt   string `json:"completed_at"`
 }
 
-func runLesson(cmd *cli.Command, args []string) error {
+func runLesson(cmd *cli.Command, args []string) core.Result {
 	start := time.Now()
 
 	// Load lesson YAML
 	data, err := coreio.Local.Read(lessonFile)
 	if err != nil {
-		return coreerr.E("cmd.runLesson", "read lesson", err)
+		return core.Fail(core.E("cmd.runLesson", "read lesson", err))
 	}
 
 	var lesson lessonDef
 	if err := yaml.Unmarshal([]byte(data), &lesson); err != nil {
-		return coreerr.E("cmd.runLesson", "parse lesson", err)
+		return core.Fail(core.E("cmd.runLesson", "parse lesson", err))
 	}
 
 	if lesson.ID == "" {
@@ -136,7 +135,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			}
 			d, err := coreio.Local.Read(kbPath)
 			if err != nil {
-				return coreerr.E("cmd.runLesson", "read KB", err)
+				return core.Fail(core.E("cmd.runLesson", "read KB", err))
 			}
 			kbText = d
 		}
@@ -147,7 +146,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			}
 			d, err := coreio.Local.Read(kernelPath)
 			if err != nil {
-				return coreerr.E("cmd.runLesson", "read kernel", err)
+				return core.Fail(core.E("cmd.runLesson", "read kernel", err))
 			}
 			kernelText = d
 		}
@@ -162,7 +161,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	)
 
 	if len(lesson.Prompts) == 0 {
-		return coreerr.E("cmd.runLesson", "lesson has no prompts", nil)
+		return core.Fail(core.E("cmd.runLesson", "lesson has no prompts", nil))
 	}
 
 	// Load state for resume
@@ -189,7 +188,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			"id", lesson.ID,
 			"total", len(lesson.Prompts),
 		)
-		return nil
+		return core.Ok(nil)
 	}
 
 	slog.Info("lesson: starting",
@@ -200,10 +199,11 @@ func runLesson(cmd *cli.Command, args []string) error {
 
 	// Load model
 	slog.Info("lesson: loading model", "model_path", lessonModelPath)
-	backend, err := ml.NewMLXBackend(lessonModelPath)
-	if err != nil {
-		return coreerr.E("cmd.runLesson", "load model", err)
+	backendResult := ml.NewMLXBackend(lessonModelPath)
+	if !backendResult.OK {
+		return core.Fail(core.E("cmd.runLesson", "load model", backendResult.Value.(error)))
 	}
+	backend := backendResult.Value.(*ml.InferenceAdapter)
 
 	opts := ml.GenOpts{
 		Temperature: lessonTemp,
@@ -213,7 +213,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 	// Open output file (append mode for resume)
 	outFile, err := coreio.Local.Append(lessonOutput)
 	if err != nil {
-		return coreerr.E("cmd.runLesson", "create output", err)
+		return core.Fail(core.E("cmd.runLesson", "create output", err))
 	}
 	defer outFile.Close()
 	reviewScanner := bufio.NewScanner(cmd.InOrStdin())
@@ -265,7 +265,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			},
 		}
 		if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
-			return coreerr.E("cmd.runLesson", "write record", err)
+			return core.Fail(core.E("cmd.runLesson", "write record", err))
 		}
 
 		// Update state
@@ -276,8 +276,9 @@ func runLesson(cmd *cli.Command, args []string) error {
 		}
 		state.UpdatedAt = time.Now().Format(time.RFC3339)
 
-		if err := saveLessonState(stateFile, state); err != nil {
-			slog.Warn("lesson: failed to save state", "error", err)
+		saveResult := saveLessonState(stateFile, state)
+		if !saveResult.OK {
+			slog.Warn("lesson: failed to save state", "error", saveResult.Value.(error))
 		}
 
 		generated++
@@ -302,7 +303,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 			core.Print(out, "Response:")
 			core.Print(out, "%s", response)
 			if _, err := io.WriteString(out, "\nPress Enter to continue (or 'q' to stop)... "); err != nil {
-				return coreerr.E("cmd.runLesson", "prompt interactive confirmation", err)
+				return core.Fail(core.E("cmd.runLesson", "prompt interactive confirmation", err))
 			}
 			if !reviewScanner.Scan() {
 				break
@@ -327,7 +328,7 @@ func runLesson(cmd *cli.Command, args []string) error {
 		"duration", time.Since(start).Round(time.Second),
 	)
 
-	return nil
+	return core.Ok(nil)
 }
 
 func loadLessonState(path string) lessonState {
@@ -342,6 +343,9 @@ func loadLessonState(path string) lessonState {
 	return state
 }
 
-func saveLessonState(path string, state lessonState) error {
-	return coreio.Local.Write(path, core.JSONMarshalString(state))
+func saveLessonState(path string, state lessonState) core.Result {
+	if err := coreio.Local.Write(path, core.JSONMarshalString(state)); err != nil {
+		return core.Fail(core.E("cmd.saveLessonState", "write lesson state", err))
+	}
+	return core.Ok(nil)
 }

@@ -116,6 +116,25 @@ func TestWorkflow_ModelWorkflow_Run_Ugly(t *core.T) {
 	core.AssertContains(t, missingDataset.Error(), "dataset is required")
 }
 
+func TestWorkflow_ModelWorkflow_Model_Good(t *core.T) {
+	model := &workflowTextOnlyModel{modelType: "plain"}
+	workflow := mustModelWorkflow(t, model)
+	got := workflow.Model()
+	core.AssertEqual(t, model, got)
+}
+
+func TestWorkflow_ModelWorkflow_Model_Bad(t *core.T) {
+	var workflow *ModelWorkflow
+	got := workflow.Model()
+	core.AssertNil(t, got)
+}
+
+func TestWorkflow_ModelWorkflow_Model_Ugly(t *core.T) {
+	workflow := &ModelWorkflow{}
+	got := workflow.Model()
+	core.AssertNil(t, got)
+}
+
 func TestWorkflow_ModelWorkflow_Capabilities_Good(t *core.T) {
 	workflow := mustModelWorkflow(t, &workflowModel{workflowTextOnlyModel: workflowTextOnlyModel{modelType: "native"}})
 

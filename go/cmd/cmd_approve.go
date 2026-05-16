@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -19,7 +18,7 @@ func addApproveCommand(c *core.Core) {
 
 			path := dbPath
 			if path == "" {
-				return resultFromError(coreerr.E("cmd.runApprove", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runApprove", "--db or LEM_DB required", nil))
 			}
 
 			output := opts.String("output")
@@ -30,14 +29,14 @@ func addApproveCommand(c *core.Core) {
 
 			db, result := store.OpenDuckDB(path)
 			if !result.OK {
-				return resultFromError(coreerr.E("cmd.runApprove", "open db", errorFromResult(result)))
+				return core.Fail(core.E("cmd.runApprove", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
-			return resultFromError(ml.ApproveExpansions(db, ml.ApproveConfig{
+			return ml.ApproveExpansions(db, ml.ApproveConfig{
 				Output:    output,
 				Threshold: threshold,
-			}, nil))
+			}, nil)
 		},
 	})
 }

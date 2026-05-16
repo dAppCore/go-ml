@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -24,7 +23,7 @@ func addLiveCommand(c *core.Core) {
 			// Total completed generations
 			totalResult := influx.QuerySQL("SELECT count(DISTINCT i) AS n FROM gold_gen")
 			if !totalResult.OK {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query total", errorFromResult(totalResult)))
+				return core.Fail(core.E("cmd.runLive", "live: query total", totalResult.Value.(error)))
 			}
 			totalRows := totalResult.Value.([]map[string]any)
 			total := sqlScalar(totalRows)
@@ -32,14 +31,14 @@ func addLiveCommand(c *core.Core) {
 			// Distinct domains and voices
 			domainResult := influx.QuerySQL("SELECT count(DISTINCT d) AS n FROM gold_gen")
 			if !domainResult.OK {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query domains", errorFromResult(domainResult)))
+				return core.Fail(core.E("cmd.runLive", "live: query domains", domainResult.Value.(error)))
 			}
 			domainRows := domainResult.Value.([]map[string]any)
 			domains := sqlScalar(domainRows)
 
 			voiceResult := influx.QuerySQL("SELECT count(DISTINCT v) AS n FROM gold_gen")
 			if !voiceResult.OK {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query voices", errorFromResult(voiceResult)))
+				return core.Fail(core.E("cmd.runLive", "live: query voices", voiceResult.Value.(error)))
 			}
 			voiceRows := voiceResult.Value.([]map[string]any)
 			voices := sqlScalar(voiceRows)
@@ -47,7 +46,7 @@ func addLiveCommand(c *core.Core) {
 			// Per-worker breakdown
 			workerResult := influx.QuerySQL("SELECT w, count(DISTINCT i) AS n FROM gold_gen GROUP BY w ORDER BY n DESC")
 			if !workerResult.OK {
-				return resultFromError(coreerr.E("cmd.runLive", "live: query workers", errorFromResult(workerResult)))
+				return core.Fail(core.E("cmd.runLive", "live: query workers", workerResult.Value.(error)))
 			}
 			workers := workerResult.Value.([]map[string]any)
 
@@ -72,7 +71,7 @@ func addLiveCommand(c *core.Core) {
 				core.Print(nil, "    %-20s %6s generations%s", name, n, marker)
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

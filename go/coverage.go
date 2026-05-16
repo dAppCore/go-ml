@@ -16,13 +16,13 @@ type regionRow struct {
 
 // PrintCoverage analyzes seed coverage by region and domain, printing
 // a report with bar chart visualization and gap recommendations.
-func PrintCoverage(db *store.DuckDB, w io.Writer) error {
+func PrintCoverage(db *store.DuckDB, w io.Writer) core.Result {
 	rows, result := db.QueryRows("SELECT count(*) AS total FROM seeds")
 	if !result.OK {
-		return core.E("ml.PrintCoverage", "count seeds: "+result.Error(), nil)
+		return core.Fail(core.E("ml.PrintCoverage", "count seeds", result.Value.(error)))
 	}
 	if len(rows) == 0 {
-		return core.E("ml.PrintCoverage", "no seeds table found (run: core ml import-all first)", nil)
+		return core.Fail(core.E("ml.PrintCoverage", "no seeds table found (run: core ml import-all first)", nil))
 	}
 	total := toInt(rows[0]["total"])
 
@@ -32,10 +32,11 @@ func PrintCoverage(db *store.DuckDB, w io.Writer) error {
 	core.Print(w, "Total seeds: %d", total)
 
 	// Region distribution.
-	regionRows, err := queryRegionDistribution(db)
-	if err != nil {
-		return core.E("ml.PrintCoverage", "query regions", err)
+	regionResult := queryRegionDistribution(db)
+	if !regionResult.OK {
+		return core.Fail(core.E("ml.PrintCoverage", "query regions", regionResult.Value.(error)))
 	}
+	regionRows := regionResult.Value.([]regionRow)
 
 	core.Print(w, "")
 	core.Print(w, "Region distribution (underrepresented first):")
@@ -87,7 +88,7 @@ func PrintCoverage(db *store.DuckDB, w io.Writer) error {
 	core.Print(w, "  - Swahili, Yoruba, Amharic (Sub-Saharan Africa)")
 	core.Print(w, "  - Indigenous languages (Quechua, Nahuatl, Aymara)")
 
-	return nil
+	return core.Ok(nil)
 }
 
 func repeatString(part string, count int) string {
@@ -103,7 +104,7 @@ func repeatString(part string, count int) string {
 
 // queryRegionDistribution returns seed counts grouped by normalized language
 // region, ordered ascending (underrepresented first).
-func queryRegionDistribution(db *store.DuckDB) ([]regionRow, error) {
+func queryRegionDistribution(db *store.DuckDB) core.Result {
 	rows, result := db.QueryRows(`
 		SELECT
 			CASE
@@ -126,7 +127,7 @@ func queryRegionDistribution(db *store.DuckDB) ([]regionRow, error) {
 		FROM seeds GROUP BY lang_group ORDER BY n ASC
 	`)
 	if !result.OK {
-		return nil, core.E("ml.queryRegionDistribution", result.Error(), nil)
+		return core.Fail(core.E("ml.queryRegionDistribution", "query rows", result.Value.(error)))
 	}
 
 	regions := make([]regionRow, 0, len(rows))
@@ -137,5 +138,5 @@ func queryRegionDistribution(db *store.DuckDB) ([]regionRow, error) {
 			domains: toInt(row["domains"]),
 		})
 	}
-	return regions, nil
+	return core.Ok(regions)
 }

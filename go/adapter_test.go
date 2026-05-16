@@ -532,6 +532,31 @@ func TestAdapter_InferenceAdapter_Model_Ugly(t *core.T) {
 	core.AssertEqual(t, mock, adapter.Model())
 }
 
+func TestAdapter_InferenceAdapter_Capabilities_Good(t *core.T) {
+	model := &mockTextModel{modelType: "qwen3"}
+	adapter := NewInferenceAdapter(model, "mlx")
+	report := adapter.Capabilities()
+	core.AssertTrue(t, report.Available)
+	core.AssertEqual(t, "mlx", report.Runtime.Backend)
+	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
+}
+
+func TestAdapter_InferenceAdapter_Capabilities_Bad(t *core.T) {
+	adapter := NewInferenceAdapter(nil, "missing")
+	report := adapter.Capabilities()
+	core.AssertFalse(t, report.Available)
+	core.AssertEqual(t, "missing", report.Runtime.Backend)
+	core.AssertFalse(t, report.Supports(inference.CapabilityGenerate))
+}
+
+func TestAdapter_InferenceAdapter_Capabilities_Ugly(t *core.T) {
+	var adapter *InferenceAdapter
+	report := adapter.Capabilities()
+	core.AssertFalse(t, report.Available)
+	core.AssertEqual(t, "", report.Runtime.Backend)
+	core.AssertEmpty(t, report.Capabilities)
+}
+
 func TestAdapter_InferenceAdapter_InspectAttention_Good(t *core.T) {
 	adapter := NewInferenceAdapter(&mockTextModel{}, "plain")
 	r := adapter.InspectAttention(context.Background(), "prompt")

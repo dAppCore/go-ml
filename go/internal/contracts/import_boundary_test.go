@@ -5,15 +5,14 @@ package contracts_test
 import (
 	"go/parser"
 	"go/token"
-	"os"
-	"path/filepath"
+	"io/fs"
 	"strconv"
-	"strings"
-	"testing"
+
+	"dappco.re/go"
 )
 
-func TestRootPackageUsesInferencePrimitivesInsteadOfConcreteRuntimes(t *testing.T) {
-	root := filepath.Clean(filepath.Join("..", ".."))
+func TestRootPackageUsesInferencePrimitivesInsteadOfConcreteRuntimes(t *core.T) {
+	root := core.JoinPath("..", "..")
 	for _, path := range rootPackageGoFiles(t, root) {
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
 		if err != nil {
@@ -26,24 +25,25 @@ func TestRootPackageUsesInferencePrimitivesInsteadOfConcreteRuntimes(t *testing.
 			}
 			switch value {
 			case "dappco.re/go/mlx", "dappco.re/go/rocm":
-				t.Fatalf("%s imports %s; root go-ml package must use dappco.re/go/inference primitives", filepath.Base(path), value)
+				t.Fatalf("%s imports %s; root go-ml package must use dappco.re/go/inference primitives", core.PathBase(path), value)
 			}
 		}
 	}
 }
 
-func rootPackageGoFiles(t *testing.T, root string) []string {
+func rootPackageGoFiles(t *core.T, root string) []string {
 	t.Helper()
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		t.Fatalf("read %s: %v", root, err)
+	result := core.ReadDir(core.DirFS(root), ".")
+	if !result.OK {
+		t.Fatalf("read %s: %v", root, result.Value)
 	}
+	entries := result.Value.([]fs.DirEntry)
 	var paths []string
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+		if entry.IsDir() || !core.HasSuffix(entry.Name(), ".go") {
 			continue
 		}
-		paths = append(paths, filepath.Join(root, entry.Name()))
+		paths = append(paths, core.JoinPath(root, entry.Name()))
 	}
 	return paths
 }

@@ -15,7 +15,6 @@ import (
 	"dappco.re/go/cli/pkg/cli"
 	"dappco.re/go/i18n/reversal"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -199,14 +198,15 @@ type benchmarkSummary struct {
 	Results []benchmarkResult `json:"results"`
 }
 
-func runBenchmark(cmd *cli.Command, args []string) error {
+func runBenchmark(cmd *cli.Command, args []string) core.Result {
 	start := time.Now()
 
 	// Load prompts — either custom file or built-in probes
-	prompts, err := loadBenchmarkPrompts()
-	if err != nil {
-		return err
+	promptsResult := loadBenchmarkPrompts()
+	if !promptsResult.OK {
+		return promptsResult
 	}
+	prompts := promptsResult.Value.([]benchPrompt)
 
 	slog.Info("benchmark: loaded prompts", "count", len(prompts))
 
@@ -221,10 +221,11 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	// Generate baseline responses
 	slog.Info("benchmark: loading baseline model", "model_path", benchmarkBaseline)
-	baselineBackend, err := ml.NewMLXBackend(benchmarkBaseline)
-	if err != nil {
-		return coreerr.E("cmd.runBenchmark", "load baseline", err)
+	baselineResult := ml.NewMLXBackend(benchmarkBaseline)
+	if !baselineResult.OK {
+		return core.Fail(core.E("cmd.runBenchmark", "load baseline", baselineResult.Value.(error)))
 	}
+	baselineBackend := baselineResult.Value.(*ml.InferenceAdapter)
 
 	baselineResponses := make(map[string]string)
 	for i, p := range prompts {
@@ -232,12 +233,12 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
-		res, err := baselineBackend.Generate(context.Background(), p.prompt, opts)
-		if err != nil {
-			slog.Error("benchmark: baseline failed", "id", p.id, "error", err)
+		res := baselineBackend.Generate(context.Background(), p.prompt, opts)
+		if !res.OK {
+			slog.Error("benchmark: baseline failed", "id", p.id, "error", res.Value)
 			continue
 		}
-		baselineResponses[p.id] = res.Text
+		baselineResponses[p.id] = res.Value.(ml.Result).Text
 
 		if (i+1)%4 == 0 {
 			runtime.GC()
@@ -251,10 +252,11 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	// Generate trained responses
 	slog.Info("benchmark: loading trained model", "model_path", benchmarkTrained)
-	trainedBackend, err := ml.NewMLXBackend(benchmarkTrained)
-	if err != nil {
-		return coreerr.E("cmd.runBenchmark", "load trained", err)
+	trainedResult := ml.NewMLXBackend(benchmarkTrained)
+	if !trainedResult.OK {
+		return core.Fail(core.E("cmd.runBenchmark", "load trained", trainedResult.Value.(error)))
 	}
+	trainedBackend := trainedResult.Value.(*ml.InferenceAdapter)
 
 	trainedResponses := make(map[string]string)
 	for i, p := range prompts {
@@ -262,12 +264,12 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 			"prompt", core.Sprintf("%d/%d", i+1, len(prompts)),
 			"id", p.id,
 		)
-		res, err := trainedBackend.Generate(context.Background(), p.prompt, opts)
-		if err != nil {
-			slog.Error("benchmark: trained failed", "id", p.id, "error", err)
+		res := trainedBackend.Generate(context.Background(), p.prompt, opts)
+		if !res.OK {
+			slog.Error("benchmark: trained failed", "id", p.id, "error", res.Value)
 			continue
 		}
-		trainedResponses[p.id] = res.Text
+		trainedResponses[p.id] = res.Value.(ml.Result).Text
 
 		if (i+1)%4 == 0 {
 			runtime.GC()
@@ -352,7 +354,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	n := float64(len(results))
 	if n == 0 {
-		return coreerr.E("cmd.runBenchmark", "no results to compare", nil)
+		return core.Fail(core.E("cmd.runBenchmark", "no results to compare", nil))
 	}
 
 	summary := benchmarkSummary{
@@ -377,7 +379,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 
 	// Write output
 	if err := coreio.Local.Write(benchmarkOutput, core.JSONMarshalString(summary)); err != nil {
-		return coreerr.E("cmd.runBenchmark", "write output", err)
+		return core.Fail(core.E("cmd.runBenchmark", "write output", err))
 	}
 
 	// Print summary
@@ -406,7 +408,7 @@ func runBenchmark(cmd *cli.Command, args []string) error {
 	core.Print(nil, "Duration:   %s", summary.Duration)
 	core.Print(nil, "Output:     %s", benchmarkOutput)
 
-	return nil
+	return core.Ok(nil)
 }
 
 type benchPrompt struct {
@@ -414,7 +416,7 @@ type benchPrompt struct {
 	prompt string
 }
 
-func loadBenchmarkPrompts() ([]benchPrompt, error) {
+func loadBenchmarkPrompts() core.Result {
 	if benchmarkPrompts == "" {
 		// Use built-in content probes
 		probes := ml.ContentProbes
@@ -422,13 +424,13 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		for i, p := range probes {
 			prompts[i] = benchPrompt{id: p.ID, prompt: p.Prompt}
 		}
-		return prompts, nil
+		return core.Ok(prompts)
 	}
 
 	// Try seeds JSON format first (array of {id, prompt, ...})
 	data, err := coreio.Local.Read(benchmarkPrompts)
 	if err != nil {
-		return nil, coreerr.E("cmd.loadBenchmarkPrompts", "read prompts", err)
+		return core.Fail(core.E("cmd.loadBenchmarkPrompts", "read prompts", err))
 	}
 
 	var seeds []seedPrompt
@@ -437,13 +439,13 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 		for i, s := range seeds {
 			prompts[i] = benchPrompt{id: s.ID, prompt: s.Prompt}
 		}
-		return prompts, nil
+		return core.Ok(prompts)
 	}
 
 	// Try JSONL responses format
 	responses, err := ml.ReadResponses(benchmarkPrompts)
 	if err != nil {
-		return nil, coreerr.E("cmd.loadBenchmarkPrompts", "parse prompts", err)
+		return core.Fail(core.E("cmd.loadBenchmarkPrompts", "parse prompts", err))
 	}
 
 	// Deduplicate by prompt
@@ -462,5 +464,5 @@ func loadBenchmarkPrompts() ([]benchPrompt, error) {
 	}
 
 	slices.SortFunc(prompts, func(a, b benchPrompt) int { return cmp.Compare(a.id, b.id) })
-	return prompts, nil
+	return core.Ok(prompts)
 }

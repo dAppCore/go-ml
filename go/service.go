@@ -54,6 +54,7 @@ type Options struct {
 }
 
 // NewService creates an ML service factory for Core registration.
+// Usage example:
 //
 //	core.New(
 //	    core.WithService(ml.NewService(ml.Options{})),
@@ -73,6 +74,14 @@ func NewService(opts Options) func(*core.Core) core.Result {
 		}
 		return core.Ok(svc)
 	}
+}
+
+// RegisterCore registers the ML service with default options on a Core runtime.
+//
+//	r := ml.RegisterCore(core.New())
+//	if !r.OK { return r }
+func RegisterCore(c *core.Core) core.Result {
+	return core.WithService(NewService(Options{}))(c)
 }
 
 // OnStartup initializes backends and scoring engine.
