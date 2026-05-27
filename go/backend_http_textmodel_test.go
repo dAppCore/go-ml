@@ -54,7 +54,7 @@ func TestHTTPTextModel_Generate_Good(t *core.T) {
 
 	core.AssertLen(t, collected, 1)
 	core.AssertEqual(t, "Hello from HTTP", collected[0].Text)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Generate_WithOpts_Good(t *core.T) {
@@ -84,7 +84,7 @@ func TestHTTPTextModel_Generate_WithOpts_Good(t *core.T) {
 		result = tok.Text
 	}
 	core.AssertEqual(t, "configured", result)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Chat_Good(t *core.T) {
@@ -106,7 +106,7 @@ func TestHTTPTextModel_Chat_Good(t *core.T) {
 
 	core.AssertLen(t, collected, 1)
 	core.AssertEqual(t, "chat response", collected[0].Text)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Generate_Error_Bad(t *core.T) {
@@ -271,13 +271,13 @@ func TestHTTPTextModel_Err_ClearedOnSuccess_Good(t *core.T) {
 	// Second call: success — error should be cleared.
 	for range model.Generate(context.Background(), "ok") {
 	}
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Close_Good(t *core.T) {
 	backend := NewHTTPBackend("http://localhost", "test")
 	model := NewHTTPTextModel(backend)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestLlamaTextModel_ModelType_Good(t *core.T) {
@@ -295,7 +295,7 @@ func TestLlamaTextModel_Close_Good(t *core.T) {
 		http: NewHTTPBackend("http://127.0.0.1:18090", ""),
 	}
 	model := NewLlamaTextModel(llama)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 // --- v0.9.0 shape triplets ---
@@ -317,7 +317,7 @@ func TestBackendHttpTextmodel_NewHTTPTextModel_Bad(t *core.T) {
 func TestBackendHttpTextmodel_NewHTTPTextModel_Ugly(t *core.T) {
 	backend := NewHTTPBackend("http://127.0.0.1", "edge")
 	model := NewHTTPTextModel(backend)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Generate_Good(t *core.T) {
@@ -493,7 +493,7 @@ func TestBackendHttpTextmodel_HTTPTextModel_Err_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Err_Bad(t *core.T) {
@@ -512,27 +512,27 @@ func TestBackendHttpTextmodel_HTTPTextModel_Err_Ugly(t *core.T) {
 	model.http = NewHTTPBackend(srv.URL, "model")
 	for range model.Generate(context.Background(), "prompt") {
 	}
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("", ""))
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Close())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_NewLlamaTextModel_Good(t *core.T) {
@@ -580,7 +580,7 @@ func TestBackendHttpTextmodel_LlamaTextModel_Close_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewLlamaTextModel(NewLlamaBackend())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Bad(t *core.T) {
@@ -592,6 +592,6 @@ func TestBackendHttpTextmodel_LlamaTextModel_Close_Bad(t *core.T) {
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Ugly(t *core.T) {
 	model := NewLlamaTextModel(NewLlamaBackend())
-	core.AssertNoError(t, model.Close())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
+	assertResultOK(t, model.Close())
 }

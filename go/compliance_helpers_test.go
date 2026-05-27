@@ -94,7 +94,7 @@ func writeSafetensorsFixture(t testing.TB) (string, string) {
 	data := map[string][]byte{
 		key: {1, 2, 3, 4},
 	}
-	core.RequireNoError(t, WriteSafetensors(sf, tensors, data))
+	requireResultOK(t, WriteSafetensors(sf, tensors, data))
 	core.RequireNoError(t, coreio.Local.Write(cfg, `{"lora_parameters":{"rank":2,"scale":3,"dropout":0.1}}`))
 	return sf, cfg
 }

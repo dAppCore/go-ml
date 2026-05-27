@@ -16,15 +16,13 @@ func TestCompare_RunCompare_Good(t *core.T) {
 	newFile := core.JoinPath(dir, "new.out")
 	writeScoreFile(t, oldFile, 1)
 	writeScoreFile(t, newFile, 2)
-	err := RunCompare(oldFile, newFile)
-	core.AssertNoError(t, err)
+	assertResultOK(t, RunCompare(oldFile, newFile))
 }
 
 func TestCompare_RunCompare_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	err := RunCompare(core.JoinPath(t.TempDir(), "missing.out"), core.JoinPath(t.TempDir(), "new.out"))
-	core.AssertError(t, err)
+	assertResultError(t, RunCompare(core.JoinPath(t.TempDir(), "missing.out"), core.JoinPath(t.TempDir(), "new.out")))
 }
 
 func TestCompare_RunCompare_Ugly(t *core.T) {
@@ -33,6 +31,5 @@ func TestCompare_RunCompare_Ugly(t *core.T) {
 	newFile := core.JoinPath(dir, "new.out")
 	writeScoreFile(t, oldFile, 0)
 	writeScoreFile(t, newFile, 0)
-	err := RunCompare(oldFile, newFile)
-	core.AssertNoError(t, err)
+	assertResultOK(t, RunCompare(oldFile, newFile))
 }

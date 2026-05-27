@@ -9,23 +9,20 @@ func TestStatus_PrintStatus_Good(t *core.T) {
 	}
 	influx, _ := newFakeInflux(t, queries, 0)
 	buf := core.NewBuffer(nil)
-	err := PrintStatus(influx, buf)
-	core.RequireNoError(t, err)
+	requireResultOK(t, PrintStatus(influx, buf))
 	core.AssertContains(t, buf.String(), "running")
 }
 
 func TestStatus_PrintStatus_Bad(t *core.T) {
 	influx := &InfluxClient{url: "http://127.0.0.1:1", db: "test"}
 	buf := core.NewBuffer(nil)
-	err := PrintStatus(influx, buf)
-	core.RequireNoError(t, err)
+	requireResultOK(t, PrintStatus(influx, buf))
 	core.AssertContains(t, buf.String(), "no data")
 }
 
 func TestStatus_PrintStatus_Ugly(t *core.T) {
 	influx, _ := newFakeInflux(t, nil, 0)
 	buf := core.NewBuffer(nil)
-	err := PrintStatus(influx, buf)
-	core.RequireNoError(t, err)
+	requireResultOK(t, PrintStatus(influx, buf))
 	core.AssertContains(t, buf.String(), "Generation:")
 }
