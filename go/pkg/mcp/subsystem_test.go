@@ -70,20 +70,20 @@ func TestSubsystem_MLSubsystem_RegisterTools_Ugly(t *core.T) {
 
 func TestSubsystem_MLSubsystem_Shutdown_Good(t *core.T) {
 	subsystem := NewMLSubsystem(nil)
-	err := subsystem.Shutdown(context.Background())
-	core.AssertNoError(t, err)
+	r := subsystem.Shutdown(context.Background())
+	core.AssertTrue(t, r.OK)
 	core.AssertEqual(t, "ml", subsystem.Name())
 }
 
 func TestSubsystem_MLSubsystem_Shutdown_Bad(t *core.T) {
 	subsystem := &MLSubsystem{}
-	err := subsystem.Shutdown(context.Background())
-	core.AssertNoError(t, err)
+	r := subsystem.Shutdown(context.Background())
+	core.AssertTrue(t, r.OK)
 }
 
 func TestSubsystem_MLSubsystem_Shutdown_Ugly(t *core.T) {
 	subsystem := NewMLSubsystem(nil)
 	subsystem.logger = nil
-	err := subsystem.Shutdown(context.Background())
-	core.AssertNoError(t, err)
+	r := subsystem.Shutdown(context.Background())
+	core.AssertTrue(t, r.OK)
 }

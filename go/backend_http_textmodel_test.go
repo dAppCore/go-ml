@@ -153,8 +153,9 @@ func TestHTTPTextModel_Classify_Bad(t *core.T) {
 	backend := NewHTTPBackend("http://localhost", "test-model")
 	model := NewHTTPTextModel(backend)
 
-	results, err := model.Classify(context.Background(), []string{"test"})
-	core.AssertNil(t, results)
+	r := model.Classify(context.Background(), []string{"test"})
+	core.AssertFalse(t, r.OK)
+	err := r.Value.(error)
 	core.AssertError(t, err)
 	core.AssertContains(t, err.Error(), "classify not supported")
 }
@@ -167,8 +168,9 @@ func TestHTTPTextModel_BatchGenerate_Good(t *core.T) {
 	model := NewHTTPTextModel(backend)
 
 	prompts := []string{"alpha", "beta", "gamma"}
-	results, err := model.BatchGenerate(context.Background(), prompts)
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), prompts)
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 3)
 
 	core.AssertEqual(t, "reply:alpha", results[0].Tokens[0].Text)
@@ -200,8 +202,9 @@ func TestHTTPTextModel_BatchGenerate_PartialError_Bad(t *core.T) {
 	backend := NewHTTPBackend(srv.URL, "test-model")
 	model := NewHTTPTextModel(backend)
 
-	results, err := model.BatchGenerate(context.Background(), []string{"a", "b", "c"})
-	core.RequireNoError(t, err) // BatchGenerate itself doesn't fail.
+	r := model.BatchGenerate(context.Background(), []string{"a", "b", "c"})
+	requireResultOK(t, r) // BatchGenerate itself doesn't fail.
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 3)
 
 	core.AssertLen(t, results[0].Tokens, 1)
@@ -382,47 +385,45 @@ func TestBackendHttpTextmodel_HTTPTextModel_Chat_Ugly(t *core.T) {
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Good(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	result, err := model.Classify(context.Background(), []string{"sample"})
-	core.AssertNil(t, result)
-	core.AssertError(t, err, "not supported")
+	r := model.Classify(context.Background(), []string{"sample"})
+	assertResultError(t, r, "not supported")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Bad(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("", ""))
-	result, err := model.Classify(context.Background(), nil)
-	core.AssertNil(t, result)
-	core.AssertError(t, err)
+	assertResultError(t, model.Classify(context.Background(), nil))
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	result, err := model.Classify(context.Background(), []string{})
-	core.AssertNil(t, result)
-	core.AssertError(t, err, "classify")
+	assertResultError(t, model.Classify(context.Background(), []string{}), "classify")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Good(t *core.T) {
 	srv := newTestServerMulti(t)
 	defer srv.Close()
 	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
-	results, err := model.BatchGenerate(context.Background(), []string{"a", "b"})
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), []string{"a", "b"})
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 2)
 	core.AssertEqual(t, "reply:a", results[0].Tokens[0].Text)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Bad(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
-	results, err := model.BatchGenerate(context.Background(), []string{"a"})
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), []string{"a"})
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 1)
 	core.AssertError(t, results[0].Err)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	results, err := model.BatchGenerate(context.Background(), nil)
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), nil)
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertEmpty(t, results)
 }
 

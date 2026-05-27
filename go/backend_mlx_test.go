@@ -189,19 +189,13 @@ func TestBackendMlx_SetMLXMemoryLimits_Ugly(t *core.T) {
 }
 
 func TestBackendMlx_NewMLXBackend_Good(t *core.T) {
-	backend, err := NewMLXBackend(core.JoinPath(t.TempDir(), "missing-model"))
-	core.AssertNil(t, backend)
-	core.AssertError(t, err)
+	assertResultError(t, NewMLXBackend(core.JoinPath(t.TempDir(), "missing-model")))
 }
 
 func TestBackendMlx_NewMLXBackend_Bad(t *core.T) {
-	backend, err := NewMLXBackend("")
-	core.AssertNil(t, backend)
-	core.AssertError(t, err)
+	assertResultError(t, NewMLXBackend(""))
 }
 
 func TestBackendMlx_NewMLXBackend_Ugly(t *core.T) {
-	backend, err := NewMLXBackend("/definitely-not-a-model")
-	core.AssertNil(t, backend)
-	core.AssertError(t, err)
+	assertResultError(t, NewMLXBackend("/definitely-not-a-model"))
 }

@@ -14,22 +14,16 @@ func writeOllamaManifest(t *core.T, root string, model string) {
 
 func TestGguf_ReadGGUFInfo_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "missing.gguf")
-	info, err := ReadGGUFInfo(file)
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", info.Architecture)
+	assertResultError(t, ReadGGUFInfo(file))
 }
 
 func TestGguf_ReadGGUFInfo_Bad(t *core.T) {
-	info, err := ReadGGUFInfo("")
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", info.Architecture)
+	assertResultError(t, ReadGGUFInfo(""))
 }
 
 func TestGguf_ReadGGUFInfo_Ugly(t *core.T) {
 	dir := t.TempDir()
-	info, err := ReadGGUFInfo(dir)
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", info.Architecture)
+	assertResultError(t, ReadGGUFInfo(dir))
 }
 
 func TestGguf_DiscoverModels_Good(t *core.T) {
@@ -52,62 +46,55 @@ func TestGguf_DiscoverModels_Ugly(t *core.T) {
 }
 
 func TestGguf_MLXTensorToGGUF_Good(t *core.T) {
-	got, err := MLXTensorToGGUF("model.layers.0.self_attn.q_proj.lora_a")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, "blk.0.attn_q.weight.lora_a", got)
+	r := MLXTensorToGGUF("model.layers.0.self_attn.q_proj.lora_a")
+	requireResultOK(t, r)
+	core.AssertEqual(t, "blk.0.attn_q.weight.lora_a", r.Value.(string))
 }
 
 func TestGguf_MLXTensorToGGUF_Bad(t *core.T) {
-	got, err := MLXTensorToGGUF("bad.key")
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", got)
+	assertResultError(t, MLXTensorToGGUF("bad.key"))
 }
 
 func TestGguf_MLXTensorToGGUF_Ugly(t *core.T) {
-	got, err := MLXTensorToGGUF("model.layers.2.mlp.down_proj.lora_b")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, "blk.2.ffn_down.weight.lora_b", got)
+	r := MLXTensorToGGUF("model.layers.2.mlp.down_proj.lora_b")
+	requireResultOK(t, r)
+	core.AssertEqual(t, "blk.2.ffn_down.weight.lora_b", r.Value.(string))
 }
 
 func TestGguf_SafetensorsDtypeToGGML_Good(t *core.T) {
-	got, err := SafetensorsDtypeToGGML("F32")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, uint32(0), got)
+	r := SafetensorsDtypeToGGML("F32")
+	requireResultOK(t, r)
+	core.AssertEqual(t, uint32(0), r.Value.(uint32))
 }
 
 func TestGguf_SafetensorsDtypeToGGML_Bad(t *core.T) {
-	got, err := SafetensorsDtypeToGGML("I8")
-	core.AssertError(t, err)
-	core.AssertEqual(t, uint32(0), got)
+	assertResultError(t, SafetensorsDtypeToGGML("I8"))
 }
 
 func TestGguf_SafetensorsDtypeToGGML_Ugly(t *core.T) {
-	got, err := SafetensorsDtypeToGGML("BF16")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, uint32(30), got)
+	r := SafetensorsDtypeToGGML("BF16")
+	requireResultOK(t, r)
+	core.AssertEqual(t, uint32(30), r.Value.(uint32))
 }
 
 func TestGguf_ConvertMLXtoGGUFLoRA_Good(t *core.T) {
 	sf, cfg := writeSafetensorsFixture(t)
 	out := core.JoinPath(t.TempDir(), "adapter.gguf")
-	err := ConvertMLXtoGGUFLoRA(sf, cfg, out, "gemma3")
-	core.RequireNoError(t, err)
+	requireResultOK(t, ConvertMLXtoGGUFLoRA(sf, cfg, out, "gemma3"))
 	core.AssertTrue(t, coreio.Local.IsFile(out))
 }
 
 func TestGguf_ConvertMLXtoGGUFLoRA_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	err := ConvertMLXtoGGUFLoRA(core.JoinPath(t.TempDir(), "missing.safetensors"), core.JoinPath(t.TempDir(), "missing.cfg"), core.JoinPath(t.TempDir(), "out.gguf"), "gemma3")
-	core.AssertError(t, err)
+	assertResultError(t, ConvertMLXtoGGUFLoRA(core.JoinPath(t.TempDir(), "missing.safetensors"), core.JoinPath(t.TempDir(), "missing.cfg"), core.JoinPath(t.TempDir(), "out.gguf"), "gemma3"))
 }
 
 func TestGguf_ConvertMLXtoGGUFLoRA_Ugly(t *core.T) {
 	sf, _ := writeSafetensorsFixture(t)
 	cfg := core.JoinPath(t.TempDir(), "bad.cfg")
 	core.RequireNoError(t, coreio.Local.Write(cfg, "bad"))
-	err := ConvertMLXtoGGUFLoRA(sf, cfg, core.JoinPath(t.TempDir(), "out.gguf"), "gemma3")
-	core.AssertError(t, err)
+	assertResultError(t, ConvertMLXtoGGUFLoRA(sf, cfg, core.JoinPath(t.TempDir(), "out.gguf"), "gemma3"))
 }
 
 func TestGguf_DetectArchFromConfig_Good(t *core.T) {
@@ -154,15 +141,13 @@ func TestGguf_ModelTagToGGUFArch_Ugly(t *core.T) {
 func TestGguf_GGUFModelBlobPath_Good(t *core.T) {
 	root := t.TempDir()
 	writeOllamaManifest(t, root, "gemma")
-	got, err := GGUFModelBlobPath(root, "gemma")
-	core.RequireNoError(t, err)
-	core.AssertContains(t, got, "sha256-abc")
+	r := GGUFModelBlobPath(root, "gemma")
+	requireResultOK(t, r)
+	core.AssertContains(t, r.Value.(string), "sha256-abc")
 }
 
 func TestGguf_GGUFModelBlobPath_Bad(t *core.T) {
-	got, err := GGUFModelBlobPath(t.TempDir(), "missing")
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", got)
+	assertResultError(t, GGUFModelBlobPath(t.TempDir(), "missing"))
 }
 
 func TestGguf_GGUFModelBlobPath_Ugly(t *core.T) {
@@ -170,25 +155,21 @@ func TestGguf_GGUFModelBlobPath_Ugly(t *core.T) {
 	manifest := core.JoinPath(root, "manifests", "registry.ollama.ai", "library", "gemma", "test")
 	core.RequireNoError(t, coreio.Local.EnsureDir(core.PathDir(manifest)))
 	core.RequireNoError(t, coreio.Local.Write(manifest, `{"layers":[]}`))
-	got, err := GGUFModelBlobPath(root, "gemma:test")
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", got)
+	assertResultError(t, GGUFModelBlobPath(root, "gemma:test"))
 }
 
 func TestGguf_ParseLayerFromTensorName_Good(t *core.T) {
-	layer, err := ParseLayerFromTensorName("blk.12.attn_q.weight")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, 12, layer)
+	r := ParseLayerFromTensorName("blk.12.attn_q.weight")
+	requireResultOK(t, r)
+	core.AssertEqual(t, 12, r.Value.(int))
 }
 
 func TestGguf_ParseLayerFromTensorName_Bad(t *core.T) {
-	layer, err := ParseLayerFromTensorName("attn_q.weight")
-	core.AssertError(t, err)
-	core.AssertEqual(t, 0, layer)
+	assertResultError(t, ParseLayerFromTensorName("attn_q.weight"))
 }
 
 func TestGguf_ParseLayerFromTensorName_Ugly(t *core.T) {
-	layer, err := ParseLayerFromTensorName("prefix.blk.0.value")
-	core.RequireNoError(t, err)
-	core.AssertEqual(t, 0, layer)
+	r := ParseLayerFromTensorName("prefix.blk.0.value")
+	requireResultOK(t, r)
+	core.AssertEqual(t, 0, r.Value.(int))
 }

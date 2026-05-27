@@ -396,24 +396,27 @@ func TestBackendHttp_HTTPBackend_SetMaxTokens_Ugly(t *core.T) {
 
 func TestBackendHttp_HTTPBackend_LoadModel_Good(t *core.T) {
 	b := NewHTTPBackend("http://127.0.0.1", "model")
-	model, err := b.LoadModel("ignored")
-	core.RequireNoError(t, err)
+	r := b.LoadModel("ignored")
+	requireResultOK(t, r)
+	model := r.Value.(*HTTPTextModel)
 	core.AssertNotNil(t, model)
 	core.AssertEqual(t, "model", model.ModelType())
 }
 
 func TestBackendHttp_HTTPBackend_LoadModel_Bad(t *core.T) {
 	b := NewHTTPBackend("", "")
-	model, err := b.LoadModel("")
-	core.RequireNoError(t, err)
+	r := b.LoadModel("")
+	requireResultOK(t, r)
+	model := r.Value.(*HTTPTextModel)
 	core.AssertEqual(t, "http", model.ModelType())
 }
 
 func TestBackendHttp_HTTPBackend_LoadModel_Ugly(t *core.T) {
 	b := NewHTTPBackend("http://127.0.0.1", "edge")
-	model, err := b.LoadModel("unused")
-	core.RequireNoError(t, err)
-	core.AssertNoError(t, model.Close())
+	r := b.LoadModel("unused")
+	requireResultOK(t, r)
+	model := r.Value.(*HTTPTextModel)
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttp_HTTPBackend_Generate_Good(t *core.T) {

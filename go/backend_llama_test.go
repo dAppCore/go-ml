@@ -414,23 +414,23 @@ func TestBackendLlama_LlamaBackend_SetMaxTokens_Ugly(t *core.T) {
 
 func TestBackendLlama_LlamaBackend_LoadModel_Good(t *core.T) {
 	b := NewLlamaBackend()
-	model, err := b.LoadModel("ignored")
-	core.RequireNoError(t, err)
+	r := b.LoadModel("ignored")
+	requireResultOK(t, r)
+	model := r.Value.(*LlamaTextModel)
 	core.AssertEqual(t, "llama", model.ModelType())
 }
 
 func TestBackendLlama_LlamaBackend_LoadModel_Bad(t *core.T) {
 	var b LlamaBackend
-	model, err := b.LoadModel("")
-	core.AssertNil(t, model)
-	core.AssertError(t, err, "HTTP shim")
+	assertResultError(t, b.LoadModel(""), "HTTP shim")
 }
 
 func TestBackendLlama_LlamaBackend_LoadModel_Ugly(t *core.T) {
 	b := NewLlamaBackend(LlamaOpts{Port: 19003})
-	model, err := b.LoadModel("unused")
-	core.RequireNoError(t, err)
-	core.AssertNoError(t, model.Close())
+	r := b.LoadModel("unused")
+	requireResultOK(t, r)
+	model := r.Value.(*LlamaTextModel)
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendLlama_LlamaBackend_Available_Good(t *core.T) {

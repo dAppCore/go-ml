@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"dappco.re/go"
+	"dappco.re/go/ml"
 )
 
 // TestEvaluate_decodeResponsesJSONL_Good parses a well-formed JSONL blob.
@@ -18,10 +19,11 @@ func TestEvaluate_decodeResponsesJSONL_Good(t *testing.T) {
 
 {"id":"c","prompt":"p3","response":"r3","model":"m2"}
 `
-	got, err := decodeResponsesJSONL(input)
-	if err != nil {
-		t.Fatalf("decodeResponsesJSONL err = %v", err)
+	r := decodeResponsesJSONL(input)
+	if !r.OK {
+		t.Fatalf("decodeResponsesJSONL err = %v", r.Value.(error))
 	}
+	got := r.Value.([]ml.Response)
 	if len(got) != 3 {
 		t.Fatalf("len(got) = %d, want 3", len(got))
 	}
@@ -32,26 +34,32 @@ func TestEvaluate_decodeResponsesJSONL_Good(t *testing.T) {
 
 // TestEvaluate_decodeResponsesJSONL_Bad surfaces a clean error for malformed JSON.
 //
-//	decodeResponsesJSONL("{not json}")  // → error
+//	decodeResponsesJSONL("{not json}")  // → Fail
 func TestEvaluate_decodeResponsesJSONL_Bad(t *testing.T) {
-	if _, err := decodeResponsesJSONL("{not json}\n"); err == nil {
-		t.Error("expected error for malformed JSON")
+	if r := decodeResponsesJSONL("{not json}\n"); r.OK {
+		t.Error("expected result error for malformed JSON")
 	}
 }
 
 // TestEvaluate_decodeResponsesJSONL_Ugly handles odd-but-tolerable input.
 //
-//	decodeResponsesJSONL("")                    // → nil, nil
-//	decodeResponsesJSONL("\n\n# header\n\n")    // → nil, nil
+//	decodeResponsesJSONL("")                    // → Ok(nil)
+//	decodeResponsesJSONL("\n\n# header\n\n")    // → Ok(nil)
 func TestEvaluate_decodeResponsesJSONL_Ugly(t *testing.T) {
 	// Empty string.
-	if out, err := decodeResponsesJSONL(""); err != nil || len(out) != 0 {
-		t.Errorf("empty: out=%v err=%v", out, err)
+	r := decodeResponsesJSONL("")
+	if !r.OK {
+		t.Errorf("empty: err=%v", r.Value.(error))
+	} else if out, _ := r.Value.([]ml.Response); len(out) != 0 {
+		t.Errorf("empty: out=%v", out)
 	}
 
 	// Comments and blank lines only.
-	if out, err := decodeResponsesJSONL("\n\n# only comments\n\n"); err != nil || len(out) != 0 {
-		t.Errorf("comments only: out=%v err=%v", out, err)
+	r = decodeResponsesJSONL("\n\n# only comments\n\n")
+	if !r.OK {
+		t.Errorf("comments only: err=%v", r.Value.(error))
+	} else if out, _ := r.Value.([]ml.Response); len(out) != 0 {
+		t.Errorf("comments only: out=%v", out)
 	}
 }
 

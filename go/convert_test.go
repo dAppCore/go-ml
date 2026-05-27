@@ -27,26 +27,21 @@ func TestConvert_RenameMLXKey_Ugly(t *core.T) {
 
 func TestConvert_ReadSafetensors_Good(t *core.T) {
 	sf, _ := writeSafetensorsFixture(t)
-	tensors, data, err := ReadSafetensors(sf)
-	core.RequireNoError(t, err)
-	core.AssertLen(t, tensors, 1)
-	core.AssertLen(t, data, 4)
+	r := ReadSafetensors(sf)
+	requireResultOK(t, r)
+	sd := r.Value.(SafetensorsData)
+	core.AssertLen(t, sd.Tensors, 1)
+	core.AssertLen(t, sd.Data, 4)
 }
 
 func TestConvert_ReadSafetensors_Bad(t *core.T) {
-	tensors, data, err := ReadSafetensors(core.JoinPath(t.TempDir(), "missing.safetensors"))
-	core.AssertError(t, err)
-	core.AssertNil(t, tensors)
-	core.AssertNil(t, data)
+	assertResultError(t, ReadSafetensors(core.JoinPath(t.TempDir(), "missing.safetensors")))
 }
 
 func TestConvert_ReadSafetensors_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "bad.safetensors")
 	core.RequireNoError(t, coreio.Local.Write(file, "short"))
-	tensors, data, err := ReadSafetensors(file)
-	core.AssertError(t, err)
-	core.AssertNil(t, tensors)
-	core.AssertNil(t, data)
+	assertResultError(t, ReadSafetensors(file))
 }
 
 func TestConvert_GetTensorData_Good(t *core.T) {

@@ -18,8 +18,8 @@ func addStatusCommand(c *core.Core) {
 
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-			if err := ml.PrintStatus(influx, nil); err != nil {
-				return core.Fail(core.E("cmd.runStatus", "status", err))
+			if r := ml.PrintStatus(influx, nil); !r.OK {
+				return core.Fail(core.E("cmd.runStatus", "status", r.Value.(error)))
 			}
 
 			if dbPath != "" {

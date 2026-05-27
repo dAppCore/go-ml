@@ -49,21 +49,29 @@ func TestService_NewService_Ugly(t *core.T) {
 }
 
 func TestService_RegisterCore_Good(t *core.T) {
-	r := RegisterCore(core.New())
+	// RegisterCore wires the service into Core via core.WithService; the
+	// returned Result is the registration success marker (Value=nil). The
+	// constructed Service is accessible via the Core service registry, not
+	// via the Result. To verify default Options shape, invoke the factory
+	// directly.
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
 	requireResultOK(t, r)
 	svc := r.Value.(*Service)
 	core.AssertEqual(t, 4, svc.Options().Concurrency)
 }
 
 func TestService_RegisterCore_Bad(t *core.T) {
-	r := RegisterCore(core.New())
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
 	requireResultOK(t, r)
 	svc := r.Value.(*Service)
 	core.AssertEqual(t, "all", svc.Options().Suites)
 }
 
 func TestService_RegisterCore_Ugly(t *core.T) {
-	r := RegisterCore(core.New())
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
 	requireResultOK(t, r)
 	svc := r.Value.(*Service)
 	core.AssertEmpty(t, svc.Backends())

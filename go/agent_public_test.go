@@ -227,9 +227,7 @@ func TestRunContentProbesAlias_Good(t *core.T) {
 
 func TestGGUF_ReadGGUFInfo_Bad(t *core.T) {
 	// Missing file must produce an error, not panic.
-	if _, err := ReadGGUFInfo("/nonexistent/path/model.gguf"); err == nil {
-		t.Error("expected error for missing GGUF file")
-	}
+	assertResultError(t, ReadGGUFInfo("/nonexistent/path/model.gguf"))
 }
 
 func TestGGUF_DiscoverModels_Good(t *core.T) {
