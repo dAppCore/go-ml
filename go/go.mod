@@ -3,7 +3,7 @@ module dappco.re/go/ml
 go 1.26.2
 
 require (
-	dappco.re/go v0.9.0
+	dappco.re/go v0.10.3
 	dappco.re/go/api v0.8.0-alpha.1
 	dappco.re/go/cli v0.8.0-alpha.1
 	dappco.re/go/i18n v0.8.0-alpha.1
