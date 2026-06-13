@@ -3,13 +3,12 @@ module dappco.re/go/ml
 go 1.26.2
 
 require (
-	dappco.re/go v0.10.3
+	dappco.re/go v0.10.4
 	dappco.re/go/api v0.8.0-alpha.1
 	dappco.re/go/cli v0.8.0-alpha.1
 	dappco.re/go/i18n v0.8.0-alpha.1
 	dappco.re/go/inference v0.9.0
 	dappco.re/go/io v0.9.0
-	dappco.re/go/log v0.9.0
 	dappco.re/go/mlx v0.8.0-alpha.1
 	dappco.re/go/process v0.10.0
 	dappco.re/go/store v0.8.0-alpha.1
@@ -23,6 +22,7 @@ require (
 
 require (
 	dappco.re/go/core v0.8.0-alpha.1 // indirect
+	dappco.re/go/log v0.9.0 // indirect
 	github.com/99designs/gqlgen v0.17.88 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
