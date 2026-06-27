@@ -13,3 +13,6 @@ __pycache__/
 coverage/
 htmlcov/
 .coverage
+
+# committed build output — keep out of git
+go/bin/
