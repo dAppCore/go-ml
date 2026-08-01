@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/store"
 )
@@ -19,20 +18,20 @@ func addStatusCommand(c *core.Core) {
 
 			influx := ml.NewInfluxClient(influxURL, influxDB)
 
-			if err := ml.PrintStatus(influx, nil); err != nil {
-				return resultFromError(coreerr.E("cmd.runStatus", "status", err))
+			if r := ml.PrintStatus(influx, nil); !r.OK {
+				return core.Fail(core.E("cmd.runStatus", "status", r.Value.(error)))
 			}
 
 			if dbPath != "" {
-				db, err := store.OpenDuckDB(dbPath)
-				if err != nil {
-					return resultFromError(coreerr.E("cmd.runStatus", "open db", err))
+				db, result := store.OpenDuckDB(dbPath)
+				if !result.OK {
+					return core.Fail(core.E("cmd.runStatus", "open db", result.Value.(error)))
 				}
 				defer db.Close()
 
-				counts, err := db.TableCounts()
-				if err != nil {
-					return resultFromError(coreerr.E("cmd.runStatus", "table counts", err))
+				counts, result := db.TableCounts()
+				if !result.OK {
+					return core.Fail(core.E("cmd.runStatus", "table counts", result.Value.(error)))
 				}
 
 				core.Print(nil, "")
@@ -46,7 +45,7 @@ func addStatusCommand(c *core.Core) {
 				}
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

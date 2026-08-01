@@ -317,74 +317,74 @@ func TestScore_Engine_ScoreHeuristic_Ugly(t *core.T) {
 
 func TestScore_Engine_ScoreSemantic_Good(t *core.T) {
 	engine := NewEngine(nil, 1, "semantic")
-	_, err := engine.ScoreSemantic(context.Background(), "prompt", "response")
-	core.AssertError(t, err, "requires a judge")
+	r := engine.ScoreSemantic(context.Background(), "prompt", "response")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_Engine_ScoreSemantic_Bad(t *core.T) {
 	var engine *Engine
-	_, err := engine.ScoreSemantic(context.Background(), "prompt", "response")
-	core.AssertError(t, err, "requires a judge")
+	r := engine.ScoreSemantic(context.Background(), "prompt", "response")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_Engine_ScoreSemantic_Ugly(t *core.T) {
 	engine := NewEngine(nil, 1, "semantic")
-	_, err := engine.ScoreSemantic(context.Background(), "", "")
-	core.AssertError(t, err)
+	r := engine.ScoreSemantic(context.Background(), "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreContent_Good(t *core.T) {
 	engine := NewEngine(nil, 1, "content")
-	_, err := engine.ScoreContent(context.Background(), ContentProbe{Prompt: "p"}, "response")
-	core.AssertError(t, err, "requires a judge")
+	r := engine.ScoreContent(context.Background(), ContentProbe{Prompt: "p"}, "response")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_Engine_ScoreContent_Bad(t *core.T) {
 	var engine *Engine
-	_, err := engine.ScoreContent(context.Background(), ContentProbe{}, "")
-	core.AssertError(t, err)
+	r := engine.ScoreContent(context.Background(), ContentProbe{}, "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreContent_Ugly(t *core.T) {
 	engine := NewEngine(nil, 1, "content")
-	_, err := engine.ScoreContent(context.Background(), ContentProbe{}, "")
-	core.AssertError(t, err)
+	r := engine.ScoreContent(context.Background(), ContentProbe{}, "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreCapability_Good(t *core.T) {
 	engine := NewEngine(nil, 1, "standard")
-	_, err := engine.ScoreCapability(context.Background(), "q", "a", "r")
-	core.AssertError(t, err, "requires a judge")
+	r := engine.ScoreCapability(context.Background(), "q", "a", "r")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_Engine_ScoreCapability_Bad(t *core.T) {
 	var engine *Engine
-	_, err := engine.ScoreCapability(context.Background(), "", "", "")
-	core.AssertError(t, err)
+	r := engine.ScoreCapability(context.Background(), "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreCapability_Ugly(t *core.T) {
 	engine := NewEngine(nil, 0, "standard")
-	_, err := engine.ScoreCapability(context.Background(), "", "", "")
-	core.AssertError(t, err)
+	r := engine.ScoreCapability(context.Background(), "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreStandard_Good(t *core.T) {
 	engine := NewEngine(nil, 1, "standard")
-	_, err := engine.ScoreStandard(context.Background(), "truthfulqa", "q", "a", "r")
-	core.AssertError(t, err, "requires a judge")
+	r := engine.ScoreStandard(context.Background(), "truthfulqa", "q", "a", "r")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_Engine_ScoreStandard_Bad(t *core.T) {
 	var engine *Engine
-	_, err := engine.ScoreStandard(context.Background(), "bad", "", "", "")
-	core.AssertError(t, err)
+	r := engine.ScoreStandard(context.Background(), "bad", "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreStandard_Ugly(t *core.T) {
 	engine := NewEngine(nil, 1, "standard")
-	_, err := engine.ScoreStandard(context.Background(), "", "", "", "")
-	core.AssertError(t, err)
+	r := engine.ScoreStandard(context.Background(), "", "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_Engine_ScoreExact_Good(t *core.T) {
@@ -472,83 +472,83 @@ func TestScore_Engine_String_Ugly(t *core.T) {
 func TestScore_ScoreSemantic_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreSemantic(nil, "prompt", "response")
-	core.AssertError(t, err, "requires a judge")
+	r := ScoreSemantic(nil, "prompt", "response")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_ScoreSemantic_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreSemantic(nil, "", "")
-	core.AssertError(t, err)
+	r := ScoreSemantic(nil, "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreSemantic_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreSemantic(nil, "λ", "λ")
-	core.AssertError(t, err)
+	r := ScoreSemantic(nil, "λ", "λ")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreContent_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreContent(nil, ContentProbe{Prompt: "p"}, "response")
-	core.AssertError(t, err, "requires a judge")
+	r := ScoreContent(nil, ContentProbe{Prompt: "p"}, "response")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_ScoreContent_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreContent(nil, ContentProbe{}, "")
-	core.AssertError(t, err)
+	r := ScoreContent(nil, ContentProbe{}, "")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreContent_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreContent(nil, ContentProbe{CCPMarkers: []string{"marker"}}, "")
-	core.AssertError(t, err)
+	r := ScoreContent(nil, ContentProbe{CCPMarkers: []string{"marker"}}, "")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreCapability_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreCapability(nil, "q", "a", "r")
-	core.AssertError(t, err, "requires a judge")
+	r := ScoreCapability(nil, "q", "a", "r")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_ScoreCapability_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreCapability(nil, "", "", "")
-	core.AssertError(t, err)
+	r := ScoreCapability(nil, "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreCapability_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreCapability(nil, "λ", "λ", "λ")
-	core.AssertError(t, err)
+	r := ScoreCapability(nil, "λ", "λ", "λ")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreStandard_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreStandard(nil, "exact", "", "42", "42")
-	core.AssertError(t, err, "requires a judge")
+	r := ScoreStandard(nil, "exact", "", "42", "42")
+	assertResultError(t, r, "requires a judge")
 }
 
 func TestScore_ScoreStandard_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreStandard(nil, "unknown", "", "", "")
-	core.AssertError(t, err)
+	r := ScoreStandard(nil, "unknown", "", "", "")
+	assertResultError(t, r)
 }
 
 func TestScore_ScoreStandard_Ugly(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	_, err := ScoreStandard(nil, "", "", "", "")
-	core.AssertError(t, err)
+	r := ScoreStandard(nil, "", "", "", "")
+	assertResultError(t, r)
 }

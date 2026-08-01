@@ -128,11 +128,12 @@ func (r *Routes) Generate(c *gin.Context) {
 		opts.MaxTokens = req.MaxTokens
 	}
 
-	res, err := r.service.Generate(c.Request.Context(), req.Backend, req.Prompt, opts)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, goapi.Fail("GENERATION_FAILED", err.Error()))
+	result := r.service.Generate(c.Request.Context(), req.Backend, req.Prompt, opts)
+	if !result.OK {
+		c.JSON(http.StatusInternalServerError, goapi.Fail("GENERATION_FAILED", result.Error()))
 		return
 	}
+	res := result.Value.(ml.Result)
 
 	c.JSON(http.StatusOK, goapi.OK(generateResponse{Text: res.Text}))
 }

@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
 )
 
 // InferenceAdapter bridges a go-inference TextModel (iter.Seq[Token]) to the
@@ -23,6 +22,7 @@ type InferenceAdapter struct {
 // Compile-time checks.
 var _ Backend = (*InferenceAdapter)(nil)
 var _ StreamingBackend = (*InferenceAdapter)(nil)
+var _ inference.CapabilityReporter = (*InferenceAdapter)(nil)
 
 // NewInferenceAdapter wraps a go-inference TextModel as an ml.Backend and
 // ml.StreamingBackend. The name is used for Backend.Name() (e.g. "mlx").
@@ -31,7 +31,11 @@ func NewInferenceAdapter(model inference.TextModel, name string) *InferenceAdapt
 }
 
 // Generate collects all tokens from the model's iterator into a single string.
-func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) (Result, error) {
+//
+//	r := a.Generate(ctx, "hello", ml.DefaultGenOpts())
+//	if !r.OK { return r }
+//	resp := r.Value.(ml.Result)
+func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts GenOpts) core.Result {
 	inferOpts := convertOpts(opts)
 	b := core.NewBuilder()
 	for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
@@ -39,15 +43,19 @@ func (a *InferenceAdapter) Generate(ctx context.Context, prompt string, opts Gen
 	}
 	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return newResult(text, nil), err
+		return core.Fail(err)
 	}
-	return newResult(text, metricsPtr(a.model)), nil
+	return core.Ok(newResult(text, metricsPtr(a.model)))
 }
 
 // Chat sends a multi-turn conversation to the underlying TextModel and collects
 // all tokens. Since ml.Message is now a type alias for inference.Message, no
 // conversion is needed.
-func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) (Result, error) {
+//
+//	r := a.Chat(ctx, messages, ml.DefaultGenOpts())
+//	if !r.OK { return r }
+//	resp := r.Value.(ml.Result)
+func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts GenOpts) core.Result {
 	inferOpts := convertOpts(opts)
 	b := core.NewBuilder()
 	for tok := range a.model.Chat(ctx, messages, inferOpts...) {
@@ -55,23 +63,26 @@ func (a *InferenceAdapter) Chat(ctx context.Context, messages []Message, opts Ge
 	}
 	text := applyStopSequences(b.String(), opts.StopSequences)
 	if err := a.model.Err(); err != nil {
-		return newResult(text, nil), err
+		return core.Fail(err)
 	}
-	return newResult(text, metricsPtr(a.model)), nil
+	return core.Ok(newResult(text, metricsPtr(a.model)))
 }
 
 // GenerateStream forwards each generated token's text to the callback.
 // Returns nil on success, the callback's error if it stops early, or the
 // model's error if generation fails.
-func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) error {
+//
+//	r := a.GenerateStream(ctx, "hello", opts, func(tok string) error { ... })
+//	if !r.OK { return r }
+func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, opts GenOpts, cb TokenCallback) core.Result {
 	inferOpts := convertOpts(opts)
 	if len(opts.StopSequences) == 0 {
 		for tok := range a.model.Generate(ctx, prompt, inferOpts...) {
 			if err := cb(tok.Text); err != nil {
-				return err
+				return core.Fail(err)
 			}
 		}
-		return a.model.Err()
+		return core.ResultOf(nil, a.model.Err())
 	}
 
 	full := core.NewBuilder()
@@ -81,29 +92,32 @@ func (a *InferenceAdapter) GenerateStream(ctx context.Context, prompt string, op
 		truncated := applyStopSequences(full.String(), opts.StopSequences)
 		if len(truncated) > emitted {
 			if err := cb(truncated[emitted:]); err != nil {
-				return err
+				return core.Fail(err)
 			}
 			emitted = len(truncated)
 		}
 		if len(truncated) < full.Len() {
-			return a.model.Err()
+			return core.ResultOf(nil, a.model.Err())
 		}
 	}
-	return a.model.Err()
+	return core.ResultOf(nil, a.model.Err())
 }
 
 // ChatStream forwards each generated chat token's text to the callback.
 // Since ml.Message is now a type alias for inference.Message, no conversion
 // is needed.
-func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) error {
+//
+//	r := a.ChatStream(ctx, messages, opts, func(tok string) error { ... })
+//	if !r.OK { return r }
+func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, opts GenOpts, cb TokenCallback) core.Result {
 	inferOpts := convertOpts(opts)
 	if len(opts.StopSequences) == 0 {
 		for tok := range a.model.Chat(ctx, messages, inferOpts...) {
 			if err := cb(tok.Text); err != nil {
-				return err
+				return core.Fail(err)
 			}
 		}
-		return a.model.Err()
+		return core.ResultOf(nil, a.model.Err())
 	}
 
 	full := core.NewBuilder()
@@ -113,15 +127,15 @@ func (a *InferenceAdapter) ChatStream(ctx context.Context, messages []Message, o
 		truncated := applyStopSequences(full.String(), opts.StopSequences)
 		if len(truncated) > emitted {
 			if err := cb(truncated[emitted:]); err != nil {
-				return err
+				return core.Fail(err)
 			}
 			emitted = len(truncated)
 		}
 		if len(truncated) < full.Len() {
-			return a.model.Err()
+			return core.ResultOf(nil, a.model.Err())
 		}
 	}
-	return a.model.Err()
+	return core.ResultOf(nil, a.model.Err())
 }
 
 // Name returns the backend identifier set at construction.
@@ -132,21 +146,48 @@ func (a *InferenceAdapter) Available() bool { return true }
 
 // Close delegates to the underlying TextModel.Close(), releasing GPU memory
 // and other resources.
-func (a *InferenceAdapter) Close() error { return a.model.Close() }
+func (a *InferenceAdapter) Close() core.Result {
+	return core.ResultOf(nil, a.model.Close())
+}
 
 // Model returns the underlying go-inference TextModel for direct access
 // to Classify, BatchGenerate, Metrics, Info, etc.
 func (a *InferenceAdapter) Model() inference.TextModel { return a.model }
 
+// Capabilities returns the shared feature report for the wrapped inference model.
+func (a *InferenceAdapter) Capabilities() inference.CapabilityReport {
+	if a == nil || a.model == nil {
+		name := ""
+		if a != nil {
+			name = a.name
+		}
+		return inference.CapabilityReport{Runtime: inference.RuntimeIdentity{Backend: name}}
+	}
+	report, ok := inference.CapabilitiesOf(a.model)
+	if !ok {
+		report = inference.TextModelCapabilities(inference.RuntimeIdentity{Backend: a.name}, a.model)
+	}
+	if report.Runtime.Backend == "" {
+		report.Runtime.Backend = a.name
+	}
+	report.Available = a.Available()
+	return report
+}
+
 // InspectAttention delegates to the underlying TextModel if it implements
 // inference.AttentionInspector. Returns an error if the backend does not support
 // attention inspection.
-func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) (*inference.AttentionSnapshot, error) {
+//
+//	r := a.InspectAttention(ctx, "hello")
+//	if !r.OK { return r }
+//	snap := r.Value.(*inference.AttentionSnapshot)
+func (a *InferenceAdapter) InspectAttention(ctx context.Context, prompt string, opts ...inference.GenerateOption) core.Result {
 	inspector, ok := a.model.(inference.AttentionInspector)
 	if !ok {
-		return nil, coreerr.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil)
+		return core.Fail(core.E("ml.InferenceAdapter.InspectAttention", core.Sprintf("backend %q does not support attention inspection", a.name), nil))
 	}
-	return inspector.InspectAttention(ctx, prompt, opts...)
+	snap, err := inspector.InspectAttention(ctx, prompt, opts...)
+	return core.ResultOf(snap, err)
 }
 
 // convertOpts maps ml.GenOpts to go-inference functional options.

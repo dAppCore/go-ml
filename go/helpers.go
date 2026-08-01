@@ -145,21 +145,21 @@ func envGet(key string) string {
 }
 
 // userHomeDir returns the user's home directory.
-func userHomeDir() (string, error) {
-	r := core.UserHomeDir()
-	if !r.OK {
-		return "", r.Value.(error)
-	}
-	return r.Value.(string), nil
+//
+//	r := userHomeDir()
+//	if !r.OK { return r }
+//	home := r.Value.(string)
+func userHomeDir() core.Result {
+	return core.UserHomeDir()
 }
 
 // hostname returns the system hostname.
-func hostname() (string, error) {
-	r := core.Hostname()
-	if !r.OK {
-		return "", r.Value.(error)
-	}
-	return r.Value.(string), nil
+//
+//	r := hostname()
+//	if !r.OK { return r }
+//	host := r.Value.(string)
+func hostname() core.Result {
+	return core.Hostname()
 }
 
 // lastIndexStr returns the index of the last instance of substr in s.
@@ -174,12 +174,16 @@ func lastIndexStr(s, substr string) int {
 }
 
 // readAll reads all bytes from a reader.
-func readAll(r any) ([]byte, error) {
+//
+//	r := readAll(resp.Body)
+//	if !r.OK { return r }
+//	data := r.Value.([]byte)
+func readAll(r any) core.Result {
 	result := core.ReadAll(r)
 	if !result.OK {
-		return nil, result.Value.(error)
+		return result
 	}
-	return []byte(result.Value.(string)), nil
+	return core.Ok([]byte(result.Value.(string)))
 }
 
 func indexSubstr(s, substr string) int {

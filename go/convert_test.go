@@ -27,26 +27,21 @@ func TestConvert_RenameMLXKey_Ugly(t *core.T) {
 
 func TestConvert_ReadSafetensors_Good(t *core.T) {
 	sf, _ := writeSafetensorsFixture(t)
-	tensors, data, err := ReadSafetensors(sf)
-	core.RequireNoError(t, err)
-	core.AssertLen(t, tensors, 1)
-	core.AssertLen(t, data, 4)
+	r := ReadSafetensors(sf)
+	requireResultOK(t, r)
+	sd := r.Value.(SafetensorsData)
+	core.AssertLen(t, sd.Tensors, 1)
+	core.AssertLen(t, sd.Data, 4)
 }
 
 func TestConvert_ReadSafetensors_Bad(t *core.T) {
-	tensors, data, err := ReadSafetensors(core.JoinPath(t.TempDir(), "missing.safetensors"))
-	core.AssertError(t, err)
-	core.AssertNil(t, tensors)
-	core.AssertNil(t, data)
+	assertResultError(t, ReadSafetensors(core.JoinPath(t.TempDir(), "missing.safetensors")))
 }
 
 func TestConvert_ReadSafetensors_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "bad.safetensors")
 	core.RequireNoError(t, coreio.Local.Write(file, "short"))
-	tensors, data, err := ReadSafetensors(file)
-	core.AssertError(t, err)
-	core.AssertNil(t, tensors)
-	core.AssertNil(t, data)
+	assertResultError(t, ReadSafetensors(file))
 }
 
 func TestConvert_GetTensorData_Good(t *core.T) {
@@ -123,44 +118,38 @@ func TestConvert_TransposeBFloat16_Ugly(t *core.T) {
 
 func TestConvert_WriteSafetensors_Good(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "out.safetensors")
-	err := WriteSafetensors(file, map[string]SafetensorsTensorInfo{"a": {Dtype: "F32", Shape: []int{1}}}, map[string][]byte{"a": {1, 2, 3, 4}})
-	core.RequireNoError(t, err)
+	requireResultOK(t, WriteSafetensors(file, map[string]SafetensorsTensorInfo{"a": {Dtype: "F32", Shape: []int{1}}}, map[string][]byte{"a": {1, 2, 3, 4}}))
 	core.AssertTrue(t, coreio.Local.IsFile(file))
 }
 
 func TestConvert_WriteSafetensors_Bad(t *core.T) {
 	dir := core.JoinPath(t.TempDir(), "blocked")
 	core.RequireNoError(t, coreio.Local.EnsureDir(dir))
-	err := WriteSafetensors(dir, map[string]SafetensorsTensorInfo{}, map[string][]byte{})
-	core.AssertError(t, err)
+	assertResultError(t, WriteSafetensors(dir, map[string]SafetensorsTensorInfo{}, map[string][]byte{}))
 }
 
 func TestConvert_WriteSafetensors_Ugly(t *core.T) {
 	file := core.JoinPath(t.TempDir(), "empty.safetensors")
-	err := WriteSafetensors(file, map[string]SafetensorsTensorInfo{}, map[string][]byte{})
-	core.RequireNoError(t, err)
+	requireResultOK(t, WriteSafetensors(file, map[string]SafetensorsTensorInfo{}, map[string][]byte{}))
 	core.AssertTrue(t, coreio.Local.IsFile(file))
 }
 
 func TestConvert_ConvertMLXtoPEFT_Good(t *core.T) {
 	sf, cfg := writeSafetensorsFixture(t)
 	out := core.JoinPath(t.TempDir(), "peft")
-	err := ConvertMLXtoPEFT(sf, cfg, out, "base-model")
-	core.RequireNoError(t, err)
+	requireResultOK(t, ConvertMLXtoPEFT(sf, cfg, out, "base-model"))
 	core.AssertTrue(t, coreio.Local.IsFile(core.JoinPath(out, "adapter_model.safetensors")))
 }
 
 func TestConvert_ConvertMLXtoPEFT_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
-	err := ConvertMLXtoPEFT(core.JoinPath(t.TempDir(), "missing.safetensors"), core.JoinPath(t.TempDir(), "missing.cfg"), t.TempDir(), "base")
-	core.AssertError(t, err)
+	assertResultError(t, ConvertMLXtoPEFT(core.JoinPath(t.TempDir(), "missing.safetensors"), core.JoinPath(t.TempDir(), "missing.cfg"), t.TempDir(), "base"))
 }
 
 func TestConvert_ConvertMLXtoPEFT_Ugly(t *core.T) {
 	sf, _ := writeSafetensorsFixture(t)
 	cfg := core.JoinPath(t.TempDir(), "bad.cfg")
 	core.RequireNoError(t, coreio.Local.Write(cfg, "not object"))
-	err := ConvertMLXtoPEFT(sf, cfg, core.JoinPath(t.TempDir(), "peft"), "base")
-	core.AssertError(t, err)
+	assertResultError(t, ConvertMLXtoPEFT(sf, cfg, core.JoinPath(t.TempDir(), "peft"), "base"))
 }

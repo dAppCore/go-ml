@@ -4,13 +4,15 @@ import (
 	"context"
 
 	"dappco.re/go"
+	"dappco.re/go/inference"
 )
 
 func newServiceForTest(t *core.T, opts Options) *Service {
 	t.Helper()
 	factory := NewService(opts)
-	raw, err := factory(core.New())
-	core.RequireNoError(t, err)
+	r := factory(core.New())
+	requireResultOK(t, r)
+	raw := r.Value
 	svc, ok := raw.(*Service)
 	core.RequireTrue(t, ok)
 	return svc
@@ -18,8 +20,9 @@ func newServiceForTest(t *core.T, opts Options) *Service {
 
 func TestService_NewService_Good(t *core.T) {
 	factory := NewService(Options{DefaultBackend: "stub"})
-	raw, err := factory(core.New())
-	core.RequireNoError(t, err)
+	r := factory(core.New())
+	requireResultOK(t, r)
+	raw := r.Value
 	svc := raw.(*Service)
 	core.AssertNotNil(t, svc)
 	core.AssertEqual(t, "stub", svc.Options().DefaultBackend)
@@ -27,8 +30,9 @@ func TestService_NewService_Good(t *core.T) {
 
 func TestService_NewService_Bad(t *core.T) {
 	factory := NewService(Options{})
-	raw, err := factory(core.New())
-	core.RequireNoError(t, err)
+	r := factory(core.New())
+	requireResultOK(t, r)
+	raw := r.Value
 	svc := raw.(*Service)
 	core.AssertNotNil(t, svc)
 	core.AssertEqual(t, 4, svc.Options().Concurrency)
@@ -36,52 +40,82 @@ func TestService_NewService_Bad(t *core.T) {
 
 func TestService_NewService_Ugly(t *core.T) {
 	factory := NewService(Options{Suites: "heuristic", Concurrency: 1})
-	raw, err := factory(core.New())
-	core.RequireNoError(t, err)
+	r := factory(core.New())
+	requireResultOK(t, r)
+	raw := r.Value
 	svc := raw.(*Service)
 	core.AssertNotNil(t, svc)
 	core.AssertEqual(t, "heuristic", svc.Options().Suites)
 }
 
+func TestService_RegisterCore_Good(t *core.T) {
+	// RegisterCore wires the service into Core via core.WithService; the
+	// returned Result is the registration success marker (Value=nil). The
+	// constructed Service is accessible via the Core service registry, not
+	// via the Result. To verify default Options shape, invoke the factory
+	// directly.
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEqual(t, 4, svc.Options().Concurrency)
+}
+
+func TestService_RegisterCore_Bad(t *core.T) {
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEqual(t, "all", svc.Options().Suites)
+}
+
+func TestService_RegisterCore_Ugly(t *core.T) {
+	requireResultOK(t, RegisterCore(core.New()))
+	r := NewService(Options{})(core.New())
+	requireResultOK(t, r)
+	svc := r.Value.(*Service)
+	core.AssertEmpty(t, svc.Backends())
+}
+
 func TestService_Service_OnStartup_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{OllamaURL: "http://127.0.0.1", JudgeURL: "http://127.0.0.1", JudgeModel: "judge"})
 	err := svc.OnStartup(context.Background())
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertNotNil(t, svc.Engine())
 }
 
 func TestService_Service_OnStartup_Bad(t *core.T) {
 	svc := newServiceForTest(t, Options{})
 	err := svc.OnStartup(context.Background())
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertNil(t, svc.Engine())
 }
 
 func TestService_Service_OnStartup_Ugly(t *core.T) {
 	svc := newServiceForTest(t, Options{OllamaURL: "http://127.0.0.1"})
 	err := svc.OnStartup(context.Background())
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertNotNil(t, svc.Backend("ollama"))
 }
 
 func TestService_Service_OnShutdown_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{})
 	err := svc.OnShutdown(context.Background())
-	core.AssertNoError(t, err)
+	assertResultOK(t, err)
 	core.AssertNotNil(t, svc)
 }
 
 func TestService_Service_OnShutdown_Bad(t *core.T) {
 	svc := newServiceForTest(t, Options{Concurrency: 2})
 	err := svc.OnShutdown(context.Background())
-	core.AssertNoError(t, err)
+	assertResultOK(t, err)
 	core.AssertEqual(t, 2, svc.Options().Concurrency)
 }
 
 func TestService_Service_OnShutdown_Ugly(t *core.T) {
 	svc := newServiceForTest(t, Options{Suites: "all"})
 	err := svc.OnShutdown(context.Background())
-	core.AssertNoError(t, err)
+	assertResultOK(t, err)
 	core.AssertEqual(t, "all", svc.Options().Suites)
 }
 
@@ -192,9 +226,33 @@ func TestService_Service_BackendsIter_Ugly(t *core.T) {
 	core.AssertEqual(t, 1, count)
 }
 
+func TestService_Service_BackendCapabilities_Good(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	svc.RegisterBackend("local", &testBackend{name: "local", available: true})
+	report, ok := svc.BackendCapabilities("local")
+	core.AssertTrue(t, ok)
+	core.AssertEqual(t, "local", report.Runtime.Backend)
+	core.AssertTrue(t, report.Supports(inference.CapabilityGenerate))
+}
+
+func TestService_Service_BackendCapabilities_Bad(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	report, ok := svc.BackendCapabilities("missing")
+	core.AssertFalse(t, ok)
+	core.AssertEqual(t, inference.CapabilityReport{}, report)
+}
+
+func TestService_Service_BackendCapabilities_Ugly(t *core.T) {
+	svc := newServiceForTest(t, Options{})
+	svc.RegisterBackend("nil", nil)
+	report, ok := svc.BackendCapabilities("nil")
+	core.AssertFalse(t, ok)
+	core.AssertEqual(t, inference.CapabilityReport{}, report)
+}
+
 func TestService_Service_Judge_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{JudgeURL: "http://127.0.0.1", JudgeModel: "judge"})
-	core.RequireNoError(t, svc.OnStartup(context.Background()))
+	requireResultOK(t, svc.OnStartup(context.Background()))
 	core.AssertNotNil(t, svc.Judge())
 }
 
@@ -212,7 +270,7 @@ func TestService_Service_Judge_Ugly(t *core.T) {
 
 func TestService_Service_Engine_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{JudgeURL: "http://127.0.0.1", JudgeModel: "judge"})
-	core.RequireNoError(t, svc.OnStartup(context.Background()))
+	requireResultOK(t, svc.OnStartup(context.Background()))
 	core.AssertNotNil(t, svc.Engine())
 }
 
@@ -231,45 +289,45 @@ func TestService_Service_Engine_Ugly(t *core.T) {
 func TestService_Service_Generate_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{DefaultBackend: "stub"})
 	svc.RegisterBackend("stub", &testBackend{result: Result{Text: "generated"}})
-	result, err := svc.Generate(context.Background(), "", "prompt", GenOpts{})
-	core.RequireNoError(t, err)
+	r := svc.Generate(context.Background(), "", "prompt", GenOpts{})
+	requireResultOK(t, r)
+	result := r.Value.(Result)
 	core.AssertEqual(t, "generated", result.Text)
 }
 
 func TestService_Service_Generate_Bad(t *core.T) {
 	svc := newServiceForTest(t, Options{})
-	result, err := svc.Generate(context.Background(), "missing", "prompt", GenOpts{})
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", result.Text)
+	r := svc.Generate(context.Background(), "missing", "prompt", GenOpts{})
+	assertResultError(t, r)
 }
 
 func TestService_Service_Generate_Ugly(t *core.T) {
 	svc := newServiceForTest(t, Options{})
 	svc.RegisterBackend("err", &testBackend{err: core.AnError})
-	result, err := svc.Generate(context.Background(), "err", "prompt", GenOpts{})
-	core.AssertError(t, err)
-	core.AssertEqual(t, "", result.Text)
+	r := svc.Generate(context.Background(), "err", "prompt", GenOpts{})
+	assertResultError(t, r)
 }
 
 func TestService_Service_ScoreResponses_Good(t *core.T) {
 	svc := newServiceForTest(t, Options{})
 	svc.engine = NewEngine(NewJudge(&testBackend{result: Result{Text: `{"sovereignty":1,"ethical_depth":1,"creative_expression":1,"self_concept":1}`}}), 1, "heuristic")
-	out, err := svc.ScoreResponses(context.Background(), []Response{{ID: "r1", Model: "m", Response: "substantial response text"}})
-	core.RequireNoError(t, err)
+	r := svc.ScoreResponses(context.Background(), []Response{{ID: "r1", Model: "m", Response: "substantial response text"}})
+	requireResultOK(t, r)
+	out := r.Value.(map[string][]PromptScore)
 	core.AssertNotNil(t, out)
 }
 
 func TestService_Service_ScoreResponses_Bad(t *core.T) {
 	svc := newServiceForTest(t, Options{})
-	out, err := svc.ScoreResponses(context.Background(), nil)
-	core.AssertError(t, err)
-	core.AssertNil(t, out)
+	r := svc.ScoreResponses(context.Background(), nil)
+	assertResultError(t, r)
 }
 
 func TestService_Service_ScoreResponses_Ugly(t *core.T) {
 	svc := newServiceForTest(t, Options{})
 	svc.engine = NewEngine(NewJudge(&testBackend{}), 1, "heuristic")
-	out, err := svc.ScoreResponses(context.Background(), nil)
-	core.RequireNoError(t, err)
+	r := svc.ScoreResponses(context.Background(), nil)
+	requireResultOK(t, r)
+	out := r.Value.(map[string][]PromptScore)
 	core.AssertEmpty(t, out)
 }

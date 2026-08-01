@@ -360,7 +360,11 @@ func (tf *TrainFrame) SendTick(iter, total int, loss, valLoss, lr, tps, peakGB f
 }
 
 // SendDone signals training completion.
-func (tf *TrainFrame) SendDone(err error) {
+func (tf *TrainFrame) SendDone(result core.Result) {
+	var err error
+	if !result.OK {
+		err = result.Value.(error)
+	}
 	tf.Send(TrainTickMsg{Done: true, Err: err})
 	// Give the TUI a moment to render the final state
 	time.Sleep(100 * time.Millisecond)

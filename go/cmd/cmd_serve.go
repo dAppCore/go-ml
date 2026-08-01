@@ -13,7 +13,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -35,7 +34,7 @@ func addServeCommand(c *core.Core) {
 			maxRequests := optInt(opts, "max-requests", 1)
 			maxContext := optInt(opts, "max-context", 4)
 
-			return resultFromError(runServeLoop(bind, modelPath, threads, maxTokens, timeoutSec, maxRequests, maxContext))
+			return runServeLoop(bind, modelPath, threads, maxTokens, timeoutSec, maxRequests, maxContext)
 		},
 	})
 }
@@ -44,17 +43,18 @@ func addServeCommand(c *core.Core) {
 // arrives or ListenAndServe returns.
 //
 //	err := runServeLoop(":8090", "", 0, 4096, 300, 1, 4)
-func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxRequests, maxContext int) error {
+func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxRequests, maxContext int) core.Result {
 	// Cap CPU threads
 	if threads > 0 {
 		prev := runtime.GOMAXPROCS(threads)
 		slog.Info("ml serve: capped threads", "threads", threads, "previous", prev)
 	}
 
-	backend, err := createServeBackend(modelPath)
-	if err != nil {
-		return err
+	backendResult := createServeBackend(modelPath)
+	if !backendResult.OK {
+		return backendResult
 	}
+	backend := backendResult.Value.(ml.Backend)
 
 	// Check if backend supports streaming
 	streamer, canStream := backend.(ml.StreamingBackend)
@@ -132,15 +132,15 @@ func runServeLoop(bind, modelPath string, threads, maxTokens, timeoutSec, maxReq
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
 			slog.Error("ml serve: shutdown error", "err", err)
-			return coreerr.E("cmd.runServe", "shutdown", err)
+			return core.Fail(core.E("cmd.runServe", "shutdown", err))
 		}
 		slog.Info("ml serve: stopped cleanly")
-		return nil
+		return core.Ok(nil)
 	case err := <-errCh:
 		if err == http.ErrServerClosed {
-			return nil
+			return core.Ok(nil)
 		}
-		return err
+		return core.Fail(err)
 	}
 }
 
@@ -226,11 +226,13 @@ func modelForBackend(backend ml.Backend) inference.TextModel {
 		return provider.Model()
 	}
 	if loader, ok := backend.(interface {
-		LoadModel(string, ...inference.LoadOption) (inference.TextModel, error)
+		LoadModel(string, ...inference.LoadOption) core.Result
 	}); ok {
-		model, err := loader.LoadModel("")
-		if err == nil {
-			return model
+		result := loader.LoadModel("")
+		if result.OK {
+			if model, ok := result.Value.(inference.TextModel); ok {
+				return model
+			}
 		}
 	}
 	return nil
@@ -288,7 +290,7 @@ func handleCompletion(backend ml.Backend, streamer ml.StreamingBackend, canStrea
 				return
 			}
 
-			err := streamer.GenerateStream(r.Context(), req.Prompt, opts, func(token string) error {
+			result := streamer.GenerateStream(r.Context(), req.Prompt, opts, func(token string) error {
 				chunk := completionChunkResponse{
 					ID:      id,
 					Object:  "text_completion",
@@ -301,8 +303,8 @@ func handleCompletion(backend ml.Backend, streamer ml.StreamingBackend, canStrea
 				return nil
 			})
 
-			if err != nil {
-				slog.Error("stream error", "err", err)
+			if !result.OK {
+				slog.Error("stream error", "err", result.Error())
 			}
 
 			// Send final chunk with finish_reason
@@ -321,11 +323,12 @@ func handleCompletion(backend ml.Backend, streamer ml.StreamingBackend, canStrea
 		}
 
 		// Non-streaming path
-		res, err := backend.Generate(r.Context(), req.Prompt, opts)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		result := backend.Generate(r.Context(), req.Prompt, opts)
+		if !result.OK {
+			http.Error(w, result.Error(), http.StatusInternalServerError)
 			return
 		}
+		res := result.Value.(ml.Result)
 
 		resp := completionResponse{
 			ID:      core.Sprintf("cmpl-%d", time.Now().UnixNano()),
@@ -421,7 +424,7 @@ func handleChat(backend ml.Backend, streamer ml.StreamingBackend, canStream bool
 			io.WriteString(w, core.Sprintf("data: %s\n\n", core.JSONMarshalString(roleChunk)))
 			flusher.Flush()
 
-			err := streamer.ChatStream(r.Context(), req.Messages, opts, func(token string) error {
+			result := streamer.ChatStream(r.Context(), req.Messages, opts, func(token string) error {
 				chunk := chatChunkResponse{
 					ID:      id,
 					Object:  "chat.completion.chunk",
@@ -434,8 +437,8 @@ func handleChat(backend ml.Backend, streamer ml.StreamingBackend, canStream bool
 				return nil
 			})
 
-			if err != nil {
-				slog.Error("stream error", "err", err)
+			if !result.OK {
+				slog.Error("stream error", "err", result.Error())
 			}
 
 			// Send final chunk with finish_reason
@@ -454,11 +457,12 @@ func handleChat(backend ml.Backend, streamer ml.StreamingBackend, canStream bool
 		}
 
 		// Non-streaming path
-		res, err := backend.Chat(r.Context(), req.Messages, opts)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		result := backend.Chat(r.Context(), req.Messages, opts)
+		if !result.OK {
+			http.Error(w, result.Error(), http.StatusInternalServerError)
 			return
 		}
+		res := result.Value.(ml.Result)
 
 		resp := chatResponse{
 			ID:      core.Sprintf("chatcmpl-%d", time.Now().UnixNano()),

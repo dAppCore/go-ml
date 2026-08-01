@@ -14,7 +14,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"dappco.re/go/mlx"
 )
@@ -181,20 +180,22 @@ type abJSONLSummary struct {
 	Timestamp   time.Time                     `json:"ts"`
 }
 
-func runAB(cmd *cli.Command, args []string) error {
+func runAB(cmd *cli.Command, args []string) core.Result {
 	start := time.Now()
 
 	// Load probes
-	probes, err := loadABProbes()
-	if err != nil {
-		return err
+	probesResult := loadABProbes()
+	if !probesResult.OK {
+		return probesResult
 	}
+	probes := probesResult.Value.([]abProbe)
 
 	// Build condition list: baseline + kernels
-	kernels, err := loadABKernels()
-	if err != nil {
-		return err
+	kernelsResult := loadABKernels()
+	if !kernelsResult.OK {
+		return kernelsResult
 	}
+	kernels := kernelsResult.Value.([]abKernelDef)
 
 	// Condition names for ordering: "baseline" first, then kernels in order
 	condNames := []string{"baseline"}
@@ -224,15 +225,16 @@ func runAB(cmd *cli.Command, args []string) error {
 
 	// Load model
 	slog.Info("ab: loading model", "model_path", abModelPath)
-	backend, err := ml.NewMLXBackend(abModelPath)
-	if err != nil {
-		return coreerr.E("cmd.runAB", "load model", err)
+	backendResult := ml.NewMLXBackend(abModelPath)
+	if !backendResult.OK {
+		return core.Fail(core.E("cmd.runAB", "load model", backendResult.Value.(error)))
 	}
+	backend := backendResult.Value.(*ml.InferenceAdapter)
 
 	// Open JSONL output for streaming writes
 	outFile, err := coreio.Local.Create(abOutput)
 	if err != nil {
-		return coreerr.E("cmd.runAB", "create output", err)
+		return core.Fail(core.E("cmd.runAB", "create output", err))
 	}
 	defer outFile.Close()
 
@@ -299,8 +301,9 @@ func runAB(cmd *cli.Command, args []string) error {
 			Conditions: condScores,
 			Timestamp:  time.Now().UTC(),
 		}
-		if err := writeABJSONL(outFile, line); err != nil {
-			slog.Error("ab: write jsonl", "error", err)
+		writeResult := writeABJSONL(outFile, line)
+		if !writeResult.OK {
+			slog.Error("ab: write jsonl", "error", writeResult.Value.(error))
 		}
 
 		// Track for summary
@@ -316,7 +319,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 
 	if len(results) == 0 {
-		return coreerr.E("cmd.runAB", "no results to compare", nil)
+		return core.Fail(core.E("cmd.runAB", "no results to compare", nil))
 	}
 
 	// Build condition summaries
@@ -403,8 +406,9 @@ func runAB(cmd *cli.Command, args []string) error {
 		MaxTokens:   abMaxTokens,
 		Timestamp:   time.Now().UTC(),
 	}
-	if err := writeABJSONL(outFile, summaryLine); err != nil {
-		slog.Error("ab: write summary", "error", err)
+	writeResult := writeABJSONL(outFile, summaryLine)
+	if !writeResult.OK {
+		slog.Error("ab: write summary", "error", writeResult.Value.(error))
 	}
 
 	// Print summary table
@@ -421,7 +425,7 @@ func runAB(cmd *cli.Command, args []string) error {
 	}
 	printABSummary(summary, condNames)
 
-	return nil
+	return core.Ok(nil)
 }
 
 func printABSummary(s abSummary, condNames []string) {
@@ -508,20 +512,20 @@ func printABSummary(s abSummary, condNames []string) {
 	core.Print(nil, "Output:   %s", abOutput)
 }
 
-func loadABProbes() ([]abProbe, error) {
+func loadABProbes() core.Result {
 	if abPrompts == "" {
-		return defaultABSeeds, nil
+		return core.Ok(defaultABSeeds)
 	}
 
 	data, err := coreio.Local.Read(abPrompts)
 	if err != nil {
-		return nil, coreerr.E("cmd.loadABProbes", "read probes", err)
+		return core.Fail(core.E("cmd.loadABProbes", "read probes", err))
 	}
 
 	// Try standard abProbe format first
 	var probes []abProbe
 	if r := core.JSONUnmarshalString(data, &probes); r.OK && len(probes) > 0 && probes[0].Prompt != "" {
-		return probes, nil
+		return core.Ok(probes)
 	}
 
 	// Try LEM seed format: [{id, domain, prompt}, ...]
@@ -539,15 +543,15 @@ func loadABProbes() ([]abProbe, error) {
 				Prompt:   s.Prompt,
 			}
 		}
-		return probes, nil
+		return core.Ok(probes)
 	}
 
-	return nil, coreerr.E("cmd.loadABProbes", core.Sprintf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts), nil)
+	return core.Fail(core.E("cmd.loadABProbes", core.Sprintf("could not parse probes from %s (expected JSON array with 'id' and 'prompt' fields)", abPrompts), nil))
 }
 
-func loadABKernels() ([]abKernelDef, error) {
+func loadABKernels() core.Result {
 	if len(abKernels) == 0 {
-		return nil, coreerr.E("cmd.loadABKernels", "at least one --kernel is required (raw file content is used as system message with zero instruction)", nil)
+		return core.Fail(core.E("cmd.loadABKernels", "at least one --kernel is required (raw file content is used as system message with zero instruction)", nil))
 	}
 
 	var defs []abKernelDef
@@ -565,7 +569,7 @@ func loadABKernels() ([]abKernelDef, error) {
 
 		data, err := coreio.Local.Read(path)
 		if err != nil {
-			return nil, coreerr.E("cmd.loadABKernels", core.Sprintf("read kernel %q", path), err)
+			return core.Fail(core.E("cmd.loadABKernels", core.Sprintf("read kernel %q", path), err))
 		}
 
 		defs = append(defs, abKernelDef{
@@ -575,7 +579,7 @@ func loadABKernels() ([]abKernelDef, error) {
 		})
 	}
 
-	return defs, nil
+	return core.Ok(defs)
 }
 
 // category returns the category or domain for a probe.
@@ -589,9 +593,12 @@ func category(p abProbe) string {
 	return "uncategorised"
 }
 
-func writeABJSONL(w io.Writer, v any) error {
+func writeABJSONL(w io.Writer, v any) core.Result {
 	_, err := io.WriteString(w, core.Concat(core.JSONMarshalString(v), "\n"))
-	return err
+	if err != nil {
+		return core.Fail(core.E("cmd.writeABJSONL", "write jsonl", err))
+	}
+	return core.Ok(nil)
 }
 
 func avg(vals []float64) float64 {

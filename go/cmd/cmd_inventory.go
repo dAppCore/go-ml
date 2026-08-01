@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -17,16 +16,17 @@ func addInventoryCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runInventory", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runInventory", "--db or LEM_DB required", nil))
 			}
 
-			db, err := ml.OpenDB(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runInventory", "open db", err))
+			result := ml.OpenDB(dbPath)
+			if !result.OK {
+				return core.Fail(core.E("cmd.runInventory", "open db", result.Value.(error)))
 			}
+			db := result.Value.(*ml.DB)
 			defer db.Close()
 
-			return resultFromError(ml.PrintInventory(db, nil))
+			return ml.PrintInventory(db, nil)
 		},
 	})
 }

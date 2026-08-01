@@ -7,7 +7,6 @@ import (
 
 	"dappco.re/go"
 	"dappco.re/go/inference"
-	"dappco.re/go/log"
 	ml "dappco.re/go/ml"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -16,7 +15,7 @@ import (
 // Usage example: subsystem := mcp.NewMLSubsystem(service)
 type MLSubsystem struct {
 	service *ml.Service
-	logger  *log.Logger
+	logger  *core.Log
 }
 
 // NewMLSubsystem creates an MCP subsystem for ML tools.
@@ -24,7 +23,7 @@ type MLSubsystem struct {
 func NewMLSubsystem(svc *ml.Service) *MLSubsystem {
 	return &MLSubsystem{
 		service: svc,
-		logger:  log.Default(),
+		logger:  core.Default(),
 	}
 }
 
@@ -37,31 +36,61 @@ func (m *MLSubsystem) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_generate",
 		Description: "Generate text via a configured ML inference backend.",
-	}, m.mlGenerate)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MLGenerateInput) (*mcp.CallToolResult, MLGenerateOutput, error) {
+		result := m.mlGenerate(ctx, req, input)
+		if !result.OK {
+			return nil, MLGenerateOutput{}, result.Value.(error)
+		}
+		return nil, result.Value.(MLGenerateOutput), nil
+	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_score",
 		Description: "Score a prompt/response pair using heuristic and LLM judge suites.",
-	}, m.mlScore)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MLScoreInput) (*mcp.CallToolResult, MLScoreOutput, error) {
+		result := m.mlScore(ctx, req, input)
+		if !result.OK {
+			return nil, MLScoreOutput{}, result.Value.(error)
+		}
+		return nil, result.Value.(MLScoreOutput), nil
+	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_probe",
 		Description: "Run capability probes against an inference backend.",
-	}, m.mlProbe)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MLProbeInput) (*mcp.CallToolResult, MLProbeOutput, error) {
+		result := m.mlProbe(ctx, req, input)
+		if !result.OK {
+			return nil, MLProbeOutput{}, result.Value.(error)
+		}
+		return nil, result.Value.(MLProbeOutput), nil
+	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_status",
 		Description: "Show training and generation progress from InfluxDB.",
-	}, m.mlStatus)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MLStatusInput) (*mcp.CallToolResult, MLStatusOutput, error) {
+		result := m.mlStatus(ctx, req, input)
+		if !result.OK {
+			return nil, MLStatusOutput{}, result.Value.(error)
+		}
+		return nil, result.Value.(MLStatusOutput), nil
+	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ml_backends",
 		Description: "List available inference backends and their status.",
-	}, m.mlBackends)
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MLBackendsInput) (*mcp.CallToolResult, MLBackendsOutput, error) {
+		result := m.mlBackends(ctx, req, input)
+		if !result.OK {
+			return nil, MLBackendsOutput{}, result.Value.(error)
+		}
+		return nil, result.Value.(MLBackendsOutput), nil
+	})
 }
 
 // Shutdown implements mcp.SubsystemWithShutdown.
-func (m *MLSubsystem) Shutdown(_ context.Context) error { return nil }
+func (m *MLSubsystem) Shutdown(_ context.Context) core.Result { return core.Ok(nil) }
 
 // --- Input/Output types ---
 
@@ -136,19 +165,23 @@ type MLBackendsOutput struct {
 
 // MLBackendInfo describes a single backend.
 type MLBackendInfo struct {
-	Name      string `json:"name"`
-	Available bool   `json:"available"`
+	Name         string   `json:"name"`
+	Available    bool     `json:"available"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	Native       bool     `json:"native,omitempty"`
 }
 
 // --- Tool handlers ---
 
 // mlGenerate delegates to go-ml.Service.Generate, which internally uses
 // InferenceAdapter to route generation through an inference.TextModel.
-func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, input MLGenerateInput) (*mcp.CallToolResult, MLGenerateOutput, error) {
-	m.logger.Info("MCP tool execution", "tool", "ml_generate", "backend", input.Backend, "user", log.Username())
+func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, input MLGenerateInput) core.Result {
+	if m.logger != nil {
+		m.logger.Info("MCP tool execution", "tool", "ml_generate", "backend", input.Backend, "user", core.Username())
+	}
 
 	if input.Prompt == "" {
-		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "prompt cannot be empty", nil)
+		return core.Fail(core.E("mcp.MLSubsystem.mlGenerate", "prompt cannot be empty", nil))
 	}
 
 	opts := ml.GenOpts{
@@ -157,23 +190,26 @@ func (m *MLSubsystem) mlGenerate(ctx context.Context, _ *mcp.CallToolRequest, in
 		Model:       input.Model,
 	}
 
-	result, err := m.service.Generate(ctx, input.Backend, input.Prompt, opts)
-	if err != nil {
-		return nil, MLGenerateOutput{}, log.E("mcp.MLSubsystem.mlGenerate", "generate", err)
+	generateResult := m.service.Generate(ctx, input.Backend, input.Prompt, opts)
+	if !generateResult.OK {
+		return core.Fail(core.E("mcp.MLSubsystem.mlGenerate", "generate", generateResult.Value.(error)))
 	}
+	result := generateResult.Value.(ml.Result)
 
-	return nil, MLGenerateOutput{
+	return core.Ok(MLGenerateOutput{
 		Response: result.Text,
 		Backend:  input.Backend,
 		Model:    input.Model,
-	}, nil
+	})
 }
 
-func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input MLScoreInput) (*mcp.CallToolResult, MLScoreOutput, error) {
-	m.logger.Info("MCP tool execution", "tool", "ml_score", "suites", input.Suites, "user", log.Username())
+func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input MLScoreInput) core.Result {
+	if m.logger != nil {
+		m.logger.Info("MCP tool execution", "tool", "ml_score", "suites", input.Suites, "user", core.Username())
+	}
 
 	if input.Prompt == "" || input.Response == "" {
-		return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "prompt and response cannot be empty", nil)
+		return core.Fail(core.E("mcp.MLSubsystem.mlScore", "prompt and response cannot be empty", nil))
 	}
 
 	suites := input.Suites
@@ -191,24 +227,26 @@ func (m *MLSubsystem) mlScore(ctx context.Context, _ *mcp.CallToolRequest, input
 		case "semantic":
 			judge := m.service.Judge()
 			if judge == nil {
-				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic scoring requires a judge backend", nil)
+				return core.Fail(core.E("mcp.MLSubsystem.mlScore", "semantic scoring requires a judge backend", nil))
 			}
-			s, err := judge.ScoreSemantic(ctx, input.Prompt, input.Response)
-			if err != nil {
-				return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "semantic score", err)
+			scoreResult := judge.ScoreSemantic(ctx, input.Prompt, input.Response)
+			if !scoreResult.OK {
+				return core.Fail(core.E("mcp.MLSubsystem.mlScore", "semantic score", scoreResult.Value.(error)))
 			}
-			output.Semantic = s
+			output.Semantic = scoreResult.Value.(*ml.SemanticScores)
 		case "content":
-			return nil, MLScoreOutput{}, log.E("mcp.MLSubsystem.mlScore", "content scoring requires a ContentProbe — use ml_probe instead", nil)
+			return core.Fail(core.E("mcp.MLSubsystem.mlScore", "content scoring requires a ContentProbe — use ml_probe instead", nil))
 		}
 	}
 
-	return nil, output, nil
+	return core.Ok(output)
 }
 
 // mlProbe runs capability probes by generating responses via go-ml.Service.
-func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input MLProbeInput) (*mcp.CallToolResult, MLProbeOutput, error) {
-	m.logger.Info("MCP tool execution", "tool", "ml_probe", "backend", input.Backend, "user", log.Username())
+func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input MLProbeInput) core.Result {
+	if m.logger != nil {
+		m.logger.Info("MCP tool execution", "tool", "ml_probe", "backend", input.Backend, "user", core.Username())
+	}
 
 	probes := ml.CapabilityProbes
 	if input.Categories != "" {
@@ -227,10 +265,12 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 
 	var results []MLProbeResultItem
 	for _, probe := range probes {
-		result, err := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
-		respText := result.Text
-		if err != nil {
-			respText = core.Sprintf("error: %v", err)
+		result := m.service.Generate(ctx, input.Backend, probe.Prompt, ml.GenOpts{Temperature: 0.7, MaxTokens: 2048})
+		respText := ""
+		if result.OK {
+			respText = result.Value.(ml.Result).Text
+		} else {
+			respText = core.Sprintf("error: %s", result.Error())
 		}
 		results = append(results, MLProbeResultItem{
 			ID:       probe.ID,
@@ -239,14 +279,16 @@ func (m *MLSubsystem) mlProbe(ctx context.Context, _ *mcp.CallToolRequest, input
 		})
 	}
 
-	return nil, MLProbeOutput{
+	return core.Ok(MLProbeOutput{
 		Total:   len(results),
 		Results: results,
-	}, nil
+	})
 }
 
-func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, input MLStatusInput) (*mcp.CallToolResult, MLStatusOutput, error) {
-	m.logger.Info("MCP tool execution", "tool", "ml_status", "user", log.Username())
+func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, input MLStatusInput) core.Result {
+	if m.logger != nil {
+		m.logger.Info("MCP tool execution", "tool", "ml_status", "user", core.Username())
+	}
 
 	url := input.InfluxURL
 	db := input.InfluxDB
@@ -259,34 +301,49 @@ func (m *MLSubsystem) mlStatus(ctx context.Context, _ *mcp.CallToolRequest, inpu
 
 	influx := ml.NewInfluxClient(url, db)
 	buf := core.NewBuilder()
-	if err := ml.PrintStatus(influx, buf); err != nil {
-		return nil, MLStatusOutput{}, log.E("mcp.MLSubsystem.mlStatus", "status", err)
+	if result := ml.PrintStatus(influx, buf); !result.OK {
+		return core.Fail(core.E("mcp.MLSubsystem.mlStatus", "status", result.Value.(error)))
 	}
 
-	return nil, MLStatusOutput{Status: buf.String()}, nil
+	return core.Ok(MLStatusOutput{Status: buf.String()})
 }
 
 // mlBackends enumerates registered backends via the go-inference registry.
-func (m *MLSubsystem) mlBackends(ctx context.Context, _ *mcp.CallToolRequest, input MLBackendsInput) (*mcp.CallToolResult, MLBackendsOutput, error) {
-	m.logger.Info("MCP tool execution", "tool", "ml_backends", "user", log.Username())
+func (m *MLSubsystem) mlBackends(ctx context.Context, _ *mcp.CallToolRequest, input MLBackendsInput) core.Result {
+	if m.logger != nil {
+		m.logger.Info("MCP tool execution", "tool", "ml_backends", "user", core.Username())
+	}
 
 	names := inference.List()
 	backends := make([]MLBackendInfo, 0, len(names))
 	for _, name := range names {
 		b, ok := inference.Get(name)
-		backends = append(backends, MLBackendInfo{
-			Name:      name,
-			Available: ok && b.Available(),
-		})
+		info := MLBackendInfo{Name: name, Available: ok && b.Available()}
+		if ok {
+			report, _ := inference.CapabilitiesOf(b)
+			info.Capabilities = capabilityIDStrings(report.SupportedCapabilityIDs())
+			info.Native = report.Runtime.NativeRuntime
+		}
+		backends = append(backends, info)
 	}
 
 	defaultName := ""
-	if db, err := inference.Default(); err == nil {
-		defaultName = db.Name()
+	if result := inference.Default(); result.OK {
+		if backend, ok := result.Value.(inference.Backend); ok && backend != nil {
+			defaultName = backend.Name()
+		}
 	}
 
-	return nil, MLBackendsOutput{
+	return core.Ok(MLBackendsOutput{
 		Backends: backends,
 		Default:  defaultName,
-	}, nil
+	})
+}
+
+func capabilityIDStrings(ids []inference.CapabilityID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = string(id)
+	}
+	return out
 }

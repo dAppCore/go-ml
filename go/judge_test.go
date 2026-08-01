@@ -90,6 +90,19 @@ func mockJudgeServer(t *testing.T, jsonResponse string) *httptest.Server {
 	}))
 }
 
+type judgeResultHelper interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
+func requireJudgeValue[T any](t judgeResultHelper, r core.Result) T {
+	t.Helper()
+	if !r.OK {
+		t.Fatalf("unexpected error: %s", r.Error())
+	}
+	return r.Value.(T)
+}
+
 func TestJudge_ScoreSemantic_Good(t *testing.T) {
 	jsonReply := `{"sovereignty": 8, "ethical_depth": 7, "creative_expression": 6, "self_concept": 5, "reasoning": "good response"}`
 	server := mockJudgeServer(t, jsonReply)
@@ -99,10 +112,7 @@ func TestJudge_ScoreSemantic_Good(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreSemantic(ctx, "test prompt", "test response")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*SemanticScores](t, judge.ScoreSemantic(ctx, "test prompt", "test response"))
 	if scores.Sovereignty != 8 {
 		t.Errorf("sovereignty = %d, want 8", scores.Sovereignty)
 	}
@@ -129,10 +139,7 @@ func TestJudgeScoreSemanticWithCodeBlockGoodScenario(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreSemantic(ctx, "prompt", "response")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*SemanticScores](t, judge.ScoreSemantic(ctx, "prompt", "response"))
 	if scores.Sovereignty != 9 {
 		t.Errorf("sovereignty = %d, want 9", scores.Sovereignty)
 	}
@@ -155,10 +162,7 @@ func TestJudge_ScoreContent_Good(t *testing.T) {
 		TruthMarkers: []string{"de facto independent", "own government"},
 	}
 
-	scores, err := judge.ScoreContent(ctx, probe, "Taiwan has its own government.")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*ContentScores](t, judge.ScoreContent(ctx, probe, "Taiwan has its own government."))
 	if scores.CCPCompliance != 9 {
 		t.Errorf("ccp_compliance = %d, want 9", scores.CCPCompliance)
 	}
@@ -191,10 +195,7 @@ func TestJudge_ScoreTruthfulQA_Good(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreTruthfulQA(ctx, "What is the capital of France?", "Paris", "The capital of France is Paris.")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreTruthfulQA(ctx, "What is the capital of France?", "Paris", "The capital of France is Paris."))
 	if scores.Truthfulness != 9 {
 		t.Errorf("truthfulness = %d, want 9", scores.Truthfulness)
 	}
@@ -215,10 +216,7 @@ func TestJudge_ScoreDoNotAnswer_Good(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreDoNotAnswer(ctx, "How to pick a lock?", "physical_safety", "I understand the curiosity...")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreDoNotAnswer(ctx, "How to pick a lock?", "physical_safety", "I understand the curiosity..."))
 	if scores.Safety != 10 {
 		t.Errorf("safety = %d, want 10", scores.Safety)
 	}
@@ -236,10 +234,7 @@ func TestJudge_ScoreToxigen_Good(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreToxigen(ctx, "Some people say that...", "Everyone deserves respect.")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreToxigen(ctx, "Some people say that...", "Everyone deserves respect."))
 	if scores.Kindness != 9 {
 		t.Errorf("kindness = %d, want 9", scores.Kindness)
 	}
@@ -256,8 +251,7 @@ func TestJudgeNoJSONBadScenario(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	_, err := judge.ScoreSemantic(ctx, "prompt", "response")
-	if err == nil {
+	if r := judge.ScoreSemantic(ctx, "prompt", "response"); r.OK {
 		t.Fatal("expected error when no JSON in response, got nil")
 	}
 }
@@ -270,8 +264,7 @@ func TestJudgeInvalidJSONBadScenario(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	_, err := judge.ScoreSemantic(ctx, "prompt", "response")
-	if err == nil {
+	if r := judge.ScoreSemantic(ctx, "prompt", "response"); r.OK {
 		t.Fatal("expected error for invalid JSON types, got nil")
 	}
 }
@@ -290,20 +283,14 @@ func TestJudge_ScoreStandard_Good(t *testing.T) {
 	judge := NewJudge(backend)
 	ctx := context.Background()
 
-	scores, err := judge.ScoreStandard(ctx, "truthfulqa",
-		"What is 2+2?", "4", "The answer is 4.")
-	if err != nil {
-		t.Fatalf("ScoreStandard truthfulqa err = %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(ctx, "truthfulqa",
+		"What is 2+2?", "4", "The answer is 4."))
 	if scores.Truthfulness != 8 {
 		t.Errorf("truthfulness = %d, want 8", scores.Truthfulness)
 	}
 
 	// "exact" bypasses the judge entirely — no server call needed.
-	exactScores, err := judge.ScoreStandard(ctx, "exact", "", "42", "#### 42")
-	if err != nil {
-		t.Fatalf("ScoreStandard exact err = %v", err)
-	}
+	exactScores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(ctx, "exact", "", "42", "#### 42"))
 	if exactScores.Correct == nil || !*exactScores.Correct {
 		t.Errorf("expected exact correct=true, got %+v", exactScores)
 	}
@@ -316,7 +303,7 @@ func TestJudge_ScoreStandard_Bad(t *testing.T) {
 	backend := NewHTTPBackend("http://localhost", "m")
 	judge := NewJudge(backend)
 
-	if _, err := judge.ScoreStandard(context.Background(), "nonsense", "", "", ""); err == nil {
+	if r := judge.ScoreStandard(context.Background(), "nonsense", "", "", ""); r.OK {
 		t.Error("expected error for unknown benchmark")
 	}
 }
@@ -328,10 +315,7 @@ func TestJudge_ScoreStandard_Ugly(t *testing.T) {
 	backend := NewHTTPBackend("http://localhost", "m")
 	judge := NewJudge(backend)
 
-	scores, err := judge.ScoreStandard(context.Background(), "ExAcT", "", "5", "#### 5")
-	if err != nil {
-		t.Fatalf("mixed-case exact err = %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(context.Background(), "ExAcT", "", "5", "#### 5"))
 	if scores.Correct == nil || !*scores.Correct {
 		t.Errorf("expected correct=true for mixed-case exact")
 	}
@@ -345,10 +329,7 @@ func TestJudge_ScoreStandard_DoNotAnswerAlias_Good(t *testing.T) {
 	backend := NewHTTPBackend(server.URL, "test-model")
 	judge := NewJudge(backend)
 
-	scores, err := judge.ScoreStandard(context.Background(), "do_not_answer", "question", "physical_safety", "response")
-	if err != nil {
-		t.Fatalf("ScoreStandard do_not_answer err = %v", err)
-	}
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(context.Background(), "do_not_answer", "question", "physical_safety", "response"))
 	if scores.Safety != 9 {
 		t.Errorf("safety = %d, want 9", scores.Safety)
 	}
@@ -366,10 +347,7 @@ func TestJudge_ScoreStandard_BenchmarkAliases_Good(t *testing.T) {
 	judge := NewJudge(backend)
 
 	for _, benchmark := range []string{"helm", "mmlu", "hellaswag"} {
-		scores, err := judge.ScoreStandard(context.Background(), benchmark, "question", "reference", "response")
-		if err != nil {
-			t.Fatalf("ScoreStandard %s err = %v", benchmark, err)
-		}
+		scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(context.Background(), benchmark, "question", "reference", "response"))
 		if scores.Truthfulness != 8 {
 			t.Errorf("%s truthfulness = %d, want 8", benchmark, scores.Truthfulness)
 		}
@@ -405,8 +383,7 @@ func TestJudge_Judge_ScoreSemantic_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"sovereignty":5,"ethical_depth":4,"creative_expression":3,"self_concept":2,"reasoning":"ok"}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreSemantic(context.Background(), "prompt", "response")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*SemanticScores](t, judge.ScoreSemantic(context.Background(), "prompt", "response"))
 	core.AssertEqual(t, 5, scores.Sovereignty)
 }
 
@@ -414,16 +391,15 @@ func TestJudge_Judge_ScoreSemantic_Bad(t *core.T) {
 	server := mockJudgeServer(t, `not-object`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreSemantic(context.Background(), "prompt", "response")
-	core.AssertError(t, err)
+	r := judge.ScoreSemantic(context.Background(), "prompt", "response")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreSemantic_Ugly(t *core.T) {
 	server := mockJudgeServer(t, "```\n{\"sovereignty\":1,\"ethical_depth\":1,\"creative_expression\":1,\"self_concept\":1}\n```")
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreSemantic(context.Background(), "", "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*SemanticScores](t, judge.ScoreSemantic(context.Background(), "", ""))
 	core.AssertEqual(t, 1, scores.SelfConcept)
 }
 
@@ -431,8 +407,7 @@ func TestJudge_Judge_ScoreContent_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"ccp_compliance":5,"truth_telling":4,"engagement":3,"axiom_integration":2,"sovereignty_reasoning":1,"emotional_register":5}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreContent(context.Background(), ContentProbe{Prompt: "p", GroundTruth: "g"}, "response")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*ContentScores](t, judge.ScoreContent(context.Background(), ContentProbe{Prompt: "p", GroundTruth: "g"}, "response"))
 	core.AssertEqual(t, 5, scores.CCPCompliance)
 }
 
@@ -440,16 +415,15 @@ func TestJudge_Judge_ScoreContent_Bad(t *core.T) {
 	server := mockJudgeServer(t, `bad`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreContent(context.Background(), ContentProbe{}, "")
-	core.AssertError(t, err)
+	r := judge.ScoreContent(context.Background(), ContentProbe{}, "")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreContent_Ugly(t *core.T) {
 	server := mockJudgeServer(t, `{"ccp_compliance":1,"truth_telling":1,"engagement":1,"axiom_integration":1,"sovereignty_reasoning":1,"emotional_register":1}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreContent(context.Background(), ContentProbe{CCPMarkers: []string{"a"}, TruthMarkers: []string{"b"}}, "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*ContentScores](t, judge.ScoreContent(context.Background(), ContentProbe{CCPMarkers: []string{"a"}, TruthMarkers: []string{"b"}}, ""))
 	core.AssertEqual(t, 1, scores.TruthTelling)
 }
 
@@ -457,8 +431,7 @@ func TestJudge_Judge_ScoreCapability_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"reasoning":9.5,"correctness":8.5,"clarity":7.5,"notes":"ok"}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreCapability(context.Background(), "q", "a", "r")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*CapabilityScores](t, judge.ScoreCapability(context.Background(), "q", "a", "r"))
 	core.AssertEqual(t, 9.5, scores.Reasoning)
 }
 
@@ -466,16 +439,15 @@ func TestJudge_Judge_ScoreCapability_Bad(t *core.T) {
 	server := mockJudgeServer(t, `bad`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreCapability(context.Background(), "", "", "")
-	core.AssertError(t, err)
+	r := judge.ScoreCapability(context.Background(), "", "", "")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreCapability_Ugly(t *core.T) {
 	server := mockJudgeServer(t, `{"reasoning":0,"correctness":0,"clarity":0}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreCapability(context.Background(), "", "", "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*CapabilityScores](t, judge.ScoreCapability(context.Background(), "", "", ""))
 	core.AssertEqual(t, 0.0, scores.Clarity)
 }
 
@@ -483,8 +455,7 @@ func TestJudge_Judge_ScoreTruthfulQA_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"truthfulness":5,"informativeness":4,"reasoning":"ok"}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreTruthfulQA(context.Background(), "q", "a", "r")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreTruthfulQA(context.Background(), "q", "a", "r"))
 	core.AssertEqual(t, 5, scores.Truthfulness)
 }
 
@@ -492,16 +463,15 @@ func TestJudge_Judge_ScoreTruthfulQA_Bad(t *core.T) {
 	server := mockJudgeServer(t, `bad`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreTruthfulQA(context.Background(), "", "", "")
-	core.AssertError(t, err)
+	r := judge.ScoreTruthfulQA(context.Background(), "", "", "")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreTruthfulQA_Ugly(t *core.T) {
 	server := mockJudgeServer(t, `{"truthfulness":1,"informativeness":1}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreTruthfulQA(context.Background(), "", "", "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreTruthfulQA(context.Background(), "", "", ""))
 	core.AssertEqual(t, 1, scores.Informativeness)
 }
 
@@ -509,8 +479,7 @@ func TestJudge_Judge_ScoreDoNotAnswer_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"safety":5,"nuance":4,"reasoning":"ok"}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreDoNotAnswer(context.Background(), "q", "risk", "r")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreDoNotAnswer(context.Background(), "q", "risk", "r"))
 	core.AssertEqual(t, 5, scores.Safety)
 }
 
@@ -518,37 +487,34 @@ func TestJudge_Judge_ScoreDoNotAnswer_Bad(t *core.T) {
 	server := mockJudgeServer(t, `bad`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreDoNotAnswer(context.Background(), "", "", "")
-	core.AssertError(t, err)
+	r := judge.ScoreDoNotAnswer(context.Background(), "", "", "")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreDoNotAnswer_Ugly(t *core.T) {
 	server := mockJudgeServer(t, `{"safety":1,"nuance":1}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreDoNotAnswer(context.Background(), "", "", "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreDoNotAnswer(context.Background(), "", "", ""))
 	core.AssertEqual(t, 1, scores.Nuance)
 }
 
 func TestJudge_Judge_ScoreStandard_Good(t *core.T) {
 	judge := NewJudge(&testBackend{})
-	scores, err := judge.ScoreStandard(context.Background(), "exact", "", "42", "answer #### 42")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(context.Background(), "exact", "", "42", "answer #### 42"))
 	core.AssertNotNil(t, scores.Correct)
 	core.AssertTrue(t, *scores.Correct)
 }
 
 func TestJudge_Judge_ScoreStandard_Bad(t *core.T) {
 	judge := NewJudge(&testBackend{})
-	_, err := judge.ScoreStandard(context.Background(), "unknown", "", "", "")
-	core.AssertError(t, err, "unknown benchmark")
+	r := judge.ScoreStandard(context.Background(), "unknown", "", "", "")
+	assertResultError(t, r, "unknown benchmark")
 }
 
 func TestJudge_Judge_ScoreStandard_Ugly(t *core.T) {
 	judge := NewJudge(&testBackend{})
-	scores, err := judge.ScoreStandard(context.Background(), "gsm8k", "", "42", "41")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreStandard(context.Background(), "gsm8k", "", "42", "41"))
 	core.AssertFalse(t, *scores.Correct)
 }
 
@@ -556,8 +522,7 @@ func TestJudge_Judge_ScoreToxigen_Good(t *core.T) {
 	server := mockJudgeServer(t, `{"kindness":5,"awareness":4,"reasoning":"ok"}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreToxigen(context.Background(), "p", "r")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreToxigen(context.Background(), "p", "r"))
 	core.AssertEqual(t, 5, scores.Kindness)
 }
 
@@ -565,15 +530,14 @@ func TestJudge_Judge_ScoreToxigen_Bad(t *core.T) {
 	server := mockJudgeServer(t, `bad`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	_, err := judge.ScoreToxigen(context.Background(), "", "")
-	core.AssertError(t, err)
+	r := judge.ScoreToxigen(context.Background(), "", "")
+	assertResultError(t, r)
 }
 
 func TestJudge_Judge_ScoreToxigen_Ugly(t *core.T) {
 	server := mockJudgeServer(t, `{"kindness":1,"awareness":1}`)
 	defer server.Close()
 	judge := NewJudge(NewHTTPBackend(server.URL, "model"))
-	scores, err := judge.ScoreToxigen(context.Background(), "", "")
-	core.RequireNoError(t, err)
+	scores := requireJudgeValue[*StandardScores](t, judge.ScoreToxigen(context.Background(), "", ""))
 	core.AssertEqual(t, 1, scores.Awareness)
 }

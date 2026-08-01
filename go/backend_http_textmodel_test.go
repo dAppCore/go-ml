@@ -54,7 +54,7 @@ func TestHTTPTextModel_Generate_Good(t *core.T) {
 
 	core.AssertLen(t, collected, 1)
 	core.AssertEqual(t, "Hello from HTTP", collected[0].Text)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Generate_WithOpts_Good(t *core.T) {
@@ -84,7 +84,7 @@ func TestHTTPTextModel_Generate_WithOpts_Good(t *core.T) {
 		result = tok.Text
 	}
 	core.AssertEqual(t, "configured", result)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Chat_Good(t *core.T) {
@@ -106,7 +106,7 @@ func TestHTTPTextModel_Chat_Good(t *core.T) {
 
 	core.AssertLen(t, collected, 1)
 	core.AssertEqual(t, "chat response", collected[0].Text)
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Generate_Error_Bad(t *core.T) {
@@ -153,8 +153,9 @@ func TestHTTPTextModel_Classify_Bad(t *core.T) {
 	backend := NewHTTPBackend("http://localhost", "test-model")
 	model := NewHTTPTextModel(backend)
 
-	results, err := model.Classify(context.Background(), []string{"test"})
-	core.AssertNil(t, results)
+	r := model.Classify(context.Background(), []string{"test"})
+	core.AssertFalse(t, r.OK)
+	err := r.Value.(error)
 	core.AssertError(t, err)
 	core.AssertContains(t, err.Error(), "classify not supported")
 }
@@ -167,8 +168,9 @@ func TestHTTPTextModel_BatchGenerate_Good(t *core.T) {
 	model := NewHTTPTextModel(backend)
 
 	prompts := []string{"alpha", "beta", "gamma"}
-	results, err := model.BatchGenerate(context.Background(), prompts)
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), prompts)
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 3)
 
 	core.AssertEqual(t, "reply:alpha", results[0].Tokens[0].Text)
@@ -200,8 +202,9 @@ func TestHTTPTextModel_BatchGenerate_PartialError_Bad(t *core.T) {
 	backend := NewHTTPBackend(srv.URL, "test-model")
 	model := NewHTTPTextModel(backend)
 
-	results, err := model.BatchGenerate(context.Background(), []string{"a", "b", "c"})
-	core.RequireNoError(t, err) // BatchGenerate itself doesn't fail.
+	r := model.BatchGenerate(context.Background(), []string{"a", "b", "c"})
+	requireResultOK(t, r) // BatchGenerate itself doesn't fail.
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 3)
 
 	core.AssertLen(t, results[0].Tokens, 1)
@@ -268,13 +271,13 @@ func TestHTTPTextModel_Err_ClearedOnSuccess_Good(t *core.T) {
 	// Second call: success — error should be cleared.
 	for range model.Generate(context.Background(), "ok") {
 	}
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestHTTPTextModel_Close_Good(t *core.T) {
 	backend := NewHTTPBackend("http://localhost", "test")
 	model := NewHTTPTextModel(backend)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestLlamaTextModel_ModelType_Good(t *core.T) {
@@ -292,7 +295,7 @@ func TestLlamaTextModel_Close_Good(t *core.T) {
 		http: NewHTTPBackend("http://127.0.0.1:18090", ""),
 	}
 	model := NewLlamaTextModel(llama)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 // --- v0.9.0 shape triplets ---
@@ -314,7 +317,7 @@ func TestBackendHttpTextmodel_NewHTTPTextModel_Bad(t *core.T) {
 func TestBackendHttpTextmodel_NewHTTPTextModel_Ugly(t *core.T) {
 	backend := NewHTTPBackend("http://127.0.0.1", "edge")
 	model := NewHTTPTextModel(backend)
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Generate_Good(t *core.T) {
@@ -382,47 +385,45 @@ func TestBackendHttpTextmodel_HTTPTextModel_Chat_Ugly(t *core.T) {
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Good(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	result, err := model.Classify(context.Background(), []string{"sample"})
-	core.AssertNil(t, result)
-	core.AssertError(t, err, "not supported")
+	r := model.Classify(context.Background(), []string{"sample"})
+	assertResultError(t, r, "not supported")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Bad(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("", ""))
-	result, err := model.Classify(context.Background(), nil)
-	core.AssertNil(t, result)
-	core.AssertError(t, err)
+	assertResultError(t, model.Classify(context.Background(), nil))
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Classify_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	result, err := model.Classify(context.Background(), []string{})
-	core.AssertNil(t, result)
-	core.AssertError(t, err, "classify")
+	assertResultError(t, model.Classify(context.Background(), []string{}), "classify")
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Good(t *core.T) {
 	srv := newTestServerMulti(t)
 	defer srv.Close()
 	model := NewHTTPTextModel(NewHTTPBackend(srv.URL, "model"))
-	results, err := model.BatchGenerate(context.Background(), []string{"a", "b"})
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), []string{"a", "b"})
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 2)
 	core.AssertEqual(t, "reply:a", results[0].Tokens[0].Text)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Bad(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1:1", "model"))
-	results, err := model.BatchGenerate(context.Background(), []string{"a"})
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), []string{"a"})
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertLen(t, results, 1)
 	core.AssertError(t, results[0].Err)
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_BatchGenerate_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	results, err := model.BatchGenerate(context.Background(), nil)
-	core.RequireNoError(t, err)
+	r := model.BatchGenerate(context.Background(), nil)
+	requireResultOK(t, r)
+	results := r.Value.([]inference.BatchResult)
 	core.AssertEmpty(t, results)
 }
 
@@ -492,7 +493,7 @@ func TestBackendHttpTextmodel_HTTPTextModel_Err_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Err_Bad(t *core.T) {
@@ -511,27 +512,27 @@ func TestBackendHttpTextmodel_HTTPTextModel_Err_Ugly(t *core.T) {
 	model.http = NewHTTPBackend(srv.URL, "model")
 	for range model.Generate(context.Background(), "prompt") {
 	}
-	core.AssertNoError(t, model.Err())
+	assertResultOK(t, model.Err())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Bad(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewHTTPTextModel(NewHTTPBackend("", ""))
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_HTTPTextModel_Close_Ugly(t *core.T) {
 	model := NewHTTPTextModel(NewHTTPBackend("http://127.0.0.1", "model"))
-	core.AssertNoError(t, model.Close())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_NewLlamaTextModel_Good(t *core.T) {
@@ -579,7 +580,7 @@ func TestBackendHttpTextmodel_LlamaTextModel_Close_Good(t *core.T) {
 	stubName := t.Name()
 	core.AssertNotEmpty(t, stubName)
 	model := NewLlamaTextModel(NewLlamaBackend())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
 }
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Bad(t *core.T) {
@@ -591,6 +592,6 @@ func TestBackendHttpTextmodel_LlamaTextModel_Close_Bad(t *core.T) {
 
 func TestBackendHttpTextmodel_LlamaTextModel_Close_Ugly(t *core.T) {
 	model := NewLlamaTextModel(NewLlamaBackend())
-	core.AssertNoError(t, model.Close())
-	core.AssertNoError(t, model.Close())
+	assertResultOK(t, model.Close())
+	assertResultOK(t, model.Close())
 }

@@ -14,7 +14,6 @@ import (
 	"dappco.re/go/cli/pkg/cli"
 	"dappco.re/go/inference"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	ml "dappco.re/go/ml"
 	"dappco.re/go/mlx"
 )
@@ -108,7 +107,7 @@ func cosineDecay(step, totalSteps int, maxLR, minLR float64) float64 {
 	return minLR + 0.5*(maxLR-minLR)*(1+math.Cos(math.Pi*progress))
 }
 
-func runTrain(cobraCmd *cli.Command, args []string) error {
+func runTrain(cobraCmd *cli.Command, args []string) core.Result {
 	// --- TUI mode ---
 	if !trainNoTUI {
 		return runTrainTUI(cobraCmd, args)
@@ -117,22 +116,22 @@ func runTrain(cobraCmd *cli.Command, args []string) error {
 }
 
 // runTrainTUI launches the TUI dashboard and runs training in a background goroutine.
-func runTrainTUI(cobraCmd *cli.Command, _ []string) error {
+func runTrainTUI(cobraCmd *cli.Command, _ []string) core.Result {
 	tui := NewTrainFrame()
 
 	// Run training in background, send ticks to TUI
-	var trainErr error
+	trainResult := core.Ok(nil)
 	go func() {
-		trainErr = runTrainLoop(cobraCmd, tui)
-		tui.SendDone(trainErr)
+		trainResult = runTrainLoop(cobraCmd, tui)
+		tui.SendDone(trainResult)
 	}()
 
 	tui.Run()
-	return trainErr
+	return trainResult
 }
 
 // runTrainLoop is the core training loop. If tui is non-nil, it sends progress ticks.
-func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
+func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) core.Result {
 	start := time.Now()
 
 	// --- Auto-generate run ID ---
@@ -144,7 +143,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	slog.Info("loading model", "model_path", trainModelPath)
 	tm, err := inference.LoadTrainable(trainModelPath)
 	if err != nil {
-		return coreerr.E("cmd.runTrainLoop", "load model", err)
+		return core.Fail(core.E("cmd.runTrainLoop", "load model", err))
 	}
 	defer tm.Close()
 
@@ -175,12 +174,13 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 	)
 
 	// --- Load and split training data ---
-	allSamples, err := loadTrainingSamples(trainData, tm, trainMaxSeqLen)
-	if err != nil {
-		return coreerr.E("cmd.runTrainLoop", "load training data", err)
+	samplesResult := loadTrainingSamples(trainData, tm, trainMaxSeqLen)
+	if !samplesResult.OK {
+		return core.Fail(core.E("cmd.runTrainLoop", "load training data", samplesResult.Value.(error)))
 	}
+	allSamples := samplesResult.Value.([]trainSample)
 	if len(allSamples) == 0 {
-		return coreerr.E("cmd.runTrainLoop", "no training samples loaded", nil)
+		return core.Fail(core.E("cmd.runTrainLoop", "no training samples loaded", nil))
 	}
 
 	// Split into train/valid
@@ -203,7 +203,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 	// --- Output directory ---
 	if err := coreio.Local.EnsureDir(trainOutputDir); err != nil {
-		return coreerr.E("cmd.runTrainLoop", "create output dir", err)
+		return core.Fail(core.E("cmd.runTrainLoop", "create output dir", err))
 	}
 	adapterFile := core.JoinPath(trainOutputDir, "adapters.safetensors")
 
@@ -297,7 +297,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 		values, grads, err := grad.Apply(params...)
 		grad.Free()
 		if err != nil {
-			return coreerr.E("cmd.runTrainLoop", core.Sprintf("iter %d: gradient failed", it), err)
+			return core.Fail(core.E("cmd.runTrainLoop", core.Sprintf("iter %d: gradient failed", it), err))
 		}
 
 		mlx.Materialize(append(values, grads...)...)
@@ -396,8 +396,9 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 		// --- Checkpoint ---
 		if trainCheckEvery > 0 && it%trainCheckEvery == 0 {
-			if err := saveCheckpoint(adapter, trainOutputDir, it, cfg); err != nil {
-				slog.Warn("checkpoint save failed", "iter", it, "error", err)
+			saveResult := saveCheckpoint(adapter, trainOutputDir, it, cfg)
+			if !saveResult.OK {
+				slog.Warn("checkpoint save failed", "iter", it, "error", saveResult.Value.(error))
 			} else {
 				slog.Info("checkpoint saved", "iter", it)
 			}
@@ -407,10 +408,11 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 
 	// --- Final save ---
 	if err := adapter.Save(adapterFile); err != nil {
-		return coreerr.E("cmd.runTrainLoop", "save final adapter", err)
+		return core.Fail(core.E("cmd.runTrainLoop", "save final adapter", err))
 	}
-	if err := writeAdapterConfig(trainOutputDir, cfg); err != nil {
-		slog.Warn("write adapter_config.json failed", "error", err)
+	writeResult := writeAdapterConfig(trainOutputDir, cfg)
+	if !writeResult.OK {
+		slog.Warn("write adapter_config.json failed", "error", writeResult.Value.(error))
 	}
 
 	elapsed := time.Since(start)
@@ -428,7 +430,7 @@ func runTrainLoop(cobraCmd *cli.Command, tui *TrainFrame) error {
 		"trainable_params", adapter.TotalParams(),
 	)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // evalValidation runs the model over validation samples and returns average loss.
@@ -517,27 +519,30 @@ func queueLiveScore(ctx context.Context, tm inference.TrainableModel, samples []
 }
 
 // saveCheckpoint saves adapter weights and config at a training iteration.
-func saveCheckpoint(adapter inference.Adapter, dir string, iter int, cfg inference.LoRAConfig) error {
+func saveCheckpoint(adapter inference.Adapter, dir string, iter int, cfg inference.LoRAConfig) core.Result {
 	ckptFile := core.JoinPath(dir, core.Sprintf("%07d_adapters.safetensors", iter))
 	if err := adapter.Save(ckptFile); err != nil {
-		return err
+		return core.Fail(core.E("cmd.saveCheckpoint", "save checkpoint", err))
 	}
 	// Also save the latest
 	if err := adapter.Save(core.JoinPath(dir, "adapters.safetensors")); err != nil {
-		return err
+		return core.Fail(core.E("cmd.saveCheckpoint", "save latest adapter", err))
 	}
 	return writeAdapterConfig(dir, cfg)
 }
 
 // writeAdapterConfig writes adapter_config.json so mlx_lm can reload the adapter.
-func writeAdapterConfig(dir string, cfg inference.LoRAConfig) error {
+func writeAdapterConfig(dir string, cfg inference.LoRAConfig) core.Result {
 	config := map[string]any{
 		"fine_tune_type": "lora",
 		"rank":           cfg.Rank,
 		"alpha":          cfg.Alpha,
 		"lora_layers":    cfg.TargetKeys,
 	}
-	return coreio.Local.Write(core.JoinPath(dir, "adapter_config.json"), core.JSONMarshalString(config))
+	if err := coreio.Local.Write(core.JoinPath(dir, "adapter_config.json"), core.JSONMarshalString(config)); err != nil {
+		return core.Fail(core.E("cmd.writeAdapterConfig", "write adapter config", err))
+	}
+	return core.Ok(nil)
 }
 
 func escapeFieldStr(s string, max int) string {
@@ -551,10 +556,10 @@ func escapeFieldStr(s string, max int) string {
 
 // --- Data loading ---
 
-func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int) ([]trainSample, error) {
+func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int) core.Result {
 	f, err := coreio.Local.Open(path)
 	if err != nil {
-		return nil, err
+		return core.Fail(core.E("cmd.loadTrainingSamples", "open training data", err))
 	}
 	defer f.Close()
 
@@ -589,7 +594,10 @@ func loadTrainingSamples(path string, tm inference.TrainableModel, maxSeqLen int
 		}
 	}
 
-	return samples, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return core.Fail(core.E("cmd.loadTrainingSamples", "scan training data", err))
+	}
+	return core.Ok(samples)
 }
 
 func tokeniseConversation(messages []ml.Message, tm inference.TrainableModel, modelType string, maxSeqLen int) *trainSample {

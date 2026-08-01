@@ -24,7 +24,7 @@ func addConsolidateCommand(c *core.Core) {
 				MergedOut: opts.String("merged"),
 			}
 
-			return resultFromError(ml.Consolidate(cfg, nil))
+			return ml.Consolidate(cfg, nil)
 		},
 	})
 }

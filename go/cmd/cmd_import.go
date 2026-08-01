@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
 
@@ -18,7 +17,7 @@ func addImportCommand(c *core.Core) {
 			readPersistentFlags(opts)
 
 			if dbPath == "" {
-				return resultFromError(coreerr.E("cmd.runImportAll", "--db or LEM_DB required", nil))
+				return core.Fail(core.E("cmd.runImportAll", "--db or LEM_DB required", nil))
 			}
 
 			dataDir := opts.String("data-dir")
@@ -26,9 +25,9 @@ func addImportCommand(c *core.Core) {
 				dataDir = core.PathDir(dbPath)
 			}
 
-			db, err := store.OpenDuckDBReadWrite(dbPath)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runImportAll", "open db", err))
+			db, result := store.OpenDuckDBReadWrite(dbPath)
+			if !result.OK {
+				return core.Fail(core.E("cmd.runImportAll", "open db", result.Value.(error)))
 			}
 			defer db.Close()
 
@@ -38,7 +37,7 @@ func addImportCommand(c *core.Core) {
 				M3Host:  optStringOr(opts, "m3-host", "m3"),
 			}
 
-			return resultFromError(store.ImportAll(db, cfg, nil))
+			return store.ImportAll(db, cfg, nil)
 		},
 	})
 }

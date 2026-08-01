@@ -10,7 +10,6 @@ import (
 	"dappco.re/go"
 	"dappco.re/go/cli/pkg/cli"
 	coreio "dappco.re/go/io"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 	"gopkg.in/yaml.v3"
 )
@@ -75,18 +74,18 @@ type sequenceState struct {
 	UpdatedAt  string          `json:"updated_at"`
 }
 
-func runSequence(cmd *cli.Command, args []string) error {
+func runSequence(cmd *cli.Command, args []string) core.Result {
 	start := time.Now()
 
 	// Load sequence YAML
 	data, err := coreio.Local.Read(sequenceFile)
 	if err != nil {
-		return coreerr.E("cmd.runSequence", "read sequence", err)
+		return core.Fail(core.E("cmd.runSequence", "read sequence", err))
 	}
 
 	var seq sequenceDef
 	if err := yaml.Unmarshal([]byte(data), &seq); err != nil {
-		return coreerr.E("cmd.runSequence", "parse sequence", err)
+		return core.Fail(core.E("cmd.runSequence", "parse sequence", err))
 	}
 
 	if seq.ID == "" {
@@ -102,7 +101,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		modelPath = seq.ModelPath
 	}
 	if modelPath == "" {
-		return coreerr.E("cmd.runSequence", "model-path is required (flag or sequence YAML)", nil)
+		return core.Fail(core.E("cmd.runSequence", "model-path is required (flag or sequence YAML)", nil))
 	}
 
 	// Resolve output
@@ -127,10 +126,11 @@ func runSequence(cmd *cli.Command, args []string) error {
 
 	// Load model once for all lessons
 	slog.Info("sequence: loading model", "model_path", modelPath)
-	backend, err := ml.NewMLXBackend(modelPath)
-	if err != nil {
-		return coreerr.E("cmd.runSequence", "load model", err)
+	backendResult := ml.NewMLXBackend(modelPath)
+	if !backendResult.OK {
+		return core.Fail(core.E("cmd.runSequence", "load model", backendResult.Value.(error)))
 	}
+	backend := backendResult.Value.(*ml.InferenceAdapter)
 
 	opts := ml.GenOpts{
 		Temperature: sequenceTemp,
@@ -140,7 +140,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 	// Open output file
 	outFile, err := coreio.Local.Append(sequenceOutput)
 	if err != nil {
-		return coreerr.E("cmd.runSequence", "create output", err)
+		return core.Fail(core.E("cmd.runSequence", "create output", err))
 	}
 	defer outFile.Close()
 
@@ -161,7 +161,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
-				return coreerr.E("cmd.runSequence", "vertical sequence halted", err)
+				return core.Fail(core.E("cmd.runSequence", "vertical sequence halted", err))
 			}
 			continue
 		}
@@ -173,7 +173,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				"error", err,
 			)
 			if seq.Mode == "vertical" {
-				return coreerr.E("cmd.runSequence", "vertical sequence halted", err)
+				return core.Fail(core.E("cmd.runSequence", "vertical sequence halted", err))
 			}
 			continue
 		}
@@ -272,7 +272,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 				},
 			}
 			if _, err := io.WriteString(outFile, core.Concat(core.JSONMarshalString(record), "\n")); err != nil {
-				return coreerr.E("cmd.runSequence", "write record", err)
+				return core.Fail(core.E("cmd.runSequence", "write record", err))
 			}
 
 			generated++
@@ -303,7 +303,7 @@ func runSequence(cmd *cli.Command, args []string) error {
 		"duration", time.Since(start).Round(time.Second),
 	)
 
-	return nil
+	return core.Ok(nil)
 }
 
 func loadSequenceState(path string) sequenceState {

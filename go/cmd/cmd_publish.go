@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/store"
 )
 
@@ -16,15 +15,15 @@ func addPublishCommand(c *core.Core) {
 		Action: func(opts core.Options) core.Result {
 			inputDir := opts.String("input-dir")
 			if inputDir == "" {
-				return resultFromError(coreerr.E("cmd.runPublish", "--input-dir is required", nil))
+				return core.Fail(core.E("cmd.runPublish", "--input-dir is required", nil))
 			}
-			return resultFromError(store.Publish(store.PublishConfig{
+			return store.Publish(store.PublishConfig{
 				InputDir: inputDir,
 				Repo:     optStringOr(opts, "repo", "lthn/LEM-golden-set"),
 				Public:   opts.Bool("public"),
 				Token:    opts.String("token"),
 				DryRun:   opts.Bool("dry-run"),
-			}, nil))
+			}, nil)
 		},
 	})
 }

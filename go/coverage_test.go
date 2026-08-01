@@ -8,7 +8,7 @@ import (
 func seedCoverageDB(t *core.T) *store.DuckDB {
 	t.Helper()
 	db := newStoreDuckDB(t)
-	core.RequireNoError(t, db.Exec(`CREATE TABLE seeds (
+	requireResultOK(t, db.Exec(`CREATE TABLE seeds (
 		source_file VARCHAR, region VARCHAR, seed_id VARCHAR, domain VARCHAR, prompt VARCHAR
 	)`))
 	return db
@@ -16,23 +16,20 @@ func seedCoverageDB(t *core.T) *store.DuckDB {
 
 func TestCoverage_PrintCoverage_Good(t *core.T) {
 	db := seedCoverageDB(t)
-	core.RequireNoError(t, db.Exec("INSERT INTO seeds VALUES ('f','en-us','s1','ethics','prompt')"))
+	requireResultOK(t, db.Exec("INSERT INTO seeds VALUES ('f','en-us','s1','ethics','prompt')"))
 	buf := core.NewBuffer(nil)
-	err := PrintCoverage(db, buf)
-	core.RequireNoError(t, err)
+	requireResultOK(t, PrintCoverage(db, buf))
 	core.AssertContains(t, buf.String(), "Total seeds: 1")
 }
 
 func TestCoverage_PrintCoverage_Bad(t *core.T) {
 	db := newStoreDuckDB(t)
-	err := PrintCoverage(db, core.NewBuffer(nil))
-	core.AssertError(t, err)
+	assertResultError(t, PrintCoverage(db, core.NewBuffer(nil)))
 }
 
 func TestCoverage_PrintCoverage_Ugly(t *core.T) {
 	db := seedCoverageDB(t)
 	buf := core.NewBuffer(nil)
-	err := PrintCoverage(db, buf)
-	core.RequireNoError(t, err)
+	requireResultOK(t, PrintCoverage(db, buf))
 	core.AssertContains(t, buf.String(), "Total seeds: 0")
 }

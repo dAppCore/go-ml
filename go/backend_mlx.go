@@ -7,9 +7,8 @@ package ml
 import (
 	"log/slog"
 
+	"dappco.re/go"
 	"dappco.re/go/inference"
-	coreerr "dappco.re/go/log"
-	"dappco.re/go/mlx" // registers "metal" backend via init() + Set*Limit
 )
 
 // SetMLXMemoryLimits applies Metal cache and memory hard limits before the
@@ -20,36 +19,46 @@ import (
 //	ml.SetMLXMemoryLimits(4<<30, 32<<30) // 4 GB cache, 32 GB hard cap
 //	ml.SetMLXMemoryLimits(0, 96<<30)     // memory only
 func SetMLXMemoryLimits(cacheLimit, memoryLimit uint64) {
-	if cacheLimit > 0 {
-		mlx.SetCacheLimit(cacheLimit)
+	if cacheLimit == 0 && memoryLimit == 0 {
+		return
 	}
-	if memoryLimit > 0 {
-		mlx.SetMemoryLimit(memoryLimit)
+	if _, ok := inference.SetRuntimeMemoryLimits("metal", inference.RuntimeMemoryLimits{
+		CacheLimitBytes:  cacheLimit,
+		MemoryLimitBytes: memoryLimit,
+	}); !ok {
+		slog.Warn("mlx: metal backend is not registered or does not expose memory limits")
 	}
 }
 
 // NewMLXBackend loads a model via go-inference's Metal backend and wraps it
 // in an InferenceAdapter for use as ml.Backend / ml.StreamingBackend.
 //
-// The named import of go-mlx registers the "metal" backend so
-// inference.LoadModel() automatically uses Metal on Apple Silicon. Load
-// options (context length, parallel slots, etc.) are forwarded directly to
-// go-inference. Spec §2.2.
+// The application should import the concrete runtime package that registers
+// "metal" with go-inference. Load options (context length, parallel slots,
+// etc.) are forwarded directly to go-inference. Spec §2.2.
 //
 // Callers that need explicit Metal memory control should call
 // ml.SetMLXMemoryLimits before NewMLXBackend; between probes use
 // runtime.GC() to release unmanaged caches.
 //
 //	ml.SetMLXMemoryLimits(4<<30, 32<<30)
-//	adapter, err := ml.NewMLXBackend("/models/gemma3-1b",
+//	r := ml.NewMLXBackend("/models/gemma3-1b",
 //	    inference.WithContextLen(8192),
 //	)
-func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*InferenceAdapter, error) {
+func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) core.Result {
 	slog.Info("mlx: loading model via go-inference", "model_path", modelPath)
 
-	m, err := inference.LoadModel(modelPath, loadOpts...)
-	if err != nil {
-		return nil, coreerr.E("ml.NewMLXBackend", "mlx", err)
+	opts := append(append([]inference.LoadOption(nil), loadOpts...), inference.WithBackend("metal"))
+	result := inference.LoadModel(modelPath, opts...)
+	if !result.OK {
+		if err, ok := result.Value.(error); ok {
+			return core.Fail(core.E("ml.NewMLXBackend", "metal backend", err))
+		}
+		return core.Fail(core.E("ml.NewMLXBackend", "metal backend failed to load model", nil))
+	}
+	m, ok := result.Value.(inference.TextModel)
+	if !ok || m == nil {
+		return core.Fail(core.E("ml.NewMLXBackend", "metal backend returned non-TextModel value", nil))
 	}
 
 	info := m.Info()
@@ -59,5 +68,5 @@ func NewMLXBackend(modelPath string, loadOpts ...inference.LoadOption) (*Inferen
 		"quant", info.QuantBits,
 	)
 
-	return NewInferenceAdapter(m, "mlx"), nil
+	return core.Ok(NewInferenceAdapter(m, "mlx"))
 }

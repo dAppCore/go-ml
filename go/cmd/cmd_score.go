@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"dappco.re/go"
-	coreerr "dappco.re/go/log"
 	"dappco.re/go/ml"
 )
 
@@ -23,16 +22,17 @@ func addScoreCommand(c *core.Core) {
 
 			input := opts.String("input")
 			if input == "" {
-				return resultFromError(coreerr.E("cmd.runScore", "--input is required", nil))
+				return core.Fail(core.E("cmd.runScore", "--input is required", nil))
 			}
 			suites := optStringOr(opts, "suites", "all")
 			output := opts.String("output")
 			concurrency := optInt(opts, "concurrency", 4)
 
-			responses, err := ml.ReadResponses(input)
-			if err != nil {
-				return resultFromError(coreerr.E("cmd.runScore", "read input", err))
+			readResult := ml.ReadResponses(input)
+			if !readResult.OK {
+				return core.Fail(core.E("cmd.runScore", "read input", readResult.Value.(error)))
 			}
+			responses := readResult.Value.([]ml.Response)
 
 			var judge *ml.Judge
 			if judgeURL != "" {
@@ -57,8 +57,8 @@ func addScoreCommand(c *core.Core) {
 					ModelAverages: averages,
 					PerPrompt:     perPrompt,
 				}
-				if err := ml.WriteScores(output, out); err != nil {
-					return resultFromError(coreerr.E("cmd.runScore", "write output", err))
+				if result := ml.WriteScores(output, out); !result.OK {
+					return core.Fail(core.E("cmd.runScore", "write output", result.Value.(error)))
 				}
 				core.Print(nil, "Scores written to %s", output)
 			} else {
@@ -71,7 +71,7 @@ func addScoreCommand(c *core.Core) {
 				}
 			}
 
-			return core.Result{OK: true}
+			return core.Ok(nil)
 		},
 	})
 }

@@ -5,22 +5,22 @@ package cmd
 import (
 	"log/slog"
 
-	coreerr "dappco.re/go/log"
+	"dappco.re/go"
 	"dappco.re/go/ml"
 )
 
 // createServeBackend returns the MLX backend when available, falling back to
 // HTTP when modelPath is empty.
 //
-//	backend, err := createServeBackend("/Volumes/Data/lem/models/lem")
-func createServeBackend(modelPath string) (ml.Backend, error) {
+//	result := createServeBackend("/Volumes/Data/lem/models/lem")
+func createServeBackend(modelPath string) core.Result {
 	if modelPath != "" {
 		slog.Info("ml serve: loading native MLX backend", "model_path", modelPath)
-		b, err := ml.NewMLXBackend(modelPath)
-		if err != nil {
-			return nil, coreerr.E("cmd.createServeBackend", "mlx backend", err)
+		result := ml.NewMLXBackend(modelPath)
+		if !result.OK {
+			return core.Fail(core.E("cmd.createServeBackend", "mlx backend", result.Value.(error)))
 		}
-		return b, nil
+		return result
 	}
-	return ml.NewHTTPBackend(apiURL, modelName), nil
+	return core.Ok(ml.NewHTTPBackend(apiURL, modelName))
 }

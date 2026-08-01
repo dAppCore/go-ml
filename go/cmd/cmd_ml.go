@@ -119,14 +119,3 @@ func optFloat(opts core.Options, key string, fallback float64) float64 {
 	}
 	return v
 }
-
-// resultFromError packages a Go error into a core.Result — OK on nil,
-// Value=err + OK=false otherwise. Used by every command Action.
-//
-//	return resultFromError(run(ctx))
-func resultFromError(err error) core.Result {
-	if err != nil {
-		return core.Result{Value: err, OK: false}
-	}
-	return core.Result{OK: true}
-}

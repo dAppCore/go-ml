@@ -8,7 +8,7 @@ import (
 func seedGoldenStoreDB(t *core.T) *store.DuckDB {
 	t.Helper()
 	db := newStoreDuckDB(t)
-	core.RequireNoError(t, db.Exec(`CREATE TABLE golden_set (
+	requireResultOK(t, db.Exec(`CREATE TABLE golden_set (
 		idx INTEGER, seed_id VARCHAR, domain VARCHAR, voice VARCHAR,
 		gen_time DOUBLE, char_count INTEGER
 	)`))
@@ -17,10 +17,10 @@ func seedGoldenStoreDB(t *core.T) *store.DuckDB {
 
 func TestMetrics_PushMetrics_Good(t *core.T) {
 	db := seedGoldenStoreDB(t)
-	core.RequireNoError(t, db.Exec("INSERT INTO golden_set VALUES (1,'s1','ethics','calm',1.0,80)"))
+	requireResultOK(t, db.Exec("INSERT INTO golden_set VALUES (1,'s1','ethics','calm',1.0,80)"))
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushMetrics(db, influx, core.NewBuffer(nil))
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 1, rec.writeCount())
 }
 
@@ -28,13 +28,13 @@ func TestMetrics_PushMetrics_Bad(t *core.T) {
 	db := newStoreDuckDB(t)
 	influx, _ := newFakeInflux(t, nil, 0)
 	err := PushMetrics(db, influx, core.NewBuffer(nil))
-	core.AssertError(t, err)
+	assertResultError(t, err)
 }
 
 func TestMetrics_PushMetrics_Ugly(t *core.T) {
 	db := seedGoldenStoreDB(t)
 	influx, rec := newFakeInflux(t, nil, 0)
 	err := PushMetrics(db, influx, core.NewBuffer(nil))
-	core.RequireNoError(t, err)
+	requireResultOK(t, err)
 	core.AssertEqual(t, 0, rec.writeCount())
 }
